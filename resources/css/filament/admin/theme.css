@@ -1,0 +1,179 @@
+@import '../../../../vendor/filament/filament/resources/css/theme.css';
+
+@source '../../../../app/Filament/**/*';
+@source '../../../../resources/views/filament/**/*';
+
+/* ============================================================
+   PRX BACKEND — Clinical Admin Theme
+   Deep navy sidebar + teal primary + compact spacing
+   ============================================================ */
+
+/* ── Brand tokens ─────────────────────────────────────────── */
+:root {
+    --prx-navy:          #0a1628;
+    --prx-navy-800:      #0f2040;
+    --prx-navy-700:      #142b54;
+    --prx-teal:          #0f8ea8;
+    --prx-teal-hover:    #0d7d95;
+    --prx-teal-light:    #e0f5f9;
+    --prx-text-dim:      rgba(203 213 225 / 0.65);
+    --prx-border:        rgba(255 255 255 / 0.07);
+}
+
+/* ── Sidebar: deep navy clinical dark ─────────────────────── */
+.fi-sidebar {
+    background-color: var(--prx-navy) !important;
+    border-right: 1px solid var(--prx-border) !important;
+}
+
+.dark .fi-sidebar {
+    background-color: var(--prx-navy) !important;
+}
+
+/* Sidebar header / branding area */
+.fi-sidebar-header {
+    background-color: var(--prx-navy-800) !important;
+    border-bottom: 1px solid var(--prx-border) !important;
+}
+
+/* Sidebar nav group labels */
+.fi-sidebar-group-label {
+    color: var(--prx-text-dim) !important;
+    font-size: 0.65rem !important;
+    letter-spacing: 0.1em !important;
+    text-transform: uppercase !important;
+    padding-block: 0.375rem !important;
+    padding-inline: 0.75rem !important;
+}
+
+/* Nav items — compact */
+.fi-sidebar-item-button {
+    padding-block: 0.35rem !important;
+    padding-inline: 0.75rem !important;
+    border-radius: 0.375rem !important;
+    margin-inline: 0.375rem !important;
+    color: rgb(203 213 225) !important;
+    font-size: 0.8125rem !important;
+    gap: 0.5rem !important;
+}
+
+.fi-sidebar-item-button:hover {
+    background-color: rgba(255 255 255 / 0.07) !important;
+    color: #ffffff !important;
+}
+
+.fi-sidebar-item-button.fi-active,
+.fi-sidebar-item-button[aria-current] {
+    background-color: var(--prx-teal) !important;
+    color: #ffffff !important;
+}
+
+/* Nav icons */
+.fi-sidebar-item-icon {
+    width: 1rem !important;
+    height: 1rem !important;
+    flex-shrink: 0 !important;
+}
+
+/* Group spacing — tight */
+.fi-sidebar-nav-groups {
+    gap: 0.125rem !important;
+    padding-block: 0.5rem !important;
+}
+
+.fi-sidebar-group {
+    gap: 0.125rem !important;
+}
+
+.fi-sidebar-group-items {
+    gap: 0 !important;
+}
+
+/* ── Topbar ───────────────────────────────────────────────── */
+.fi-topbar {
+    border-bottom: 1px solid rgb(var(--gray-200)) !important;
+    backdrop-filter: blur(8px) !important;
+    background-color: rgba(255 255 255 / 0.9) !important;
+}
+
+.dark .fi-topbar {
+    background-color: rgba(15 25 40 / 0.95) !important;
+    border-bottom-color: var(--prx-border) !important;
+}
+
+/* ── Page content area ────────────────────────────────────── */
+.fi-main {
+    background-color: #f1f5f9 !important;
+}
+
+.dark .fi-main {
+    background-color: #0d1520 !important;
+}
+
+/* ── Widget grid — compact gap ────────────────────────────── */
+.fi-page-content,
+.fi-wi-ctn {
+    gap: 1rem !important;
+}
+
+/* ── Section / Card compact spacing ──────────────────────── */
+.fi-section {
+    border-radius: 0.5rem !important;
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.04) !important;
+}
+
+.fi-section-content-ctn {
+    padding: 1rem !important;
+}
+
+.fi-section-header-ctn {
+    padding: 0.75rem 1rem !important;
+    border-bottom: 1px solid rgb(var(--gray-200)) !important;
+}
+
+.dark .fi-section-header-ctn {
+    border-bottom-color: rgb(var(--gray-700)) !important;
+}
+
+/* ── Table compact ────────────────────────────────────────── */
+.fi-ta-cell {
+    padding-block: 0.5rem !important;
+    padding-inline: 0.75rem !important;
+    font-size: 0.8125rem !important;
+}
+
+.fi-ta-header-cell {
+    padding-block: 0.5rem !important;
+    padding-inline: 0.75rem !important;
+    font-size: 0.6875rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.04em !important;
+}
+
+/* ── Stats cards ──────────────────────────────────────────── */
+.fi-wi-stats-overview-stat {
+    border-radius: 0.5rem !important;
+}
+
+/* ── Form fields — slightly more compact ─────────────────── */
+.fi-fo-field-wrp {
+    gap: 0.25rem !important;
+}
+
+/* ── Badge sizing ─────────────────────────────────────────── */
+.fi-badge {
+    font-size: 0.6875rem !important;
+    padding: 0.125rem 0.5rem !important;
+}
+
+/* ── Clinical accent: headers use teal underline ─────────── */
+.fi-section-heading {
+    font-size: 0.875rem !important;
+    font-weight: 600 !important;
+    color: rgb(var(--primary-600)) !important;
+}
+
+/* ── Scrollbar (webkit) ───────────────────────────────────── */
+.fi-sidebar::-webkit-scrollbar { width: 4px; }
+.fi-sidebar::-webkit-scrollbar-track { background: transparent; }
+.fi-sidebar::-webkit-scrollbar-thumb { background: rgba(255 255 255 / 0.12); border-radius: 2px; }

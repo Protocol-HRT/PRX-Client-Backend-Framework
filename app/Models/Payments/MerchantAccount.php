@@ -46,6 +46,17 @@ class MerchantAccount extends Model
         'surcharge_rate',
         'surcharge_flat_per_txn',
         'surcharge_passthrough',
+        // Stripe credentials
+        'stripe_secret_key',
+        'stripe_publishable_key',
+        'stripe_webhook_secret',
+        // Square credentials
+        'square_application_id',
+        'square_access_token',
+        'square_location_id',
+        'square_webhook_signature_key',
+        // Optional gateway endpoint URL override
+        'gateway_endpoint_url',
         'metadata',
     ];
 
@@ -80,6 +91,16 @@ class MerchantAccount extends Model
             'surcharge_rate' => 'decimal:4',
             'surcharge_flat_per_txn' => 'decimal:2',
             'surcharge_passthrough' => 'boolean',
+            // Stripe — server-side keys encrypted; publishable key is browser-safe
+            'stripe_secret_key' => 'encrypted',
+            'stripe_publishable_key' => 'string',
+            'stripe_webhook_secret' => 'encrypted',
+            // Square — access token & webhook sig encrypted; application_id & location_id are public
+            'square_application_id' => 'string',
+            'square_access_token' => 'encrypted',
+            'square_location_id' => 'string',
+            'square_webhook_signature_key' => 'encrypted',
+            'gateway_endpoint_url' => 'string',
             'metadata' => 'array',
         ];
     }
@@ -99,7 +120,7 @@ class MerchantAccount extends Model
     }
 
     /**
-     * Client-safe public key for JS tokenization (Collect.js / Accept.js).
+     * Client-safe public/publishable key for JS tokenization.
      * Never returns encrypted server-side credentials.
      */
     public function getPublicKey(): ?string
@@ -107,12 +128,14 @@ class MerchantAccount extends Model
         return match ($this->gateway_provider) {
             GatewayProvider::Nmi => $this->nmi_public_key,
             GatewayProvider::AuthorizeNet => $this->authnet_public_client_key,
+            GatewayProvider::Stripe => $this->stripe_publishable_key,
+            GatewayProvider::Square => $this->square_application_id,
         };
     }
 
     /**
      * Returns true when all credentials required to process a transaction are present.
-     * Webhook-only fields (authnet_signature_key) are not required here.
+     * Webhook-only fields are not required for this check.
      */
     public function hasValidCredentials(): bool
     {
@@ -120,6 +143,9 @@ class MerchantAccount extends Model
             GatewayProvider::Nmi => ! empty($this->nmi_security_key),
             GatewayProvider::AuthorizeNet => ! empty($this->authnet_api_login_id)
                 && ! empty($this->authnet_transaction_key),
+            GatewayProvider::Stripe => ! empty($this->stripe_secret_key),
+            GatewayProvider::Square => ! empty($this->square_access_token)
+                && ! empty($this->square_location_id),
         };
     }
 }
