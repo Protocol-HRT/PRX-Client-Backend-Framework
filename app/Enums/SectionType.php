@@ -1,0 +1,85 @@
+<?php
+
+namespace App\Enums;
+
+use App\Cms\Sections\BenefitsHerSection;
+use App\Cms\Sections\BenefitsHimSection;
+use App\Cms\Sections\CtaBannerSection;
+use App\Cms\Sections\FaqSection;
+use App\Cms\Sections\FeaturesGridSection;
+use App\Cms\Sections\FinalCtaSection;
+use App\Cms\Sections\HeroSection;
+use App\Cms\Sections\HowItWorksSection;
+use App\Cms\Sections\ImageTextSplitSection;
+use App\Cms\Sections\PhysiciansSection;
+use App\Cms\Sections\PricingTiersSection;
+use App\Cms\Sections\ResultsStatsSection;
+use App\Cms\Sections\SectionBlueprint;
+use App\Cms\Sections\StatsMarqueeSection;
+use App\Cms\Sections\StorySection;
+use App\Cms\Sections\TestimonialsSection;
+use App\Cms\Sections\TextBlockSection;
+use App\Cms\Sections\TransformedSection;
+use App\Cms\Sections\VideoEmbedSection;
+
+enum SectionType: string
+{
+    // 13 imported from the protocolhrt template
+    case Hero = 'hero';
+    case StatsMarquee = 'stats-marquee';
+    case ResultsStats = 'results-stats';
+    case PricingTiers = 'pricing-tiers';
+    case Physicians = 'physicians';
+    case Story = 'story';
+    case BenefitsHim = 'benefits-him';
+    case BenefitsHer = 'benefits-her';
+    case HowItWorks = 'how-it-works';
+    case Testimonials = 'testimonials';
+    case Transformed = 'transformed';
+    case Faq = 'faq';
+    case FinalCta = 'final-cta';
+
+    // 5 generic Tailwind blocks
+    case TextBlock = 'text-block';
+    case ImageTextSplit = 'image-text-split';
+    case CtaBanner = 'cta-banner';
+    case FeaturesGrid = 'features-grid';
+    case VideoEmbed = 'video-embed';
+
+    public function blueprint(): SectionBlueprint
+    {
+        return match ($this) {
+            self::Hero => app(HeroSection::class),
+            self::StatsMarquee => app(StatsMarqueeSection::class),
+            self::ResultsStats => app(ResultsStatsSection::class),
+            self::PricingTiers => app(PricingTiersSection::class),
+            self::Physicians => app(PhysiciansSection::class),
+            self::Story => app(StorySection::class),
+            self::BenefitsHim => app(BenefitsHimSection::class),
+            self::BenefitsHer => app(BenefitsHerSection::class),
+            self::HowItWorks => app(HowItWorksSection::class),
+            self::Testimonials => app(TestimonialsSection::class),
+            self::Transformed => app(TransformedSection::class),
+            self::Faq => app(FaqSection::class),
+            self::FinalCta => app(FinalCtaSection::class),
+            self::TextBlock => app(TextBlockSection::class),
+            self::ImageTextSplit => app(ImageTextSplitSection::class),
+            self::CtaBanner => app(CtaBannerSection::class),
+            self::FeaturesGrid => app(FeaturesGridSection::class),
+            self::VideoEmbed => app(VideoEmbedSection::class),
+        };
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function options(): array
+    {
+        $opts = [];
+        foreach (self::cases() as $case) {
+            $opts[$case->value] = $case->blueprint()->label();
+        }
+
+        return $opts;
+    }
+}

@@ -1,0 +1,460 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   PROTOCOL HRT — DESIGN SYSTEM
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&family=Syne:wght@400;500;600;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Space+Mono:wght@400;700&display=swap');
+
+:root {
+  /* Brand Colors */
+  --bg-primary: #0B0B0B;
+  --bg-surface: #16191d;
+  --bg-card: #1E2124;
+  --border-card: rgba(247, 245, 242, 0.06);
+  --border-subtle: rgba(232, 223, 212, 0.12);
+  --border-divider: rgba(232, 223, 212, 0.08);
+
+  --text-primary: #F7F5F2;
+  --text-body: #E8DFD4;
+  --text-muted: rgba(232, 223, 212, 0.45);
+
+  --accent-blue: #6B8FA3;
+  --accent-emerald: #2D7A4F;
+  --accent-emerald-hover: #3A9E68;
+  --accent-gold: #C9A84C;
+
+  /* Typography */
+  --font-display: 'Cormorant Garamond', Georgia, serif;
+  --font-sub: 'Syne', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+  --font-mono: 'Space Mono', monospace;
+}
+
+html {
+  scroll-behavior: smooth;
+  background-color: var(--bg-primary);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ============================================================
+   SCROLLBAR
+   ============================================================ */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: rgba(107,143,163,0.4); border-radius: 2px; }
+
+/* ============================================================
+   TYPOGRAPHY UTILITIES
+   ============================================================ */
+.font-display { font-family: var(--font-display); }
+.font-sub { font-family: var(--font-sub); }
+.font-body { font-family: var(--font-body); }
+.font-mono { font-family: var(--font-mono); }
+
+/* ============================================================
+   SECTION LABEL (Space Mono, steel blue)
+   ============================================================ */
+.section-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--accent-blue);
+}
+
+/* ============================================================
+   INTERSECTION OBSERVER ANIMATIONS
+   ============================================================ */
+.reveal-fade {
+  opacity: 0;
+  transform: translateY(32px);
+  transition: opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reveal-fade.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.reveal-blur {
+  opacity: 0;
+  filter: blur(12px);
+  transform: scale(0.97);
+  transition: opacity 1s cubic-bezier(0.16, 1, 0.3, 1),
+              filter 1s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 1s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.reveal-blur.is-visible {
+  opacity: 1;
+  filter: blur(0);
+  transform: scale(1);
+}
+
+.reveal-delay-1 { transition-delay: 0.1s; }
+.reveal-delay-2 { transition-delay: 0.2s; }
+.reveal-delay-3 { transition-delay: 0.3s; }
+.reveal-delay-4 { transition-delay: 0.4s; }
+.reveal-delay-5 { transition-delay: 0.5s; }
+.reveal-delay-6 { transition-delay: 0.6s; }
+
+/* ============================================================
+   CHAR REVEAL ANIMATION
+   ============================================================ */
+.char-reveal {
+  display: inline-block;
+  transform: translateY(40%);
+  opacity: 0;
+  filter: blur(6px);
+  transition: transform 0.9s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.9s ease,
+              filter 0.9s ease;
+  will-change: transform, opacity, filter;
+}
+
+.is-visible .char-reveal {
+  transform: translateY(0);
+  opacity: 1;
+  filter: blur(0);
+}
+
+/* ============================================================
+   STAGGER GRID
+   ============================================================ */
+.stagger-grid > * {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.stagger-grid.is-visible > *:nth-child(1) { transition-delay: 0.05s; opacity: 1; transform: translateY(0); }
+.stagger-grid.is-visible > *:nth-child(2) { transition-delay: 0.12s; opacity: 1; transform: translateY(0); }
+.stagger-grid.is-visible > *:nth-child(3) { transition-delay: 0.19s; opacity: 1; transform: translateY(0); }
+.stagger-grid.is-visible > *:nth-child(4) { transition-delay: 0.26s; opacity: 1; transform: translateY(0); }
+.stagger-grid.is-visible > *:nth-child(5) { transition-delay: 0.33s; opacity: 1; transform: translateY(0); }
+.stagger-grid.is-visible > *:nth-child(6) { transition-delay: 0.40s; opacity: 1; transform: translateY(0); }
+.stagger-grid.is-visible > *:nth-child(7) { transition-delay: 0.47s; opacity: 1; transform: translateY(0); }
+.stagger-grid.is-visible > *:nth-child(8) { transition-delay: 0.54s; opacity: 1; transform: translateY(0); }
+
+/* ============================================================
+   GLASS PANEL
+   ============================================================ */
+.glass-panel {
+  background: rgba(30, 33, 36, 0.8);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border-card);
+}
+
+/* ============================================================
+   CTA BUTTON
+   ============================================================ */
+.btn-primary {
+  background-color: var(--accent-emerald);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  height: 54px;
+  padding: 0 32px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.25s ease, transform 0.2s ease;
+  cursor: pointer;
+  border: none;
+  white-space: nowrap;
+}
+
+.btn-primary:hover {
+  background-color: var(--accent-emerald-hover);
+  transform: translateY(-1px);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.btn-secondary {
+  background-color: transparent;
+  color: var(--text-body);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 16px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  height: 54px;
+  padding: 0 32px;
+  border-radius: 8px;
+  border: 1px solid rgba(232, 223, 212, 0.25);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.25s ease, color 0.25s ease;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-secondary:hover {
+  border-color: rgba(232, 223, 212, 0.5);
+  color: var(--text-primary);
+}
+
+.btn-outline-emerald {
+  background-color: transparent;
+  color: var(--accent-emerald);
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  height: 54px;
+  padding: 0 32px;
+  border-radius: 8px;
+  border: 1.5px solid var(--accent-emerald);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.25s ease, color 0.25s ease;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-outline-emerald:hover {
+  background-color: rgba(45, 122, 79, 0.12);
+}
+
+/* ============================================================
+   PROTOCOL CARD
+   ============================================================ */
+.protocol-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: 16px;
+  padding: 28px;
+  transition: border-color 0.3s ease, transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.protocol-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+}
+
+.protocol-card-him:hover {
+  border-color: rgba(45, 122, 79, 0.35);
+}
+
+.protocol-card-her:hover {
+  border-color: rgba(201, 168, 76, 0.35);
+}
+
+/* ============================================================
+   TRUST TICKER
+   ============================================================ */
+@keyframes ticker-scroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.ticker-track {
+  display: flex;
+  width: max-content;
+  animation: ticker-scroll 35s linear infinite;
+}
+
+.ticker-track:hover {
+  animation-play-state: paused;
+}
+
+/* ============================================================
+   FAQ ACCORDION
+   ============================================================ */
+.faq-answer {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity 0.35s ease;
+  opacity: 0;
+}
+
+.faq-answer.open {
+  max-height: 400px;
+  opacity: 1;
+}
+
+/* ============================================================
+   TESTIMONIAL SNAP SCROLL
+   ============================================================ */
+.testimonial-scroll-container {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 8px;
+}
+
+.testimonial-scroll-container::-webkit-scrollbar { display: none; }
+
+.testimonial-card-snap {
+  scroll-snap-align: start;
+  flex-shrink: 0;
+  width: calc(85vw);
+}
+
+@media (min-width: 768px) {
+  .testimonial-card-snap {
+    width: auto;
+    flex-shrink: unset;
+  }
+}
+
+/* ============================================================
+   SCROLL INDICATOR
+   ============================================================ */
+@keyframes bounce-chevron {
+  0%, 100% { transform: translateY(0) translateX(-50%); }
+  50% { transform: translateY(8px) translateX(-50%); }
+}
+
+.scroll-indicator {
+  animation: bounce-chevron 2s ease-in-out infinite;
+}
+
+/* ============================================================
+   HERO SCAN LINE
+   ============================================================ */
+@keyframes scan-line {
+  0% { top: 0; opacity: 0; }
+  10% { opacity: 0.4; }
+  90% { opacity: 0.4; }
+  100% { top: 100%; opacity: 0; }
+}
+
+/* ============================================================
+   BEAM GLOW (AI SECTION)
+   ============================================================ */
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.05); }
+}
+
+.pulse-glow {
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+/* ============================================================
+   CARD SHINE ON HOVER
+   ============================================================ */
+.card-shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.card-shine::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(to right, transparent, rgba(247, 245, 242, 0.04), transparent);
+  transform: skewX(-20deg);
+  transition: 0.6s;
+}
+
+.card-shine:hover::after {
+  left: 160%;
+  transition: 0.9s;
+}
+
+/* ============================================================
+   STICKY BOTTOM CTA
+   ============================================================ */
+.sticky-cta-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 999;
+  background: var(--accent-emerald);
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* ============================================================
+   GRADIENT BACKGROUNDS
+   ============================================================ */
+.hero-gradient {
+  background: radial-gradient(ellipse at 30% 60%, rgba(45, 122, 79, 0.08) 0%, transparent 60%),
+              radial-gradient(ellipse at 70% 20%, rgba(107, 143, 163, 0.06) 0%, transparent 50%),
+              var(--bg-primary);
+}
+
+.cta-glow {
+  background: radial-gradient(ellipse at 50% 50%, rgba(45, 122, 79, 0.12) 0%, transparent 70%),
+              var(--bg-primary);
+}
+
+/* ============================================================
+   DIVIDER LINE
+   ============================================================ */
+.divider {
+  border: none;
+  border-top: 1px solid var(--border-divider);
+}
+
+/* ============================================================
+   STAT NUMBER
+   ============================================================ */
+.stat-number {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--accent-gold);
+}
+
+/* ============================================================
+   PROCESS CONNECTOR LINE (desktop)
+   ============================================================ */
+.process-connector {
+  position: absolute;
+  top: 32px;
+  left: calc(50% + 40px);
+  right: calc(-50% + 40px);
+  height: 1px;
+  background: linear-gradient(to right, rgba(107, 143, 163, 0.4), rgba(107, 143, 163, 0.1));
+}
+
+/* ============================================================
+   MANIFESTO TEXT
+   ============================================================ */
+.manifesto {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 600;
+  color: var(--accent-gold);
+}
