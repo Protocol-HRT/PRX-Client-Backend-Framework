@@ -22,10 +22,16 @@ class MerchantAccountFactory extends Factory
             'authnet_api_login_id' => $this->faker->bothify('??########'),
             'authnet_transaction_key' => $this->faker->sha256(),
             'authnet_public_client_key' => null,
+            'authnet_signature_key' => null,
+            'cim_enabled' => false,
             'is_active' => true,
             'is_default' => false,
             'transaction_weight' => 1,
             'allows_recurring_payments' => false,
+            'allows_rx_processing' => true,
+            'allows_card_present' => false,
+            'allows_card_not_present' => true,
+            'supports_public_checkout' => true,
         ];
     }
 
@@ -34,6 +40,7 @@ class MerchantAccountFactory extends Factory
         return $this->state([
             'gateway_provider' => GatewayProvider::Nmi,
             'nmi_security_key' => $this->faker->sha256(),
+            'nmi_public_key' => null,
             'authnet_api_login_id' => null,
             'authnet_transaction_key' => null,
         ]);
