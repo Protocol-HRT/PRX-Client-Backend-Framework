@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Payments\MerchantAccounts\Schemas;
 
 use App\Enums\Payments\GatewayEnvironment;
 use App\Enums\Payments\GatewayProvider;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -13,6 +14,18 @@ use Filament\Schemas\Schema;
 
 class MerchantAccountForm
 {
+    /** Handles both string state (user picking from select) and enum state (Filament hydrating from model). */
+    private static function isGateway(Get $get, GatewayProvider $provider): bool
+    {
+        $value = $get('gateway_provider');
+
+        if ($value instanceof GatewayProvider) {
+            return $value === $provider;
+        }
+
+        return $value === $provider->value;
+    }
+
     public static function configure(Schema $schema): Schema
     {
         return $schema
@@ -28,7 +41,7 @@ class MerchantAccountForm
                             ->required()
                             ->native(false)
                             ->live()
-                            ->helperText('Select a gateway to reveal its credential fields below.'),
+                            ->helperText('After selecting a gateway, its credential fields will appear below.'),
                         Select::make('environment')
                             ->options(GatewayEnvironment::class)
                             ->required()
@@ -39,10 +52,19 @@ class MerchantAccountForm
                             ->helperText('Only one account should be set as default.'),
                     ]),
 
+                // Hint shown when no gateway has been selected yet
+                Section::make('Credentials')
+                    ->description('Select a gateway provider above — the matching credential fields will appear here.')
+                    ->visible(fn (Get $get): bool => blank($get('gateway_provider')))
+                    ->components([
+                        Placeholder::make('')
+                            ->content('No gateway selected. Choose NMI, Authorize.Net, Stripe, or Square from the Account section above.'),
+                    ]),
+
                 // ── NMI credentials ───────────────────────────────
                 Section::make('NMI credentials')
                     ->description('NMI Direct Post API credentials.')
-                    ->visible(fn (Get $get): bool => $get('gateway_provider') === GatewayProvider::Nmi->value)
+                    ->visible(fn (Get $get): bool => self::isGateway($get, GatewayProvider::Nmi))
                     ->columns(2)
                     ->components([
                         TextInput::make('nmi_security_key')
@@ -62,7 +84,7 @@ class MerchantAccountForm
                 // ── Authorize.Net credentials ─────────────────────
                 Section::make('Authorize.Net credentials')
                     ->description('Authorize.Net API credentials.')
-                    ->visible(fn (Get $get): bool => $get('gateway_provider') === GatewayProvider::AuthorizeNet->value)
+                    ->visible(fn (Get $get): bool => self::isGateway($get, GatewayProvider::AuthorizeNet))
                     ->columns(2)
                     ->components([
                         TextInput::make('authnet_api_login_id')
@@ -96,7 +118,7 @@ class MerchantAccountForm
                 // ── Stripe credentials ────────────────────────────
                 Section::make('Stripe credentials')
                     ->description('Stripe API keys from your Stripe Dashboard → Developers → API keys.')
-                    ->visible(fn (Get $get): bool => $get('gateway_provider') === GatewayProvider::Stripe->value)
+                    ->visible(fn (Get $get): bool => self::isGateway($get, GatewayProvider::Stripe))
                     ->columns(2)
                     ->components([
                         TextInput::make('stripe_secret_key')
@@ -123,7 +145,7 @@ class MerchantAccountForm
                 // ── Square credentials ────────────────────────────
                 Section::make('Square credentials')
                     ->description('Square credentials from your Square Developer Dashboard.')
-                    ->visible(fn (Get $get): bool => $get('gateway_provider') === GatewayProvider::Square->value)
+                    ->visible(fn (Get $get): bool => self::isGateway($get, GatewayProvider::Square))
                     ->columns(2)
                     ->components([
                         TextInput::make('square_access_token')
