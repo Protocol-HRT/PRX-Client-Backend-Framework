@@ -57,7 +57,8 @@ class MerchantAccountForm
                     ->description('Select a gateway provider above — the matching credential fields will appear here.')
                     ->visible(fn (Get $get): bool => blank($get('gateway_provider')))
                     ->components([
-                        Placeholder::make('')
+                        Placeholder::make('no_gateway_hint')
+                            ->label('')
                             ->content('No gateway selected. Choose NMI, Authorize.Net, Stripe, or Square from the Account section above.'),
                     ]),
 
