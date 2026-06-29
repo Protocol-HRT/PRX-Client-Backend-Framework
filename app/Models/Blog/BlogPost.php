@@ -4,7 +4,9 @@ namespace App\Models\Blog;
 
 use App\Enums\PostStatus;
 use App\Models\Concerns\GeneratesUniqueSlug;
+use App\Models\Concerns\HasTags;
 use App\Models\User;
+use Database\Factories\Blog\BlogPostFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -16,7 +18,7 @@ use Spatie\EloquentSortable\SortableTrait;
 
 class BlogPost extends Model implements Sortable
 {
-    use GeneratesUniqueSlug, HasFactory, SoftDeletes, SortableTrait;
+    use GeneratesUniqueSlug, HasFactory, HasTags, SoftDeletes, SortableTrait;
 
     protected $fillable = [
         'author_id',
@@ -79,16 +81,6 @@ class BlogPost extends Model implements Sortable
         );
     }
 
-    public function tags(): BelongsToMany
-    {
-        return $this->belongsToMany(
-            BlogTag::class,
-            'blog_tag_post',
-            'blog_post_id',
-            'blog_tag_id'
-        );
-    }
-
     public function scopePublished(Builder $query): Builder
     {
         return $query
@@ -109,8 +101,8 @@ class BlogPost extends Model implements Sortable
         return 'slug';
     }
 
-    protected static function newFactory(): \Database\Factories\Blog\BlogPostFactory
+    protected static function newFactory(): BlogPostFactory
     {
-        return \Database\Factories\Blog\BlogPostFactory::new();
+        return BlogPostFactory::new();
     }
 }

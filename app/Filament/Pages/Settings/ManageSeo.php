@@ -6,6 +6,7 @@ use App\Actions\Settings\UpdateSeoSettingsAction;
 use App\Data\Settings\SeoSettingsData;
 use App\Settings\SeoSettings;
 use BackedEnum;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -20,7 +21,7 @@ use Throwable;
  */
 class ManageSeo extends BaseSettingsPage
 {
-    protected static string | BackedEnum | null $navigationIcon = Heroicon::OutlinedMagnifyingGlass;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedMagnifyingGlass;
 
     protected static ?int $navigationSort = 40;
 
@@ -42,16 +43,45 @@ class ManageSeo extends BaseSettingsPage
                 Section::make('Meta defaults')
                     ->description('Used as fallbacks when a page does not declare its own meta.')
                     ->components([
-                        TextInput::make('default_meta_title')->label('Default page title')->required()->maxLength(255),
-                        Textarea::make('default_meta_description')->label('Default meta description')->required()->rows(3)->maxLength(500),
-                        TextInput::make('og_image_path')->label('Default OG image path')->maxLength(2048),
+                        TextInput::make('default_meta_title')
+                            ->label('Default page title')
+                            ->required()
+                            ->maxLength(255)
+                            ->hintIcon(Heroicon::InformationCircle, 'Default page title used when no page-specific title is set. Typically "Brand Name | Tagline".'),
+                        Textarea::make('default_meta_description')
+                            ->label('Default meta description')
+                            ->required()
+                            ->rows(3)
+                            ->maxLength(500)
+                            ->hintIcon(Heroicon::InformationCircle, 'Default meta description (150–160 chars) for search engines when no page-specific description is set.'),
+                        FileUpload::make('og_image_path')
+                            ->label('Default OG image')
+                            ->hintIcon(Heroicon::InformationCircle, 'Default Open Graph image for social shares. 1200×630px recommended. Used when no page-specific OG image is set.')
+                            ->image()
+                            ->disk('public')
+                            ->directory('seo')
+                            ->visibility('public')
+                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
+                            ->maxSize(4096)
+                            ->downloadable(),
                     ]),
                 Section::make('Analytics')
                     ->columns(2)
                     ->components([
-                        TextInput::make('google_analytics_id')->label('GA4 measurement ID')->placeholder('G-XXXXXXX')->maxLength(64),
-                        TextInput::make('google_tag_manager_id')->label('GTM container ID')->placeholder('GTM-XXXXXXX')->maxLength(64),
-                        TextInput::make('facebook_pixel_id')->label('Facebook Pixel ID')->maxLength(64),
+                        TextInput::make('google_analytics_id')
+                            ->label('GA4 measurement ID')
+                            ->placeholder('G-XXXXXXX')
+                            ->maxLength(64)
+                            ->hintIcon(Heroicon::InformationCircle, 'Google Analytics 4 measurement ID, e.g. G-XXXXXXXXXX. Leave blank to disable GA4.'),
+                        TextInput::make('google_tag_manager_id')
+                            ->label('GTM container ID')
+                            ->placeholder('GTM-XXXXXXX')
+                            ->maxLength(64)
+                            ->hintIcon(Heroicon::InformationCircle, 'Google Tag Manager container ID, e.g. GTM-XXXXXXX. Leave blank to disable GTM.'),
+                        TextInput::make('facebook_pixel_id')
+                            ->label('Facebook Pixel ID')
+                            ->maxLength(64)
+                            ->hintIcon(Heroicon::InformationCircle, 'Facebook/Meta Pixel ID for conversion tracking. Leave blank to disable.'),
                     ]),
                 Section::make('Indexing')
                     ->components([

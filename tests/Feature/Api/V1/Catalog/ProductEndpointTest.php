@@ -129,6 +129,26 @@ class ProductEndpointTest extends TestCase
         $this->assertSame(['Point A', 'Point B'], $highlights);
     }
 
+    public function test_product_show_includes_description(): void
+    {
+        $product = Product::factory()->create([
+            'status' => CatalogStatus::Published,
+            'description' => 'Full clinical detail about this product.',
+        ]);
+
+        $this->getJson("/api/v1/catalog/products/{$product->slug}")
+            ->assertOk()
+            ->assertJsonPath('data.description', 'Full clinical detail about this product.');
+    }
+
+    public function test_product_index_excludes_description(): void
+    {
+        Product::factory()->create(['status' => CatalogStatus::Published, 'description' => 'Should not appear']);
+
+        $response = $this->getJson('/api/v1/catalog/products')->assertOk();
+        $this->assertArrayNotHasKey('description', $response->json('data.0'));
+    }
+
     public function test_per_page_is_capped_at_50(): void
     {
         Product::factory()->count(5)->create(['status' => CatalogStatus::Published]);

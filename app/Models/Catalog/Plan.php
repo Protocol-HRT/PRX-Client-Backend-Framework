@@ -5,8 +5,9 @@ namespace App\Models\Catalog;
 use App\Enums\BillingPeriod;
 use App\Enums\CatalogStatus;
 use App\Enums\RebillStrategy;
-use App\Models\Concerns\GeneratesUniqueSlug;
+use App\Models\Concerns\HasFulfillmentCenter;
 use App\Models\User;
+use Database\Factories\Catalog\PlanFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -14,10 +15,21 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\EloquentSortable\Sortable;
 use Spatie\EloquentSortable\SortableTrait;
+use Spatie\Sluggable\HasSlug;
+use Spatie\Sluggable\SlugOptions;
 
 class Plan extends Model implements Sortable
 {
-    use GeneratesUniqueSlug, HasFactory, SoftDeletes, SortableTrait;
+    use HasFactory, HasFulfillmentCenter, HasSlug, SoftDeletes, SortableTrait;
+
+    public function getSlugOptions(): SlugOptions
+    {
+        return SlugOptions::create()
+            ->generateSlugsFrom('name')
+            ->saveSlugsTo('slug')
+            ->doNotGenerateSlugsOnUpdate()
+            ->preventOverwrite();
+    }
 
     protected $fillable = [
         'package_id',
@@ -48,6 +60,8 @@ class Plan extends Model implements Sortable
         'meta_description',
         'og_image_path',
         'position',
+        'default_fulfillment_center_id',
+        'last_synced_at',
         'created_by',
         'updated_by',
     ];
@@ -73,12 +87,13 @@ class Plan extends Model implements Sortable
             'rebill_strategy' => RebillStrategy::class,
             'provider_product_ids' => 'array',
             'term_months' => 'integer',
+            'last_synced_at' => 'datetime',
         ];
     }
 
-    protected static function newFactory(): \Database\Factories\Catalog\PlanFactory
+    protected static function newFactory(): PlanFactory
     {
-        return \Database\Factories\Catalog\PlanFactory::new();
+        return PlanFactory::new();
     }
 
     public function package(): BelongsTo

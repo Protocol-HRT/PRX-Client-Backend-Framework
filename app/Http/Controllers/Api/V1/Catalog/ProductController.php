@@ -17,14 +17,15 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 class ProductController extends ApiController
 {
     /**
-     * @return AnonymousResourceCollection
+     * List published catalog products.
      *
-     * Query params:
-     *   ?category=slug      Filter by category slug
-     *   ?tag=slug           Filter by tag slug
-     *   ?featured=1         Featured only
-     *   ?search=q           Name / subtitle full-text search
-     *   ?per_page=15        Page size (max 50)
+     * Returns a paginated list of published products with categories and tags.
+     * Supports filtering by category slug, tag slug, featured flag, and name/subtitle search.
+     *
+     *
+     * @tags Catalog
+     *
+     * @unauthenticated
      */
     public function index(Request $request): AnonymousResourceCollection
     {
@@ -53,6 +54,15 @@ class ProductController extends ApiController
         return ProductResource::collection($products);
     }
 
+    /**
+     * Get a published catalog product by slug.
+     *
+     * Includes categories, tags, and any packages that contain this product along with their plans.
+     *
+     * @tags Catalog
+     *
+     * @unauthenticated
+     */
     public function show(Product $product): JsonResponse
     {
         abort_if($product->status !== CatalogStatus::Published, 404);

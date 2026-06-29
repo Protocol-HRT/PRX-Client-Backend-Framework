@@ -23,6 +23,16 @@ use Illuminate\Support\Facades\Storage;
  */
 class ConfigController extends ApiController
 {
+    /**
+     * Get the site configuration bundle.
+     *
+     * Returns brand, theme, contact, SEO, and provider capability settings in a single
+     * cached response. The React frontend calls this once on app boot. Cached for 5 minutes.
+     *
+     * @tags Config
+     *
+     * @unauthenticated
+     */
     public function __invoke(
         BrandSettings $brand,
         ThemeSettings $theme,
@@ -38,6 +48,8 @@ class ConfigController extends ApiController
                     'name' => $brand->name,
                     'tagline' => $brand->tagline,
                     'logo_url' => $brand->logo_path ? Storage::url($brand->logo_path) : null,
+                    'logo_dark_url' => $brand->logo_dark_path ? Storage::url($brand->logo_dark_path) : null,
+                    'logo_light_url' => $brand->logo_light_path ? Storage::url($brand->logo_light_path) : null,
                     'favicon_url' => $brand->favicon_path ? Storage::url($brand->favicon_path) : null,
                     'hero_image_url' => $brand->hero_image_path ? Storage::url($brand->hero_image_path) : null,
                     'announcement' => $brand->announcement_enabled ? [

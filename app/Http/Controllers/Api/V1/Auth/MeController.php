@@ -14,6 +14,14 @@ use Illuminate\Http\Request;
  */
 class MeController extends ApiController
 {
+    /**
+     * Get the authenticated user's profile.
+     *
+     * Returns a lightweight user object containing id, name, email, roles, and last login
+     * timestamp. Requires a valid Sanctum Bearer token.
+     *
+     * @tags Auth
+     */
     public function __invoke(Request $request): JsonResponse
     {
         $user = $request->user();

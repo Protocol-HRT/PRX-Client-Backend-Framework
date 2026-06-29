@@ -124,6 +124,498 @@ class Client
     }
 
     /**
+     * `POST /patients/{chart_id}/issue-token`
+     *
+     * Mint a short-lived (30-min) patient-scoped Sanctum token. Uses the
+     * sales-org token to authenticate; returned token is capped to patient
+     * abilities only (PHI-audit-logged on the PRX side).
+     *
+     * Pass the returned string to any `patientRequest()` call below.
+     * Cache it in Redis (TTL ~25 min) to avoid minting on every request.
+     *
+     * @param  string[]  $abilities  Subset of patient abilities. Omit for full patient set.
+     */
+    /**
+     * Mint a patient-scoped token via POST /patients/{id}/issue-token.
+     *
+     * Returns the full `data` payload including `token`, `expires_at`, and
+     * `abilities`. Callers should use `expires_at` to derive the Redis TTL
+     * rather than assuming a fixed window.
+     *
+     * Confirmed field names from IssuedPatientTokenResource:
+     *   token, token_type, expires_at (ISO-8601), abilities[], patient_id, patient_chart_id
+     *
+     * @param  string[]  $abilities  Explicit least-privilege set. Omit to get the full patient set.
+     * @return array{token: string, expires_at: string, abilities: list<string>, patient_id: string, patient_chart_id: string}
+     */
+    public function issuePatientToken(string $patientChartId, array $abilities = []): array
+    {
+        if (config('prescribe-rx.stub')) {
+            return [
+                'token' => 'stub-patient-token-'.$patientChartId,
+                'token_type' => 'Bearer',
+                'expires_at' => now()->addMinutes(30)->toIso8601String(),
+                'abilities' => $abilities ?: ['patient:read'],
+                'patient_id' => 'stub-patient-id',
+                'patient_chart_id' => $patientChartId,
+            ];
+        }
+
+        $body = array_filter(['abilities' => $abilities ?: null, 'token_name' => 'portal-session']);
+
+        $response = $this->request()->post("/patients/{$patientChartId}/issue-token", $body);
+        $data = $this->extractData($response);
+
+        if (empty($data['token'])) {
+            throw new PrescribeRxException('issue-token response missing token field.', 422);
+        }
+
+        return $data;
+    }
+
+    // ─── Patient Portal (requires per-patient token from issuePatientToken) ─
+
+    /**
+     * `GET /me/patient/dashboard`
+     *
+     * Aggregated payload: latest vitals, active encounters, recent orders,
+     * and goals. Ideal single call for the patient portal home screen.
+     *
+     * @return array<string, mixed>
+     */
+    public function getPatientDashboard(string $patientToken): array
+    {
+        if (config('prescribe-rx.stub')) {
+            return ['encounters' => [], 'vitals' => [], 'orders' => []];
+        }
+
+        return $this->extractData($this->patientRequest($patientToken)->get('/me/patient/dashboard'));
+    }
+
+    /**
+     * `GET /me/patient/encounters`
+     *
+     * All encounters for the authenticated patient, newest first.
+     *
+     * @param  array<string, mixed>  $query  e.g. ['per_page' => 10, 'page' => 1]
+     * @return array<string, mixed>
+     */
+    public function getPatientEncounters(string $patientToken, array $query = []): array
+    {
+        if (config('prescribe-rx.stub')) {
+            return ['data' => [], 'total' => 0];
+        }
+
+        return $this->extractData($this->patientRequest($patientToken)->get('/me/patient/encounters', $query));
+    }
+
+    /**
+     * `GET /encounters/{id}/video-token`
+     *
+     * Returns a Twilio AccessToken + room name for joining the encounter's
+     * video call. Must be called with a patient token (not the sales-org
+     * token) so the room is attributed to the patient's identity in the
+     * PRX audit log.
+     *
+     * interaction_type must be 1 (VIDEO) — callers should check before calling.
+     *
+     * @return array{token: string, room_name: string, provider: string, expires_at: string}
+     */
+    public function getEncounterVideoToken(string $patientToken, string $encounterId): array
+    {
+        if (config('prescribe-rx.stub')) {
+            return [
+                'token' => 'stub-twilio-token',
+                'room_name' => "encounter-{$encounterId}",
+                'provider' => 'twilio',
+                'expires_at' => now()->addMinutes(30)->toIso8601String(),
+            ];
+        }
+
+        return $this->extractData(
+            $this->patientRequest($patientToken)->get("/encounters/{$encounterId}/video-token")
+        );
+    }
+
+    /**
+     * `GET /me/patient/vitals`
+     *
+     * Paginated vitals history for the authenticated patient.
+     *
+     * @return array<string, mixed>
+     */
+    public function getPatientVitals(string $patientToken, array $query = []): array
+    {
+        if (config('prescribe-rx.stub')) {
+            return ['data' => [], 'total' => 0];
+        }
+
+        return $this->extractData($this->patientRequest($patientToken)->get('/me/patient/vitals', $query));
+    }
+
+    /**
+     * `POST /me/patient/vitals`
+     *
+     * Record a generic vital. Use type-specific endpoints for weight
+     * (`/vitals/weight`), blood pressure (`/vitals/blood-pressure`),
+     * and glucose (`/vitals/glucose`) when stricter validation is needed.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    public function recordPatientVital(string $patientToken, array $data): array
+    {
+        if (config('prescribe-rx.stub')) {
+            return array_merge(['id' => 'stub-vital-id'], $data);
+        }
+
+        return $this->extractData($this->patientRequest($patientToken)->post('/me/patient/vitals', $data));
+    }
+
+    /**
+     * `GET /me/patient/orders`
+     *
+     * Order history for the authenticated patient.
+     *
+     * @return array<string, mixed>
+     */
+    public function getPatientOrders(string $patientToken, array $query = []): array
+    {
+        if (config('prescribe-rx.stub')) {
+            return ['data' => [], 'total' => 0];
+        }
+
+        return $this->extractData($this->patientRequest($patientToken)->get('/me/patient/orders', $query));
+    }
+
+    /**
+     * `GET /me/patient/prescriptions`
+     *
+     * Active and historical prescriptions for the authenticated patient.
+     *
+     * @return array<string, mixed>
+     */
+    public function getPatientPrescriptions(string $patientToken): array
+    {
+        if (config('prescribe-rx.stub')) {
+            return ['data' => [], 'total' => 0];
+        }
+
+        return $this->extractData($this->patientRequest($patientToken)->get('/me/patient/prescriptions'));
+    }
+
+    /**
+     * `GET /me/patient/conversations`
+     * `GET /me/patient/conversations/{id}/messages`
+     * `POST /me/patient/conversations/{id}/messages`
+     *
+     * Patient-provider messaging within encounter context.
+     *
+     * @return array<string, mixed>
+     */
+    public function getPatientConversations(string $patientToken): array
+    {
+        if (config('prescribe-rx.stub')) {
+            return ['data' => []];
+        }
+
+        return $this->extractData($this->patientRequest($patientToken)->get('/me/patient/conversations'));
+    }
+
+    public function getConversationMessages(string $patientToken, string $conversationId): array
+    {
+        if (config('prescribe-rx.stub')) {
+            return ['data' => []];
+        }
+
+        return $this->extractData(
+            $this->patientRequest($patientToken)->get("/me/patient/conversations/{$conversationId}/messages")
+        );
+    }
+
+    public function sendConversationMessage(string $patientToken, string $conversationId, string $body): array
+    {
+        if (config('prescribe-rx.stub')) {
+            return ['id' => 'stub-msg-id', 'body' => $body];
+        }
+
+        return $this->extractData(
+            $this->patientRequest($patientToken)->post("/me/patient/conversations/{$conversationId}/messages", [
+                'body' => $body,
+            ])
+        );
+    }
+
+    // ─── Encounter Status (sales-org token) ──────────────────────────────────
+
+    /**
+     * `GET /telehealth/encounters/{id}/status`
+     *
+     * Lightweight status-only poll. Prefer subscribing to `encounter.*`
+     * webhooks (`POST /webhooks`) to avoid polling entirely.
+     *
+     * @return array{status: string, status_label: string, interaction_type: int}
+     */
+    public function getEncounterStatus(string $encounterId): array
+    {
+        if (config('prescribe-rx.stub')) {
+            return ['status' => 'unassigned', 'status_label' => 'Unassigned', 'interaction_type' => 4];
+        }
+
+        return $this->extractData(
+            $this->request()->get("/telehealth/encounters/{$encounterId}/status")
+        );
+    }
+
+    // ─── Catalog (sales-org token) ───────────────────────────────────────────
+
+    /**
+     * `GET /products`
+     *
+     * All products available to this sales org, paginated.
+     * Each item: id, sku, name, short_description, description, pricing{retail_price,consumer_price}, image_url, is_active
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function listPrxProducts(int $page = 1, int $perPage = 50): array
+    {
+        if (config('prescribe-rx.stub')) {
+            return [];
+        }
+
+        $body = $this->request()->get('/products', ['page' => $page, 'per_page' => $perPage])->json();
+
+        return $body['data'] ?? [];
+    }
+
+    /**
+     * `GET /products` — fetch ALL pages and return flat list.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function listAllPrxProducts(): array
+    {
+        if (config('prescribe-rx.stub')) {
+            return [];
+        }
+
+        $all = [];
+        $page = 1;
+
+        do {
+            $response = $this->request()->get('/products', ['page' => $page, 'per_page' => 50]);
+            $body = $response->json();
+            $items = $body['data'] ?? [];
+            $all = array_merge($all, $items);
+            $lastPage = $body['meta']['last_page'] ?? 1;
+            $page++;
+        } while ($page <= $lastPage);
+
+        return $all;
+    }
+
+    /**
+     * `GET /packages`
+     *
+     * All packages (bundles with embedded plans and product items) for this sales org.
+     * Each item: id, package_number, name, slug, description, pricing, product, items[], plans[]
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function listAllPrxPackages(): array
+    {
+        if (config('prescribe-rx.stub')) {
+            return [];
+        }
+
+        $all = [];
+        $page = 1;
+
+        do {
+            $response = $this->request()->get('/packages', ['page' => $page, 'per_page' => 50]);
+            $body = $response->json();
+            $items = $body['data'] ?? [];
+            $all = array_merge($all, $items);
+            $lastPage = $body['meta']['last_page'] ?? 1;
+            $page++;
+        } while ($page <= $lastPage);
+
+        return $all;
+    }
+
+    /**
+     * `GET /product-types`
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function listPrxProductTypes(): array
+    {
+        if (config('prescribe-rx.stub')) {
+            return [];
+        }
+
+        return $this->extractData($this->request()->get('/product-types'));
+    }
+
+    /**
+     * `GET /product-classes`
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function listPrxProductClasses(): array
+    {
+        if (config('prescribe-rx.stub')) {
+            return [];
+        }
+
+        return $this->extractData($this->request()->get('/product-classes'));
+    }
+
+    // ─── Scheduling (sales-org token) ────────────────────────────────────────
+
+    /**
+     * `GET /scheduling/availability/slots`
+     *
+     * Available appointment slots, filterable by encounter type and date range.
+     *
+     * @param  array<string, mixed>  $filters  e.g. ['encounter_type_id' => '...', 'date_from' => '...', 'date_to' => '...']
+     * @return array<string, mixed>
+     */
+    public function getAvailabilitySlots(array $filters = []): array
+    {
+        if (config('prescribe-rx.stub')) {
+            return ['data' => []];
+        }
+
+        return $this->extractData($this->request()->get('/scheduling/availability/slots', $filters));
+    }
+
+    /**
+     * `GET /scheduling/availability/providers`
+     *
+     * @param  array<string, mixed>  $filters
+     * @return array<string, mixed>
+     */
+    public function getAvailableProviders(array $filters = []): array
+    {
+        if (config('prescribe-rx.stub')) {
+            return ['data' => []];
+        }
+
+        return $this->extractData($this->request()->get('/scheduling/availability/providers', $filters));
+    }
+
+    /**
+     * `POST /scheduling/appointments`
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    public function createAppointment(array $data): array
+    {
+        if (config('prescribe-rx.stub')) {
+            return ['id' => 'stub-appt-id', ...$data];
+        }
+
+        return $this->extractData($this->request()->post('/scheduling/appointments', $data));
+    }
+
+    // ─── Webhooks (sales-org token) ───────────────────────────────────────────
+
+    /**
+     * `POST /webhooks`
+     *
+     * Register a webhook subscription. The `secret` in the response
+     * must be stored immediately — it is not retrievable after this call.
+     * Use POST /webhooks/{id}/rotate-secret to issue a replacement.
+     *
+     * @param  string[]  $events  e.g. ['encounter.*', 'order.*', 'lab.*']
+     * @return array<string, mixed>
+     */
+    public function registerWebhook(string $url, array $events): array
+    {
+        if (config('prescribe-rx.stub')) {
+            return ['id' => 'stub-webhook-id', 'url' => $url, 'events' => $events, 'secret' => 'stub-secret'];
+        }
+
+        return $this->extractData($this->request()->post('/webhooks', [
+            'url' => $url,
+            'events' => $events,
+        ]));
+    }
+
+    /**
+     * `GET /webhooks`
+     *
+     * List all webhook subscriptions for this sales org.
+     *
+     * @return array<string, mixed>
+     */
+    public function listWebhooks(): array
+    {
+        if (config('prescribe-rx.stub')) {
+            return [];
+        }
+
+        return $this->extractData($this->request()->get('/webhooks'));
+    }
+
+    /**
+     * `DELETE /webhooks/{id}`
+     */
+    public function deleteWebhook(string $subscriptionId): bool
+    {
+        if (config('prescribe-rx.stub')) {
+            return true;
+        }
+
+        $response = $this->request()->delete("/webhooks/{$subscriptionId}");
+
+        return $response->successful();
+    }
+
+    // ─── Patient Lookup (sales-org token) ────────────────────────────────────
+
+    /**
+     * `GET /patients/search` or `GET /patients?filter[email]=X`
+     *
+     * Searches for a patient chart by email. Returns the first exact match
+     * if found, null otherwise.
+     *
+     * NOTE: `filter[email]` is a fuzzy (LIKE) search on PRX — not exact.
+     * A canonical exact-match endpoint (`GET /patients/lookup?email=`) is
+     * being added by PRX. Until it ships, verify the returned email against
+     * the input email before trusting the match.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function findPatientByEmail(string $email): ?array
+    {
+        if (config('prescribe-rx.stub')) {
+            return null;
+        }
+
+        $results = $this->extractData(
+            $this->request()->get('/patients', ['filter[email]' => $email])
+        );
+
+        if (! is_array($results)) {
+            return null;
+        }
+
+        // Unwrap paginated response if needed
+        $rows = isset($results['data']) ? $results['data'] : $results;
+
+        foreach ($rows as $row) {
+            if (isset($row['email']) && strtolower($row['email']) === strtolower($email)) {
+                return $row;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * `POST /telehealth/intake/unified`
      *
      * Single call that creates patient + encounter + intake answers. The
@@ -161,6 +653,22 @@ class Client
     }
 
     // ─── Internals ────────────────────────────────────────────────────────
+
+    /**
+     * Build a PendingRequest authenticated with a patient-scoped token
+     * (from `issuePatientToken()`). Used for all `/me/patient/*` calls
+     * and for encounter video-token (PHI audit requires patient identity).
+     */
+    protected function patientRequest(string $patientToken): PendingRequest
+    {
+        return Http::baseUrl($this->baseUrl())
+            ->withToken($patientToken)
+            ->withHeaders(config('prescribe-rx.default_headers'))
+            ->connectTimeout((int) config('prescribe-rx.http.connect_timeout', 5))
+            ->timeout((int) config('prescribe-rx.http.request_timeout', 30))
+            ->acceptJson()
+            ->asJson();
+    }
 
     /**
      * Build a configured PendingRequest. Throws PrescribeRxException if the

@@ -3,10 +3,11 @@
 namespace App\Models\Catalog;
 
 use App\Enums\CatalogStatus;
-use App\Models\Concerns\GeneratesUniqueSlug;
 use App\Models\Concerns\HasCategories;
+use App\Models\Concerns\HasFulfillmentCenter;
 use App\Models\Concerns\HasTags;
 use App\Models\User;
+use Database\Factories\Catalog\ProductFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -15,10 +16,21 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\EloquentSortable\Sortable;
 use Spatie\EloquentSortable\SortableTrait;
+use Spatie\Sluggable\HasSlug;
+use Spatie\Sluggable\SlugOptions;
 
 class Product extends Model implements Sortable
 {
-    use GeneratesUniqueSlug, HasCategories, HasFactory, HasTags, SoftDeletes, SortableTrait;
+    use HasCategories, HasFactory, HasFulfillmentCenter, HasSlug, HasTags, SoftDeletes, SortableTrait;
+
+    public function getSlugOptions(): SlugOptions
+    {
+        return SlugOptions::create()
+            ->generateSlugsFrom('name')
+            ->saveSlugsTo('slug')
+            ->doNotGenerateSlugsOnUpdate()
+            ->preventOverwrite();
+    }
 
     protected $fillable = [
         'name',
@@ -43,6 +55,8 @@ class Product extends Model implements Sortable
         'meta_description',
         'og_image_path',
         'position',
+        'default_fulfillment_center_id',
+        'last_synced_at',
         'created_by',
         'updated_by',
     ];
@@ -63,6 +77,7 @@ class Product extends Model implements Sortable
             'is_featured' => 'boolean',
             'requires_lab' => 'boolean',
             'highlights' => 'array',
+            'last_synced_at' => 'datetime',
         ];
     }
 
@@ -73,9 +88,9 @@ class Product extends Model implements Sortable
             ->orderByPivot('sort_order');
     }
 
-    protected static function newFactory(): \Database\Factories\Catalog\ProductFactory
+    protected static function newFactory(): ProductFactory
     {
-        return \Database\Factories\Catalog\ProductFactory::new();
+        return ProductFactory::new();
     }
 
     public function creator(): BelongsTo

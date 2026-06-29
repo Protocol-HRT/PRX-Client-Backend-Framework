@@ -16,10 +16,15 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 class CategoryController extends ApiController
 {
     /**
-     * @return AnonymousResourceCollection
+     * List visible catalog categories.
      *
-     * Query params:
-     *   ?tree=1    Return nested tree (children embedded). Default: flat list.
+     * Returns visible categories ordered by position then name. Pass `?tree=1` to receive
+     * a nested tree with children embedded. Default returns a flat list with parent reference.
+     *
+     *
+     * @tags Catalog
+     *
+     * @unauthenticated
      */
     public function index(Request $request): AnonymousResourceCollection
     {
@@ -41,6 +46,15 @@ class CategoryController extends ApiController
         return CategoryResource::collection($categories);
     }
 
+    /**
+     * Get a visible catalog category by slug.
+     *
+     * Includes parent reference and visible children ordered by position.
+     *
+     * @tags Catalog
+     *
+     * @unauthenticated
+     */
     public function show(Request $request, Category $category): JsonResponse
     {
         abort_if(! $category->is_visible, 404);

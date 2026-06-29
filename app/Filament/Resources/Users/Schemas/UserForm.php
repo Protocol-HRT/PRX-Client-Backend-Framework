@@ -8,7 +8,9 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 use Spatie\Permission\Models\Role;
 
 class UserForm
@@ -22,13 +24,15 @@ class UserForm
                     ->components([
                         TextInput::make('name')
                             ->required()
-                            ->maxLength(255),
+                            ->maxLength(255)
+                            ->hintIcon(Heroicon::InformationCircle, 'Admin user\'s display name shown in the panel and activity logs.'),
                         TextInput::make('email')
                             ->label('Email address')
                             ->email()
                             ->required()
                             ->unique(ignoreRecord: true)
-                            ->maxLength(255),
+                            ->maxLength(255)
+                            ->hintIcon(Heroicon::InformationCircle, 'Login email address. Must be unique across all admin users.'),
                     ]),
 
                 Section::make('Password')
@@ -40,10 +44,11 @@ class UserForm
                             ->revealable()
                             ->minLength(8)
                             ->maxLength(255)
+                            ->hintIcon(Heroicon::InformationCircle, 'Min 8 chars, mixed case and numbers required. Leave blank on edit to keep the existing password.')
                             ->dehydrateStateUsing(fn (?string $state) => filled($state) ? Hash::make($state) : null)
                             ->dehydrated(fn (?string $state) => filled($state))
                             ->required(fn (string $operation) => $operation === 'create')
-                            ->rule(\Illuminate\Validation\Rules\Password::min(8)->mixedCase()->numbers()),
+                            ->rule(Password::min(8)->mixedCase()->numbers()),
                     ]),
 
                 Section::make('Roles & access')
@@ -57,6 +62,7 @@ class UserForm
                             ->options(fn () => Role::query()->orderBy('name')->pluck('name', 'id'))
                             ->preload()
                             ->searchable()
+                            ->hintIcon(Heroicon::InformationCircle, 'Assigns Spatie permission roles. Controls which admin panel resources this user can access.')
                             ->columnSpanFull(),
                         Toggle::make('is_active')
                             ->label('Active')
@@ -69,7 +75,8 @@ class UserForm
                     ->columns(3)
                     ->components([
                         DateTimePicker::make('email_verified_at')
-                            ->label('Email verified at'),
+                            ->label('Email verified at')
+                            ->hintIcon(Heroicon::InformationCircle, 'Timestamp when email was verified. Set manually if bypassing the verification email.'),
                         DateTimePicker::make('last_login_at')
                             ->label('Last login at')
                             ->disabled()

@@ -18,8 +18,13 @@ class UpdateBrandSettingsAction
             $this->settings->name = $data->name;
             $this->settings->tagline = $data->tagline;
             $this->settings->logo_path = $data->logo_path;
+            $this->settings->logo_dark_path = $data->logo_dark_path;
+            $this->settings->logo_light_path = $data->logo_light_path;
             $this->settings->favicon_path = $data->favicon_path;
             $this->settings->hero_image_path = $data->hero_image_path;
+            $this->settings->announcement_enabled = $data->announcement_enabled;
+            $this->settings->announcement_emphasis = $data->announcement_emphasis;
+            $this->settings->announcement_text = $data->announcement_text;
             $this->settings->save();
 
             return $this->settings;

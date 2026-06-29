@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Catalog\Plans\Tables;
 
 use App\Enums\BillingPeriod;
 use App\Enums\CatalogStatus;
+use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -15,6 +16,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Collection;
 
 class PlansTable
 {
@@ -45,10 +47,16 @@ class PlansTable
                     ->money('usd')
                     ->placeholder('—'),
                 IconColumn::make('is_featured')->boolean()->label('Featured'),
-                TextColumn::make('prescribe_rx_plan_number')
-                    ->label('PRX #')
+                TextColumn::make('provider_plan_id')
+                    ->label('PRX ID')
                     ->placeholder('—')
-                    ->toggleable(),
+                    ->copyable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('last_synced_at')
+                    ->label('Last synced')
+                    ->since()
+                    ->placeholder('Never')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('updated_at')
                     ->label('Updated')
                     ->since()
@@ -66,6 +74,20 @@ class PlansTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
+                    BulkAction::make('publish')
+                        ->label('Approve & Publish')
+                        ->icon('heroicon-o-check-circle')
+                        ->color('success')
+                        ->requiresConfirmation()
+                        ->action(fn (Collection $records) => $records->each->update(['status' => CatalogStatus::Published]))
+                        ->successNotificationTitle('Plans published'),
+                    BulkAction::make('draft')
+                        ->label('Set to Draft')
+                        ->icon('heroicon-o-pencil')
+                        ->color('gray')
+                        ->requiresConfirmation()
+                        ->action(fn (Collection $records) => $records->each->update(['status' => CatalogStatus::Draft]))
+                        ->successNotificationTitle('Plans set to Draft'),
                     DeleteBulkAction::make(),
                     ForceDeleteBulkAction::make(),
                     RestoreBulkAction::make(),

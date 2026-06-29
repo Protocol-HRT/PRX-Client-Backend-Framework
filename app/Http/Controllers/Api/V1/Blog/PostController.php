@@ -16,14 +16,15 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 class PostController extends ApiController
 {
     /**
-     * @return AnonymousResourceCollection
+     * List published blog posts.
      *
-     * Query params:
-     *   ?category=slug      Filter by category slug
-     *   ?tag=slug           Filter by tag slug
-     *   ?featured=1         Featured posts only
-     *   ?search=q           Title full-text search
-     *   ?per_page=15        Page size (max 50)
+     * Returns a paginated list of published posts ordered by published_at descending.
+     * Supports filtering by category slug, tag slug, featured flag, and title search.
+     *
+     *
+     * @tags Blog
+     *
+     * @unauthenticated
      */
     public function index(Request $request): AnonymousResourceCollection
     {
@@ -50,6 +51,13 @@ class PostController extends ApiController
         return BlogPostResource::collection($posts);
     }
 
+    /**
+     * Get a published blog post by slug.
+     *
+     * @tags Blog
+     *
+     * @unauthenticated
+     */
     public function show(BlogPost $post): JsonResponse
     {
         abort_if(! $post->isPublished(), 404);

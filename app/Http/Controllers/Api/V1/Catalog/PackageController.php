@@ -17,14 +17,15 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 class PackageController extends ApiController
 {
     /**
-     * @return AnonymousResourceCollection
+     * List published catalog packages.
      *
-     * Query params:
-     *   ?category=slug
-     *   ?tag=slug
-     *   ?featured=1
-     *   ?search=q
-     *   ?per_page=15
+     * Returns a paginated list of published packages with their plans, categories, and tags.
+     * Supports filtering by category slug, tag slug, featured flag, and name/subtitle search.
+     *
+     *
+     * @tags Catalog
+     *
+     * @unauthenticated
      */
     public function index(Request $request): AnonymousResourceCollection
     {
@@ -57,6 +58,15 @@ class PackageController extends ApiController
         return PackageResource::collection($packages);
     }
 
+    /**
+     * Get a published catalog package by slug.
+     *
+     * Includes published plans, included products, categories, and tags.
+     *
+     * @tags Catalog
+     *
+     * @unauthenticated
+     */
     public function show(Package $package): JsonResponse
     {
         abort_if($package->status !== CatalogStatus::Published, 404);

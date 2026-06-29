@@ -23,7 +23,9 @@ class TagResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedTag;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Shop';
+    protected static string|UnitEnum|null $navigationGroup = 'Content';
+
+    protected static ?string $navigationLabel = 'Tags';
 
     protected static ?int $navigationSort = 50;
 

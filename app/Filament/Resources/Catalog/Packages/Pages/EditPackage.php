@@ -6,7 +6,6 @@ use App\Actions\Catalog\UpdatePackageAction;
 use App\Data\Catalog\PackageData;
 use App\Filament\Resources\Catalog\Packages\PackageResource;
 use App\Models\Catalog\Package;
-use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ForceDeleteAction;
 use Filament\Actions\RestoreAction;
@@ -39,12 +38,6 @@ class EditPackage extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Action::make('view')
-                ->label('View public page')
-                ->icon('heroicon-o-arrow-top-right-on-square')
-                ->url(fn (Package $record) => route('shop.package', ['package' => $record->slug]))
-                ->openUrlInNewTab()
-                ->visible(fn (Package $record) => $record->isPublished()),
             DeleteAction::make(),
             ForceDeleteAction::make(),
             RestoreAction::make(),

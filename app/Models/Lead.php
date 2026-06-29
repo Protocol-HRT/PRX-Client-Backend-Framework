@@ -17,6 +17,7 @@ class Lead extends Model
 
     protected $fillable = [
         'uuid',
+        'cart_ulid',
         'status',
         'first_name',
         'last_name',

@@ -13,10 +13,14 @@ class BrandSettingsData extends Data
         public string $name,
         #[Required, Max(255)]
         public string $tagline,
-        #[Required, Max(2048)]
-        public string $logo_path,
-        #[Required, Max(2048)]
-        public string $favicon_path,
+        #[Max(2048)]
+        public ?string $logo_path = null,
+        #[Max(2048)]
+        public ?string $logo_dark_path = null,
+        #[Max(2048)]
+        public ?string $logo_light_path = null,
+        #[Max(2048)]
+        public ?string $favicon_path = null,
         #[Max(2048)]
         public ?string $hero_image_path = null,
         public bool $announcement_enabled = true,

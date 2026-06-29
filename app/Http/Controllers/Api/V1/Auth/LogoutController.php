@@ -14,6 +14,14 @@ use Illuminate\Http\Request;
  */
 class LogoutController extends ApiController
 {
+    /**
+     * Revoke the current Sanctum token.
+     *
+     * Deletes only the token used in this request. Other active tokens for the same user
+     * remain valid. The client should clear its stored token after calling this endpoint.
+     *
+     * @tags Auth
+     */
     public function __invoke(Request $request): JsonResponse
     {
         $request->user()->currentAccessToken()->delete();

@@ -15,7 +15,14 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 class BlogCategoryController extends ApiController
 {
     /**
-     * @return AnonymousResourceCollection
+     * List visible blog categories.
+     *
+     * Returns all visible categories ordered by position then name, with a published post count.
+     *
+     *
+     * @tags Blog
+     *
+     * @unauthenticated
      */
     public function index(): AnonymousResourceCollection
     {
@@ -29,6 +36,13 @@ class BlogCategoryController extends ApiController
         return BlogCategoryResource::collection($categories);
     }
 
+    /**
+     * Get a visible blog category by slug.
+     *
+     * @tags Blog
+     *
+     * @unauthenticated
+     */
     public function show(BlogCategory $blogCategory): JsonResponse
     {
         abort_if(! $blogCategory->is_visible, 404);

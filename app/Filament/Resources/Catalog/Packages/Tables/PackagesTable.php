@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Catalog\Packages\Tables;
 
 use App\Enums\CatalogStatus;
+use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -14,6 +15,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Collection;
 
 class PackagesTable
 {
@@ -50,10 +52,16 @@ class PackagesTable
                 IconColumn::make('is_featured')
                     ->boolean()
                     ->label('Featured'),
-                TextColumn::make('prescribe_rx_package_number')
-                    ->label('PRX #')
+                TextColumn::make('provider_package_id')
+                    ->label('PRX ID')
                     ->placeholder('—')
-                    ->toggleable(),
+                    ->copyable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('last_synced_at')
+                    ->label('Last synced')
+                    ->since()
+                    ->placeholder('Never')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('updated_at')
                     ->label('Updated')
                     ->since()
@@ -72,6 +80,20 @@ class PackagesTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
+                    BulkAction::make('publish')
+                        ->label('Approve & Publish')
+                        ->icon('heroicon-o-check-circle')
+                        ->color('success')
+                        ->requiresConfirmation()
+                        ->action(fn (Collection $records) => $records->each->update(['status' => CatalogStatus::Published]))
+                        ->successNotificationTitle('Packages published'),
+                    BulkAction::make('draft')
+                        ->label('Set to Draft')
+                        ->icon('heroicon-o-pencil')
+                        ->color('gray')
+                        ->requiresConfirmation()
+                        ->action(fn (Collection $records) => $records->each->update(['status' => CatalogStatus::Draft]))
+                        ->successNotificationTitle('Packages set to Draft'),
                     DeleteBulkAction::make(),
                     ForceDeleteBulkAction::make(),
                     RestoreBulkAction::make(),

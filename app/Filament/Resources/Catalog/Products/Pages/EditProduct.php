@@ -6,7 +6,6 @@ use App\Actions\Catalog\UpdateProductAction;
 use App\Data\Catalog\ProductData;
 use App\Filament\Resources\Catalog\Products\ProductResource;
 use App\Models\Catalog\Product;
-use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ForceDeleteAction;
 use Filament\Actions\RestoreAction;
@@ -39,12 +38,6 @@ class EditProduct extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            Action::make('view')
-                ->label('View public page')
-                ->icon('heroicon-o-arrow-top-right-on-square')
-                ->url(fn (Product $record) => route('shop.product', ['product' => $record->slug]))
-                ->openUrlInNewTab()
-                ->visible(fn (Product $record) => $record->isPublished()),
             DeleteAction::make(),
             ForceDeleteAction::make(),
             RestoreAction::make(),

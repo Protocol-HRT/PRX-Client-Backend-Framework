@@ -10,11 +10,17 @@ class BrandSettings extends Settings
 
     public string $tagline;
 
-    public string $logo_path;
+    public ?string $logo_path = null;
 
-    public string $favicon_path;
+    /** Dark-mode / dark-background logo variant. */
+    public ?string $logo_dark_path = null;
 
-    public ?string $hero_image_path;
+    /** Light-mode / white-background logo variant. */
+    public ?string $logo_light_path = null;
+
+    public ?string $favicon_path = null;
+
+    public ?string $hero_image_path = null;
 
     /** Top-of-page announcement bar (rendered above the nav). */
     public bool $announcement_enabled = true;

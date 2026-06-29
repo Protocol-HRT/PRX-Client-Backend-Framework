@@ -20,6 +20,17 @@ use Illuminate\Validation\ValidationException;
  */
 class LoginController extends ApiController
 {
+    /**
+     * Authenticate a user and issue a Sanctum token.
+     *
+     * Returns a plain-text Bearer token with `frontend:*` abilities. The token is shown
+     * only once; the client must persist it. Subsequent logins issue a new token without
+     * invalidating existing ones.
+     *
+     * @tags Auth
+     *
+     * @unauthenticated
+     */
     public function __invoke(Request $request): JsonResponse
     {
         $validated = $request->validate([

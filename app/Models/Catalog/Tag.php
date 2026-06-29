@@ -2,7 +2,11 @@
 
 namespace App\Models\Catalog;
 
+use App\Models\Blog\BlogPost;
 use App\Models\Concerns\GeneratesUniqueSlug;
+use App\Models\Content\FaqItem;
+use App\Models\Content\Profile;
+use Database\Factories\Catalog\TagFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphToMany;
@@ -35,9 +39,9 @@ class Tag extends Model implements Sortable
         ];
     }
 
-    protected static function newFactory(): \Database\Factories\Catalog\TagFactory
+    protected static function newFactory(): TagFactory
     {
-        return \Database\Factories\Catalog\TagFactory::new();
+        return TagFactory::new();
     }
 
     public function products(): MorphToMany
@@ -53,6 +57,21 @@ class Tag extends Model implements Sortable
     public function plans(): MorphToMany
     {
         return $this->morphedByMany(Plan::class, 'taggable');
+    }
+
+    public function blogPosts(): MorphToMany
+    {
+        return $this->morphedByMany(BlogPost::class, 'taggable');
+    }
+
+    public function faqItems(): MorphToMany
+    {
+        return $this->morphedByMany(FaqItem::class, 'taggable');
+    }
+
+    public function profiles(): MorphToMany
+    {
+        return $this->morphedByMany(Profile::class, 'taggable');
     }
 
     public function getRouteKeyName(): string

@@ -5,7 +5,7 @@ namespace Tests\Feature\Api\V1\Blog;
 use App\Enums\PostStatus;
 use App\Models\Blog\BlogCategory;
 use App\Models\Blog\BlogPost;
-use App\Models\Blog\BlogTag;
+use App\Models\Catalog\Tag;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -205,8 +205,8 @@ class BlogEndpointTest extends TestCase
 
     public function test_tags_index_returns_visible_tags(): void
     {
-        BlogTag::factory()->create(['name' => 'Visible Tag', 'is_visible' => true]);
-        BlogTag::factory()->create(['name' => 'Hidden Tag', 'is_visible' => false]);
+        Tag::factory()->create(['name' => 'Visible Tag', 'is_visible' => true]);
+        Tag::factory()->create(['name' => 'Hidden Tag', 'is_visible' => false]);
 
         $this->getJson('/api/v1/blog/tags')
             ->assertOk()

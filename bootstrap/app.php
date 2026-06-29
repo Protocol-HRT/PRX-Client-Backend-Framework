@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsurePatientToken;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -18,6 +19,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // VerifyPrescribeRxSignature middleware on the route itself.
         $middleware->validateCsrfTokens(except: [
             'api/webhooks/*',
+        ]);
+
+        $middleware->alias([
+            'patient' => EnsurePatientToken::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -16,7 +16,7 @@ class ProductResource extends JsonResource
             'slug' => $this->slug,
             'subtitle' => $this->subtitle,
             'short_description' => $this->short_description,
-            'description' => $this->whenLoaded('description', $this->description),
+            'description' => $this->when($request->routeIs('api.v1.catalog.products.show'), $this->description),
             'hero_image_url' => $this->hero_image_path ? Storage::url($this->hero_image_path) : null,
             'gallery' => collect($this->gallery ?? [])->map(fn ($p) => Storage::url($p))->values(),
             'status' => $this->status->value,

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1\Intake;
 
 use App\Http\Controllers\Api\V1\ApiController;
+use App\Models\Catalog\Package;
 use App\Models\Catalog\Product;
 use App\Services\Telehealth\TelehealthManager;
 use Illuminate\Http\JsonResponse;
@@ -30,6 +31,18 @@ use Illuminate\Http\Request;
  */
 class IntakeSchemaController extends ApiController
 {
+    /**
+     * Get the intake question schema for a set of products or packages.
+     *
+     * Resolves the encounter type for the given product/package IDs and returns the
+     * live intake schema from the telehealth provider. The frontend renders this schema
+     * dynamically — no hardcoded form fields. Pass `products[]` and/or `packages[]` query
+     * params with local integer IDs.
+     *
+     * @tags Intake
+     *
+     * @unauthenticated
+     */
     public function __invoke(Request $request, TelehealthManager $telehealth): JsonResponse
     {
         $request->validate([
@@ -71,7 +84,7 @@ class IntakeSchemaController extends ApiController
         $ids = array_merge(
             $productIds,
             // Packages expose products; load their products for encounter type lookup.
-            \App\Models\Catalog\Package::whereIn('id', $packageIds)
+            Package::whereIn('id', $packageIds)
                 ->with('products:id,provider_encounter_type_id')
                 ->get()
                 ->flatMap(fn ($pkg) => $pkg->products->pluck('id'))
@@ -102,7 +115,7 @@ class IntakeSchemaController extends ApiController
 
         // Fall back to package-level encounter type if no product mapping found.
         if (! empty($packageIds)) {
-            $pkg = \App\Models\Catalog\Package::whereIn('id', $packageIds)
+            $pkg = Package::whereIn('id', $packageIds)
                 ->whereNotNull('provider_encounter_type_id')
                 ->value('provider_encounter_type_id');
 

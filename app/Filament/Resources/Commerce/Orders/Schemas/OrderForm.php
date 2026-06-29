@@ -9,6 +9,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
 
 class OrderForm
 {
@@ -19,18 +20,26 @@ class OrderForm
                 Section::make('Order')
                     ->columns(3)
                     ->components([
-                        TextInput::make('uuid')->disabled()->dehydrated(false),
+                        TextInput::make('uuid')
+                            ->disabled()
+                            ->dehydrated(false)
+                            ->hintIcon(Heroicon::InformationCircle, 'Internal UUID for this order. Read-only.'),
                         TextInput::make('prescribe_rx_order_id')
                             ->label('PRX order ID')
-                            ->disabled()->dehydrated(false)->copyable(),
+                            ->disabled()->dehydrated(false)->copyable()
+                            ->hintIcon(Heroicon::InformationCircle, 'UUID of the linked order in Prescribe-Rx. Populated automatically via webhook.'),
                         TextInput::make('prescribe_rx_order_number')
                             ->label('PRX order number')
-                            ->disabled()->dehydrated(false)->copyable(),
+                            ->disabled()->dehydrated(false)->copyable()
+                            ->hintIcon(Heroicon::InformationCircle, 'Human-readable order number from Prescribe-Rx. Populated automatically via webhook.'),
                         Select::make('status')
                             ->options(OrderStatus::class)
                             ->required()
+                            ->hintIcon(Heroicon::InformationCircle, 'Current status of this order in the fulfillment workflow.')
                             ->native(false),
-                        TextInput::make('currency')->maxLength(3),
+                        TextInput::make('currency')
+                            ->maxLength(3)
+                            ->hintIcon(Heroicon::InformationCircle, 'ISO 4217 currency code, e.g. USD. Used to format monetary values in this order.'),
                     ]),
                 Section::make('Totals')
                     ->columns(3)
@@ -52,11 +61,16 @@ class OrderForm
                 Section::make('Lifecycle')
                     ->columns(2)
                     ->components([
-                        DateTimePicker::make('placed_at'),
-                        DateTimePicker::make('shipped_at'),
-                        DateTimePicker::make('delivered_at'),
-                        DateTimePicker::make('cancelled_at'),
-                        DateTimePicker::make('refunded_at'),
+                        DateTimePicker::make('placed_at')
+                            ->hintIcon(Heroicon::InformationCircle, 'Timestamp when the order was placed.'),
+                        DateTimePicker::make('shipped_at')
+                            ->hintIcon(Heroicon::InformationCircle, 'Timestamp when the order was shipped.'),
+                        DateTimePicker::make('delivered_at')
+                            ->hintIcon(Heroicon::InformationCircle, 'Timestamp when the order was delivered.'),
+                        DateTimePicker::make('cancelled_at')
+                            ->hintIcon(Heroicon::InformationCircle, 'Timestamp when the order was cancelled.'),
+                        DateTimePicker::make('refunded_at')
+                            ->hintIcon(Heroicon::InformationCircle, 'Timestamp when the order was refunded.'),
                     ]),
             ]);
     }

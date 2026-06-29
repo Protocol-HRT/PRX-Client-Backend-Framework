@@ -12,6 +12,16 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
  */
 class TagController extends ApiController
 {
+    /**
+     * List all visible catalog tags.
+     *
+     * Returns visible tags ordered by position then name. Tags are shared across catalog,
+     * blog, FAQ, and profiles.
+     *
+     * @tags Catalog
+     *
+     * @unauthenticated
+     */
     public function index(): AnonymousResourceCollection
     {
         $tags = Tag::query()
