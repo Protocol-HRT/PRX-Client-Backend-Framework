@@ -45,6 +45,14 @@ class IntegrationSettings extends Settings
     public ?string $prescribe_rx_embed_code = null;
 
     /**
+     * The universal encounter type UUID used for all checkout submissions.
+     * Set this once after linking the deployment's sales org in prescribe-rx.
+     * All products and packages route to this single encounter type;
+     * question visibility is handled dynamically on the frontend.
+     */
+    public ?string $prescribe_rx_encounter_type_id = null;
+
+    /**
      * HMAC-SHA256 secret used to verify the X-PrescribeRx-Signature header on
      * inbound webhooks. Provisioned alongside the webhook subscription on the
      * prescribe-rx side.

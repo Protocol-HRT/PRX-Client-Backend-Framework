@@ -17,6 +17,7 @@ class Order extends Model
     protected $fillable = [
         'uuid',
         'encounter_id',
+        'fulfillment_center_id',
         'prescribe_rx_order_id',
         'prescribe_rx_order_number',
         'status',
@@ -66,6 +67,11 @@ class Order extends Model
                 $order->uuid = (string) Str::uuid();
             }
         });
+    }
+
+    public function fulfillmentCenter(): BelongsTo
+    {
+        return $this->belongsTo(FulfillmentCenter::class);
     }
 
     public function encounter(): BelongsTo

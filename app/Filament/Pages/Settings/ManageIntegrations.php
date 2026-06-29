@@ -21,7 +21,7 @@ use Throwable;
  */
 class ManageIntegrations extends BaseSettingsPage
 {
-    protected static string | BackedEnum | null $navigationIcon = Heroicon::OutlinedBolt;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBolt;
 
     protected static ?int $navigationSort = 50;
 
@@ -55,22 +55,32 @@ class ManageIntegrations extends BaseSettingsPage
                             ])
                             ->default('sandbox')
                             ->required()
-                            ->native(false),
+                            ->native(false)
+                            ->hintIcon(Heroicon::InformationCircle, 'PRX API base URL environment. Use Sandbox for testing; Production for live patients.'),
                         TextInput::make('prescribe_rx_api_token')
                             ->label('API token')
                             ->password()
                             ->revealable()
                             ->maxLength(2048)
+                            ->hintIcon(Heroicon::InformationCircle, 'Bearer token issued from the Prescribe-Rx admin. Includes the {id}| Sanctum prefix. Works against both environments.')
                             ->helperText('Sales-organization token issued from production (works against either environment). Includes the {id}| Sanctum prefix.')
                             ->columnSpanFull(),
                         TextInput::make('prescribe_rx_sales_org_id')
                             ->label('Sales organization ID (optional)')
                             ->maxLength(64)
+                            ->hintIcon(Heroicon::InformationCircle, 'UUID of your sales org in PrescribeRx. Leave blank to use the org associated with the token.')
                             ->helperText('UUID. Leave blank to use the token\'s authenticated org.'),
                         TextInput::make('prescribe_rx_client_id')
                             ->label('Client ID (optional)')
                             ->maxLength(64)
+                            ->hintIcon(Heroicon::InformationCircle, 'UUID of the client record in PrescribeRx. Leave blank to use the token\'s default client.')
                             ->helperText('UUID. Leave blank to use the token\'s default client.'),
+                        TextInput::make('prescribe_rx_encounter_type_id')
+                            ->label('Universal encounter type ID')
+                            ->maxLength(64)
+                            ->hintIcon(Heroicon::InformationCircle, 'UUID of the encounter type in PrescribeRx that covers all products. All checkout submissions use this type; intake question visibility is handled dynamically on the frontend.')
+                            ->helperText('UUID from PrescribeRx → Encounter Types. All products route to this single type.')
+                            ->columnSpanFull(),
                     ]),
                 Section::make('PrescribeRx embed')
                     ->description('The embed code generated in prescribe-rx admin (/admin/embed-configs) is what the public-site iframe widget loads. It maps to a single encounter type and tenant, and skip-step / dynamic-question logic is handled inside the embed based on the products we pass via the SDK.')
@@ -81,6 +91,7 @@ class ManageIntegrations extends BaseSettingsPage
                             ->password()
                             ->revealable()
                             ->maxLength(64)
+                            ->hintIcon(Heroicon::InformationCircle, 'Short code from PrescribeRx admin → Embed Configs, e.g. LbbGb7jFpFmP. Stored encrypted.')
                             ->helperText('e.g. LbbGb7jFpFmP. Stored encrypted.')
                             ->columnSpanFull(),
                         TextInput::make('prescribe_rx_webhook_secret')
@@ -88,6 +99,7 @@ class ManageIntegrations extends BaseSettingsPage
                             ->password()
                             ->revealable()
                             ->maxLength(255)
+                            ->hintIcon(Heroicon::InformationCircle, 'HMAC-SHA256 secret for verifying the X-PrescribeRx-Signature header on inbound webhooks. Stored encrypted.')
                             ->helperText('HMAC-SHA256 secret used to verify the X-PrescribeRx-Signature header on inbound webhooks. Stored encrypted.')
                             ->columnSpanFull(),
                     ]),

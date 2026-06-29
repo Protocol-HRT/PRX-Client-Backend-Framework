@@ -45,6 +45,7 @@ class CreateLeadAction
                 'user_agent' => $data->user_agent,
                 'ip_address' => $data->ip_address,
                 'notes' => $data->notes,
+                'cart_ulid' => $data->cart_ulid,
             ]);
         });
     }

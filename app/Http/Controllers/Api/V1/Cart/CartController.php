@@ -50,10 +50,15 @@ class CartController extends ApiController
     }
 
     /**
-     * GET /api/v1/cart
+     * Get the current cart.
      *
-     * Returns the current cart (creating one if needed).
-     * Always includes the token so the frontend can persist it.
+     * Returns the cart identified by the X-Cart-Token header, creating a new one if the
+     * token is absent or expired. The response always includes the cart token so the
+     * frontend can persist it for subsequent requests.
+     *
+     * @tags Cart
+     *
+     * @unauthenticated
      */
     public function show(Request $request): JsonResponse
     {
@@ -64,10 +69,15 @@ class CartController extends ApiController
     }
 
     /**
-     * POST /api/v1/cart/items
+     * Add an item to the cart.
      *
-     * Add a product or package+plan to the cart.
-     * Increments quantity if the same item+plan combination already exists.
+     * Adds a product or package+plan combination to the cart. Increments quantity if the
+     * same item and plan already exist in the cart. Requires `type`, `id`, and (for packages)
+     * `plan_id`. Returns the updated cart.
+     *
+     * @tags Cart
+     *
+     * @unauthenticated
      */
     public function addItem(Request $request): JsonResponse
     {
@@ -120,13 +130,21 @@ class CartController extends ApiController
     }
 
     /**
-     * PATCH /api/v1/cart/items/{cartItem}
+     * Update a cart item's quantity.
      *
-     * Update quantity for a specific cart item.
-     * Passing quantity=0 removes the item entirely.
+     * Sets the quantity of the specified cart item. Passing `quantity=0` removes the item
+     * from the cart entirely. Returns the updated cart state.
+     *
+     * @tags Cart
+     *
+     * @unauthenticated
      */
     public function updateItem(Request $request, CartItem $cartItem): JsonResponse
     {
+        $cart = $this->resolveCart($request);
+
+        abort_if($cartItem->cart_id !== $cart->id, 403, 'This item does not belong to your cart.');
+
         $validated = $request->validate([
             'quantity' => ['required', 'integer', 'min:0', 'max:10'],
         ]);
@@ -137,32 +155,40 @@ class CartController extends ApiController
             $cartItem->update(['quantity' => $validated['quantity']]);
         }
 
-        $cart = Cart::findOrFail($cartItem->cart_id);
         $cart->load(['items.itemable', 'items.plan']);
 
         return $this->success((new CartResource($cart))->toArray($request));
     }
 
     /**
-     * DELETE /api/v1/cart/items/{cartItem}
-     *
      * Remove a single item from the cart.
+     *
+     * Deletes the specified cart item and returns the updated cart.
+     *
+     * @tags Cart
+     *
+     * @unauthenticated
      */
     public function removeItem(Request $request, CartItem $cartItem): JsonResponse
     {
-        $cartId = $cartItem->cart_id;
-        $cartItem->delete();
+        $cart = $this->resolveCart($request);
 
-        $cart = Cart::findOrFail($cartId);
+        abort_if($cartItem->cart_id !== $cart->id, 403, 'This item does not belong to your cart.');
+
+        $cartItem->delete();
         $cart->load(['items.itemable', 'items.plan']);
 
         return $this->success((new CartResource($cart))->toArray($request));
     }
 
     /**
-     * DELETE /api/v1/cart
+     * Clear all items from the cart.
      *
-     * Remove all items from the resolved cart.
+     * Removes every item from the cart identified by X-Cart-Token. Returns the now-empty cart.
+     *
+     * @tags Cart
+     *
+     * @unauthenticated
      */
     public function clear(Request $request): JsonResponse
     {

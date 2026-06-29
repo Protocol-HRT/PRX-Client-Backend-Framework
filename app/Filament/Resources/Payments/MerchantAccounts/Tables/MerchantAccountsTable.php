@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Payments\MerchantAccounts\Tables;
 
 use App\Enums\Payments\GatewayEnvironment;
 use App\Enums\Payments\GatewayProvider;
+use App\Models\Payments\MerchantAccount;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -29,6 +30,14 @@ class MerchantAccountsTable
                 TextColumn::make('environment')
                     ->badge()
                     ->color(fn (GatewayEnvironment $state): string => $state->color()),
+                IconColumn::make('credentials_valid')
+                    ->label('Creds')
+                    ->state(fn (MerchantAccount $record): bool => $record->hasValidCredentials())
+                    ->boolean()
+                    ->trueIcon('heroicon-o-key')
+                    ->falseIcon('heroicon-o-exclamation-triangle')
+                    ->trueColor('success')
+                    ->falseColor('warning'),
                 IconColumn::make('is_active')
                     ->label('Active')
                     ->boolean()

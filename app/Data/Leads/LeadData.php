@@ -4,10 +4,10 @@ namespace App\Data\Leads;
 
 use App\Enums\CheckoutPath;
 use Spatie\LaravelData\Attributes\DataCollectionOf;
-use Spatie\LaravelData\Attributes\WithCast;
 use Spatie\LaravelData\Attributes\Validation\Email;
 use Spatie\LaravelData\Attributes\Validation\Max;
 use Spatie\LaravelData\Attributes\Validation\Required;
+use Spatie\LaravelData\Attributes\WithCast;
 use Spatie\LaravelData\Casts\EnumCast;
 use Spatie\LaravelData\Data;
 use Spatie\LaravelData\DataCollection;
@@ -62,5 +62,6 @@ class LeadData extends Data
         #[Max(45)]
         public ?string $ip_address = null,
         public ?string $notes = null,
+        public ?string $cart_ulid = null,
     ) {}
 }

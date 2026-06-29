@@ -7,6 +7,8 @@ use App\Enums\Payments\GatewayProvider;
 use App\Models\Payments\MerchantAccount;
 use App\Services\Payments\Gateways\AuthorizeNetGateway;
 use App\Services\Payments\Gateways\NmiGateway;
+use App\Services\Payments\Gateways\SquareGateway;
+use App\Services\Payments\Gateways\StripeGateway;
 use Illuminate\Contracts\Container\Container;
 
 class PaymentGatewayManager
@@ -15,6 +17,8 @@ class PaymentGatewayManager
     protected array $gateways = [
         GatewayProvider::Nmi->value => NmiGateway::class,
         GatewayProvider::AuthorizeNet->value => AuthorizeNetGateway::class,
+        GatewayProvider::Stripe->value => StripeGateway::class,
+        GatewayProvider::Square->value => SquareGateway::class,
     ];
 
     public function __construct(protected Container $container) {}
@@ -51,11 +55,18 @@ class PaymentGatewayManager
      */
     public function default(): PaymentGatewayInterface
     {
-        $account = MerchantAccount::query()
+        return $this->forAccount($this->defaultAccount());
+    }
+
+    /**
+     * Resolve the default active merchant account model.
+     * Throws ModelNotFoundException if no default account is active.
+     */
+    public function defaultAccount(): MerchantAccount
+    {
+        return MerchantAccount::query()
             ->where('is_default', true)
             ->where('is_active', true)
             ->firstOrFail();
-
-        return $this->forAccount($account);
     }
 }

@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\Api\V1\Auth\LoginController;
-use App\Http\Controllers\Api\V1\Cms\PageController;
 use App\Http\Controllers\Api\V1\Auth\LogoutController;
 use App\Http\Controllers\Api\V1\Auth\MeController;
 use App\Http\Controllers\Api\V1\Blog\BlogCategoryController;
@@ -12,9 +11,17 @@ use App\Http\Controllers\Api\V1\Catalog\CategoryController;
 use App\Http\Controllers\Api\V1\Catalog\PackageController;
 use App\Http\Controllers\Api\V1\Catalog\ProductController;
 use App\Http\Controllers\Api\V1\Catalog\TagController;
+use App\Http\Controllers\Api\V1\Checkout\CheckoutController;
+use App\Http\Controllers\Api\V1\Cms\PageController;
 use App\Http\Controllers\Api\V1\ConfigController;
+use App\Http\Controllers\Api\V1\Content\FaqController;
+use App\Http\Controllers\Api\V1\Content\ProfileController;
 use App\Http\Controllers\Api\V1\Intake\IntakeSchemaController;
 use App\Http\Controllers\Api\V1\Leads\LeadController;
+use App\Http\Controllers\Api\V1\Orders\OrderController;
+use App\Http\Controllers\Api\V1\Patient\AuthController as PatientAuthController;
+use App\Http\Controllers\Api\V1\Patient\PortalController;
+use App\Http\Controllers\Api\V1\Webhooks\PrescribeRxWebhookController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -135,10 +142,79 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
         });
     });
 
-    // ── Authenticated (frontend scope) ───────────────────────────────────
-    // All routes below require a valid Sanctum token and are rate-limited.
+    // ── Orders ───────────────────────────────────────────────────────────
+    // Retrieve an order by UUID. The UUID is opaque — it is only returned
+    // to the client at checkout completion and treated as a bearer credential.
 
-    Route::middleware(['auth:sanctum', 'throttle:api'])->group(function (): void {
-        // Catalog, products, checkout, patient portal routes — added per module.
+    Route::prefix('orders')->name('orders.')->middleware('throttle:api')->group(function (): void {
+        Route::get('{uuid}', [OrderController::class, 'show'])->name('show');
+    });
+
+    // ── Webhooks ─────────────────────────────────────────────────────────
+    // Inbound events from external systems. CSRF exempt (no session).
+    // Signature verification is handled inside each controller.
+
+    Route::prefix('webhooks')->name('webhooks.')->middleware('throttle:60,1')->group(function (): void {
+        Route::post('prescribe-rx', PrescribeRxWebhookController::class)->name('prescribe-rx');
+    });
+
+    // ── Profiles ─────────────────────────────────────────────────────────
+    // Published team / doctor / expert profiles.
+
+    Route::prefix('profiles')->name('profiles.')->middleware('throttle:api')->group(function (): void {
+        Route::get('/', [ProfileController::class, 'index'])->name('index');
+        Route::get('{slug}', [ProfileController::class, 'show'])->name('show');
+    });
+
+    // ── FAQ ──────────────────────────────────────────────────────────────
+    // Published FAQ items and categories.
+
+    Route::prefix('faq')->name('faq.')->middleware('throttle:api')->group(function (): void {
+        Route::get('/', [FaqController::class, 'index'])->name('index');
+        Route::get('categories', [FaqController::class, 'categories'])->name('categories');
+        Route::get('categories/{slug}', [FaqController::class, 'category'])->name('categories.show');
+    });
+
+    // ── Checkout ─────────────────────────────────────────────────────────
+    // Submits a cart to the configured checkout provider (PRX or local).
+    // Uses a Sanctum token issued at cart creation — does not require a
+    // logged-in user; the token scopes the cart to an anonymous session.
+
+    Route::prefix('checkout')->name('checkout.')->middleware('throttle:20,1')->group(function (): void {
+        Route::get('gateway-config', [CheckoutController::class, 'gatewayConfig'])->name('gateway-config');
+        Route::post('/', [CheckoutController::class, 'store'])->name('store');
+    });
+
+    // ── Patient Auth ─────────────────────────────────────────────────────
+    // Separate patient guard — tokens carry patient:* abilities.
+    // Rate-limited aggressively to prevent credential stuffing.
+
+    Route::prefix('patient/auth')->name('patient.auth.')->middleware('throttle:auth')->group(function (): void {
+        Route::post('register', [PatientAuthController::class, 'register'])->name('register');
+        Route::post('login', [PatientAuthController::class, 'login'])->name('login');
+
+        Route::middleware(['auth:sanctum', 'patient'])->group(function (): void {
+            Route::post('logout', [PatientAuthController::class, 'logout'])->name('logout');
+            Route::get('me', [PatientAuthController::class, 'me'])->name('me');
+        });
+    });
+
+    // ── Patient Portal ────────────────────────────────────────────────────
+    // Proxies PRX /me/patient/* endpoints using a patient-scoped PRX token.
+    // All routes require a valid patient Sanctum token.
+
+    Route::prefix('patient')->name('patient.portal.')->middleware(['auth:sanctum', 'patient', 'throttle:api'])->group(function (): void {
+        Route::get('dashboard', [PortalController::class, 'dashboard'])->name('dashboard');
+        Route::get('encounters', [PortalController::class, 'encounters'])->name('encounters.index');
+        Route::get('encounters/{encounterId}/video-token', [PortalController::class, 'videoToken'])->name('encounters.video-token');
+        Route::get('vitals', [PortalController::class, 'vitals'])->name('vitals.index');
+        Route::post('vitals', [PortalController::class, 'storeVital'])->name('vitals.store');
+        Route::get('orders', [PortalController::class, 'orders'])->name('orders.index');
+        Route::get('prescriptions', [PortalController::class, 'prescriptions'])->name('prescriptions.index');
+        Route::get('conversations', [PortalController::class, 'conversations'])->name('conversations.index');
+        Route::get('conversations/{conversationId}/messages', [PortalController::class, 'conversationMessages'])->name('conversations.messages');
+        Route::post('conversations/{conversationId}/messages', [PortalController::class, 'sendMessage'])->name('conversations.messages.store');
+        Route::get('scheduling/slots', [PortalController::class, 'availabilitySlots'])->name('scheduling.slots');
+        Route::post('scheduling/appointments', [PortalController::class, 'bookAppointment'])->name('scheduling.appointments.store');
     });
 });
