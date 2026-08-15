@@ -102,7 +102,7 @@ vendor/bin/pint --dirty               # code style — run before committing
 php artisan shield:generate --all --panel=admin --no-interaction   # after adding Filament resources/pages
 ```
 
-Conventions that are non-negotiable: controllers and Livewire never touch the DB directly (DTO → Action → Service), Actions own transactions, integrations live in `app/Services`, credentials use `encrypted:*` casts, and no client-specific value ever appears in code. See [`CLAUDE.md`](CLAUDE.md) and [`docs/architecture/dev.md`](docs/architecture/dev.md).
+Conventions that are non-negotiable: controllers and Livewire never touch the DB directly (DTO → Action → Service), Actions own transactions, integrations live in `app/Services`, credentials use `encrypted:*` casts, and no client-specific value ever appears in code. See [`docs/architecture/dev.md`](docs/architecture/dev.md).
 
 ## Production notes
 
