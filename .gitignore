@@ -5,6 +5,12 @@
 .env.production
 .phpactor.json
 .phpunit.result.cache
+# AI assistant workspaces and instruction files — local tooling, not product
+/.claude/
+CLAUDE.md
+CLAUDE.local.md
+AGENTS.md
+AGENT.md
 /.codex
 /.cursor/
 /.idea
