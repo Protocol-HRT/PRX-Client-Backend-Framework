@@ -8,7 +8,6 @@ use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
-use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
@@ -27,6 +26,7 @@ class EditUser extends EditRecord
                 ->label('Reset password')
                 ->icon('heroicon-o-key')
                 ->color('warning')
+                ->visible(fn (User $record): bool => auth()->user()?->can('update', $record) ?? false)
                 ->requiresConfirmation()
                 ->modalDescription('A new temporary password will be generated and shown once. Copy it before closing.')
                 ->action(function (User $record) {

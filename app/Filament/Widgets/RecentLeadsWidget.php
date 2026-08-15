@@ -4,12 +4,15 @@ namespace App\Filament\Widgets;
 
 use App\Enums\LeadStatus;
 use App\Models\Lead;
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
 
 class RecentLeadsWidget extends BaseWidget
 {
+    use HasWidgetShield;
+
     protected static ?string $heading = 'Recent Leads';
 
     protected static ?int $sort = 3;

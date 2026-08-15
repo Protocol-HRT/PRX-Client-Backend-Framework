@@ -17,6 +17,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Initial Admin User
+    |--------------------------------------------------------------------------
+    |
+    | Per-install credentials consumed by AdminUserSeeder to create the first
+    | super-admin. Set in .env (never committed) — this codebase is deployed
+    | per client, so no operator identity may live in code.
+    |
+    */
+
+    'admin_name' => env('ADMIN_NAME', 'Administrator'),
+    'admin_email' => env('ADMIN_EMAIL'),
+    'admin_password' => env('ADMIN_PASSWORD'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Environment
     |--------------------------------------------------------------------------
     |

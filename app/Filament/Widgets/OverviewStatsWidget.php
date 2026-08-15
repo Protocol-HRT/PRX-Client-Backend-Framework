@@ -8,12 +8,15 @@ use App\Enums\OrderStatus;
 use App\Models\Commerce\Encounter;
 use App\Models\Commerce\Order;
 use App\Models\Lead;
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\Carbon;
 
 class OverviewStatsWidget extends StatsOverviewWidget
 {
+    use HasWidgetShield;
+
     protected static ?int $sort = 1;
 
     protected ?string $pollingInterval = '60s';

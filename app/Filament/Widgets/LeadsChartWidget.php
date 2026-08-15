@@ -3,11 +3,14 @@
 namespace App\Filament\Widgets;
 
 use App\Models\Lead;
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use Filament\Widgets\ChartWidget;
 use Illuminate\Support\Carbon;
 
 class LeadsChartWidget extends ChartWidget
 {
+    use HasWidgetShield;
+
     protected ?string $heading = 'New Leads — last 30 days';
 
     protected static ?int $sort = 2;

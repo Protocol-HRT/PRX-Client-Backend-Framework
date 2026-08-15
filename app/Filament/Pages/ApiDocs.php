@@ -3,12 +3,15 @@
 namespace App\Filament\Pages;
 
 use BackedEnum;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 use UnitEnum;
 
 class ApiDocs extends Page
 {
+    use HasPageShield;
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCodeBracketSquare;
 
     protected static string|UnitEnum|null $navigationGroup = 'Developer';

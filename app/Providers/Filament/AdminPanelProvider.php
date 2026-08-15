@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Settings\BrandSettings;
 use Awcodes\Curator\CuratorPlugin;
 use BezhanSalleh\FilamentShield\FilamentShieldPlugin;
 use Filament\Http\Middleware\Authenticate;
@@ -17,6 +18,7 @@ use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 class AdminPanelProvider extends PanelProvider
@@ -31,6 +33,13 @@ class AdminPanelProvider extends PanelProvider
             ->login()
             ->passwordReset()
             ->profile(isSimple: false)
+            // White-label chrome from DB-driven BrandSettings; rescue-guarded
+            // because the settings table doesn't exist yet during install.
+            ->brandName(fn (): string => $this->brandValue('name') ?: config('app.name'))
+            ->brandLogo(fn (): ?string => $this->brandAssetUrl('logo_path'))
+            ->darkModeBrandLogo(fn (): ?string => $this->brandAssetUrl('logo_dark_path'))
+            ->brandLogoHeight('2.25rem')
+            ->favicon(fn (): ?string => $this->brandAssetUrl('favicon_path'))
             ->colors([
                 'primary' => Color::Teal,
                 'gray' => Color::Slate,
@@ -68,5 +77,17 @@ class AdminPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
             ]);
+    }
+
+    private function brandValue(string $property): ?string
+    {
+        return rescue(fn (): ?string => app(BrandSettings::class)->{$property}, null, false);
+    }
+
+    private function brandAssetUrl(string $property): ?string
+    {
+        $path = $this->brandValue($property);
+
+        return $path ? Storage::url($path) : null;
     }
 }
