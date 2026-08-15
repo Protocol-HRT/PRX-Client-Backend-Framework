@@ -1,7 +1,9 @@
 # prx-backend — Implementation Plan
 
+> **HISTORICAL DOCUMENT.** This was the original build plan (June 2026) and is kept for context on why decisions were made. For the current-state architecture, see [`dev.md`](dev.md) — where the two disagree, `dev.md` wins. Known drift: the patient portal shipped under `/api/v1/patient/*` (not `/api/v1/portal/`), and the affiliate portal has not been built.
+
 **Last updated:** 2026-06-27  
-**Status:** Active development  
+**Status:** Superseded — historical reference  
 **Repo:** https://github.com/acappel01/prx-backend  
 
 This document is the single source of truth for what we are building, why each piece exists, the order to build it in, and how all surfaces interact. Update it as decisions change.

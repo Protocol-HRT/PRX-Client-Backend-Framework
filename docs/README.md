@@ -1,0 +1,25 @@
+# Documentation Index
+
+Per-module documentation: `user.md` = admin operator guide, `dev.md` = architecture / data model / API reference for developers.
+
+| Area | What it covers | Docs |
+|---|---|---|
+| Architecture | Current-state system architecture, layering rules, module map | [`architecture/dev.md`](architecture/dev.md) (canonical) · [`architecture/IMPLEMENTATION_PLAN.md`](architecture/IMPLEMENTATION_PLAN.md) (historical build plan) |
+| Frontend implementation | How a new company builds a frontend against `/api/v1` | [`frontend/dev.md`](frontend/dev.md) · [`frontend/user.md`](frontend/user.md) |
+| API foundation | Sanctum auth, envelope, versioning, error shapes | [`api-foundation/dev.md`](api-foundation/dev.md) · [`api-foundation/user.md`](api-foundation/user.md) |
+| API clients & tokens | Issuing frontend tokens, origin pinning | [`api-clients/dev.md`](api-clients/dev.md) |
+| Settings | Brand / theme / contact / SEO / integration settings pattern | [`settings/dev.md`](settings/dev.md) · [`settings/user.md`](settings/user.md) |
+| CMS | Pages, typed sections, media | [`cms/dev.md`](cms/dev.md) · [`cms/user.md`](cms/user.md) |
+| Page builder | Section registry, flexible types, globals, menus, regions, revisions, envelope contract | [`page-builder/dev.md`](page-builder/dev.md) · [`page-builder/user.md`](page-builder/user.md) |
+| Catalog | Products, packages, plans, provider mapping, catalog API | [`catalog/dev.md`](catalog/dev.md) · [`catalog/user.md`](catalog/user.md) |
+| Blog | Posts, categories, tags, blog API | [`blog/dev.md`](blog/dev.md) · [`blog/user.md`](blog/user.md) |
+| Cart | Token-based cart API | [`cart/dev.md`](cart/dev.md) · [`cart/user.md`](cart/user.md) |
+| Checkout | prx-embed vs local gateway flow, gateway config endpoint | [`checkout/dev.md`](checkout/dev.md) |
+| Orders | Order shells, webhook sync, shipments | [`orders/dev.md`](orders/dev.md) · [`orders/user.md`](orders/user.md) |
+| Leads | Lead capture, consents, UTM attribution | [`leads/dev.md`](leads/dev.md) · [`leads/user.md`](leads/user.md) |
+| Payments | Gateway abstraction, merchant accounts (NMI / Authorize.net / Stripe / Square) | [`payments/dev.md`](payments/dev.md) · [`payments/user.md`](payments/user.md) |
+| Intake | Intake schema API, wizard strategy | [`intake/dev.md`](intake/dev.md) · [`intake/user.md`](intake/user.md) |
+| prescribe-rx | Clinical API integration, partner guide | [`prescribe-rx/dev.md`](prescribe-rx/dev.md) · [`prescribe-rx/user.md`](prescribe-rx/user.md) · [`prescribe-rx/partner-implementation-guide.md`](prescribe-rx/partner-implementation-guide.md) |
+| API spec | Exported OpenAPI document (live version at `/api/docs`) | [`api/openapi.json`](api/openapi.json) |
+
+Convention: every shipped module has both `user.md` and `dev.md`; a module isn't "done" without them. Document as you build.
