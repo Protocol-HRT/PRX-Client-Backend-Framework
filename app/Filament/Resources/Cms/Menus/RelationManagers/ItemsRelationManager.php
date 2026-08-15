@@ -82,7 +82,7 @@ class ItemsRelationManager extends RelationManager
                     ->maxLength(80),
                 TextInput::make('badge')
                     ->maxLength(40)
-                    ->helperText('Small highlight label, e.g. "New"'),
+                    ->helperText('Small highlight label, e.g. "New". Special value "cta" renders this item as the header call-to-action button instead of a nav link.'),
                 Toggle::make('enabled')
                     ->default(true),
             ])

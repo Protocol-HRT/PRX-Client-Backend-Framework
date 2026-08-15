@@ -26,6 +26,11 @@ class Menu extends Model
         return $this->items()->whereNull('parent_id');
     }
 
+    public function regionItems(): HasMany
+    {
+        return $this->hasMany(RegionItem::class);
+    }
+
     public function getRouteKeyName(): string
     {
         return 'slug';

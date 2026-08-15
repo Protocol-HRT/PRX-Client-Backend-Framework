@@ -20,6 +20,7 @@ class MenuForm
                         TextInput::make('name')
                             ->required()
                             ->maxLength(120)
+                            ->helperText('Visitor-facing where the menu renders as a titled column — footer menus show this as the column heading.')
                             ->live(onBlur: true)
                             ->afterStateUpdated(function (string $operation, ?string $state, callable $set, callable $get): void {
                                 if ($operation === 'create' && blank($get('slug')) && filled($state)) {

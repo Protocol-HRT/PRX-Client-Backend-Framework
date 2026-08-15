@@ -14,6 +14,7 @@ class MenusTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn ($query) => $query->with('regionItems'))
             ->columns([
                 TextColumn::make('name')
                     ->searchable()
@@ -24,6 +25,17 @@ class MenusTable
                 TextColumn::make('items_count')
                     ->label('Items')
                     ->counts('items'),
+                TextColumn::make('mounted_in')
+                    ->label('Mounted in')
+                    ->state(fn (Menu $record): array => $record->regionItems
+                        ->map(fn ($item): string => $item->region->label())
+                        ->unique()
+                        ->values()
+                        ->whenEmpty(fn ($c) => collect(['Not mounted']))
+                        ->all())
+                    ->badge()
+                    ->color(fn (string $state): string => $state === 'Not mounted' ? 'warning' : 'gray')
+                    ->tooltip('Regions in Site Layout that include this menu. An unmounted menu is still available at /api/v1/menus/{slug}, but nothing renders it automatically.'),
                 TextColumn::make('updated_at')
                     ->label('Updated')
                     ->since()
