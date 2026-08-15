@@ -68,6 +68,12 @@ class PlansRelationManager extends RelationManager
                     ->components([
                         TextInput::make('retail_price')->numeric()->prefix('$')->step(0.01),
                         TextInput::make('sale_price')->numeric()->prefix('$')->step(0.01),
+                        TextInput::make('intro_price')
+                            ->label('Intro price')
+                            ->numeric()
+                            ->prefix('$')
+                            ->step(0.01)
+                            ->helperText('First-billing-cycle price; later cycles bill at retail/sale.'),
                         TextInput::make('price_suffix')
                             ->maxLength(32)
                             ->placeholder('e.g. /mo, every 3 mo'),

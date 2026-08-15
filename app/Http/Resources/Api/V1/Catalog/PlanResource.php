@@ -25,6 +25,7 @@ class PlanResource extends JsonResource
             'price' => [
                 'retail' => $this->retail_price !== null ? (float) $this->retail_price : null,
                 'sale' => $this->sale_price !== null ? (float) $this->sale_price : null,
+                'intro' => $this->intro_price !== null ? (float) $this->intro_price : null,
                 'effective' => (float) ($this->sale_price ?? $this->retail_price),
                 'suffix' => $this->price_suffix ?? $this->billing_period?->suffix(),
                 'currency' => 'USD',

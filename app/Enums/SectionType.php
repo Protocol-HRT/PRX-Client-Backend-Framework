@@ -12,6 +12,7 @@ use App\Cms\Sections\HeroSection;
 use App\Cms\Sections\HowItWorksSection;
 use App\Cms\Sections\ImageTextSplitSection;
 use App\Cms\Sections\PackagePricingComparisonSection;
+use App\Cms\Sections\PackageSliderSection;
 use App\Cms\Sections\PhysiciansSection;
 use App\Cms\Sections\PricingTiersSection;
 use App\Cms\Sections\ProductCalloutSection;
@@ -54,6 +55,7 @@ enum SectionType: string
     case ProductSlider = 'product-slider';
     case ProductGrid = 'product-grid';
     case ProductCallout = 'product-callout';
+    case PackageSlider = 'package-slider';
     case PackagePricingComparison = 'package-pricing-comparison';
 
     public function blueprint(): SectionBlueprint
@@ -80,6 +82,7 @@ enum SectionType: string
             self::ProductSlider => app(ProductSliderSection::class),
             self::ProductGrid => app(ProductGridSection::class),
             self::ProductCallout => app(ProductCalloutSection::class),
+            self::PackageSlider => app(PackageSliderSection::class),
             self::PackagePricingComparison => app(PackagePricingComparisonSection::class),
         };
     }

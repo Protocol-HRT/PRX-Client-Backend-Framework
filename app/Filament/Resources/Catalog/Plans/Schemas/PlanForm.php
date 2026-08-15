@@ -165,6 +165,12 @@ class PlanForm
                                 ->prefix('$')
                                 ->step(0.01)
                                 ->hintIcon(Heroicon::InformationCircle, 'Active sale price. If set, this is the price displayed to customers.'),
+                            TextInput::make('intro_price')
+                                ->label('Intro price')
+                                ->numeric()
+                                ->prefix('$')
+                                ->step(0.01)
+                                ->hintIcon(Heroicon::InformationCircle, 'Introductory first-billing-cycle price (e.g. "First month $179.99"). Later cycles bill at the retail/sale price.'),
                             TextInput::make('price_suffix')
                                 ->maxLength(32)
                                 ->placeholder('e.g. /mo, every 3 mo')

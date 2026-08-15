@@ -41,6 +41,7 @@ class HomePageSeeder extends Seeder
             SectionType::ImageTextSplit,
             SectionType::HowItWorks,
             SectionType::Physicians,
+            SectionType::PackageSlider,
             SectionType::ProductSlider,
             SectionType::Faq,
             SectionType::FinalCta,

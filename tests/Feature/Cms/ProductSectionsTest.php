@@ -8,6 +8,7 @@ use App\Models\Catalog\Plan;
 use App\Models\Catalog\Product;
 use App\Models\Page;
 use App\Models\PageSection;
+use App\Services\Cms\CatalogInliner;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
@@ -152,6 +153,90 @@ class ProductSectionsTest extends TestCase
         $this->assertSame($product->id, $data['product']['id']);
         $this->assertNull($data['package']);
         $this->assertSame('Custom headline', $data['headline']);
+    }
+
+    // ─── package-slider ───────────────────────────────────────────────
+
+    public function test_package_slider_manual_mode_inlines_packages_preserving_admin_order(): void
+    {
+        $a = Package::factory()->create(['name' => 'Alpha Stack']);
+        $b = Package::factory()->create(['name' => 'Beta Stack']);
+        $draft = Package::factory()->draft()->create();
+
+        $this->pageWithSection('package-slider', [
+            'mode' => 'manual',
+            'package_ids' => [$b->id, $draft->id, $a->id],
+        ]);
+
+        $packages = $this->getJson('/api/v1/pages/test-page')->json('data.sections.0.data.packages');
+
+        $this->assertSame(
+            ['Beta Stack', 'Alpha Stack'],
+            array_column($packages, 'name'),
+        );
+    }
+
+    public function test_package_slider_featured_mode_returns_only_featured_packages(): void
+    {
+        Package::factory()->count(2)->create();
+        $featured = Package::factory()->featured()->create();
+
+        $this->pageWithSection('package-slider', [
+            'mode' => 'featured',
+            'limit' => 8,
+        ]);
+
+        $packages = $this->getJson('/api/v1/pages/test-page')->json('data.sections.0.data.packages');
+
+        $this->assertCount(1, $packages);
+        $this->assertSame($featured->id, $packages[0]['id']);
+    }
+
+    public function test_package_slider_inlines_plan_pricing_with_intro_price(): void
+    {
+        $package = Package::factory()->create();
+        Plan::factory()->create([
+            'package_id' => $package->id,
+            'retail_price' => 279.99,
+            'sale_price' => null,
+            'intro_price' => 179.99,
+        ]);
+
+        $this->pageWithSection('package-slider', [
+            'mode' => 'manual',
+            'package_ids' => [$package->id],
+        ]);
+
+        $price = $this->getJson('/api/v1/pages/test-page')
+            ->json('data.sections.0.data.packages.0.plans.0.price');
+
+        $this->assertSame(279.99, (float) $price['retail']);
+        $this->assertSame(179.99, (float) $price['intro']);
+        $this->assertSame(279.99, (float) $price['effective']);
+    }
+
+    public function test_inlined_payloads_survive_cache_serialization(): void
+    {
+        $package = Package::factory()->create();
+        Plan::factory()->create(['package_id' => $package->id]);
+        $product = Product::factory()->create();
+
+        $inliner = app(CatalogInliner::class);
+
+        // CmsCache serializes section payloads; nested resource objects would
+        // come back as __PHP_Incomplete_Class. allowed_classes:false replicates
+        // the strictest round-trip: only plain data may remain.
+        foreach ([
+            $inliner->packagesByIds([$package->id]),
+            $inliner->productsByIds([$product->id]),
+        ] as $payload) {
+            $restored = unserialize(serialize($payload), ['allowed_classes' => false]);
+            array_walk_recursive($restored, fn ($value) => $this->assertIsNotObject($value));
+        }
+
+        $restoredPackage = unserialize(serialize($inliner->packagesByIds([$package->id])), ['allowed_classes' => false])[0];
+        $this->assertIsList($restoredPackage['plans']);
+        $this->assertIsArray($restoredPackage['plans'][0]['price']);
     }
 
     // ─── package-pricing-comparison ───────────────────────────────────

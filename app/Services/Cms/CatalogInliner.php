@@ -13,6 +13,10 @@ use App\Models\Catalog\Product;
  *
  * Only published rows are ever emitted; manual selections preserve the
  * admin's chosen order and silently drop rows that were since unpublished.
+ *
+ * Payloads are fully serialized to plain arrays (not ->resolve(), which leaves
+ * nested resource collections as objects): section data is cached by CmsCache,
+ * and resource objects do not survive the serialize round-trip.
  */
 class CatalogInliner
 {
@@ -34,7 +38,7 @@ class CatalogInliner
             ->sortBy(fn (Product $product): int => (int) array_search($product->id, $ids))
             ->values();
 
-        return ProductResource::collection($products)->resolve();
+        return $this->toPlainArray(ProductResource::collection($products));
     }
 
     /**
@@ -56,7 +60,7 @@ class CatalogInliner
             default => $query->orderBy('position'),
         };
 
-        return ProductResource::collection($query->get())->resolve();
+        return $this->toPlainArray(ProductResource::collection($query->get()));
     }
 
     /**
@@ -77,7 +81,29 @@ class CatalogInliner
             ->sortBy(fn (Package $package): int => (int) array_search($package->id, $ids))
             ->values();
 
-        return PackageResource::collection($packages)->resolve();
+        return $this->toPlainArray(PackageResource::collection($packages));
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function packagesByMode(string $mode, ?int $categoryId, int $limit): array
+    {
+        $query = Package::query()
+            ->published()
+            ->with(['plans', 'products', 'categories', 'tags'])
+            ->limit(max(1, min($limit, 24)));
+
+        match ($mode) {
+            'featured' => $query->where('is_featured', true)->orderBy('position'),
+            'newest' => $query->latest('created_at'),
+            'category' => $query
+                ->when($categoryId !== null, fn ($q) => $q->whereHas('categories', fn ($q) => $q->where('categories.id', $categoryId)))
+                ->orderBy('position'),
+            default => $query->orderBy('position'),
+        };
+
+        return $this->toPlainArray(PackageResource::collection($query->get()));
     }
 
     /**
@@ -102,5 +128,16 @@ class CatalogInliner
         }
 
         return $this->packagesByIds([$id])[0] ?? null;
+    }
+
+    /**
+     * Serialize a resource collection through the JSON pipeline, resolving
+     * nested resources exactly as an HTTP response would.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function toPlainArray(mixed $collection): array
+    {
+        return json_decode(json_encode($collection), true) ?? [];
     }
 }
