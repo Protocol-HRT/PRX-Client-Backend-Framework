@@ -7,6 +7,7 @@ use App\Data\Settings\ThemeSettingsData;
 use App\Settings\ThemeSettings;
 use BackedEnum;
 use Filament\Forms\Components\ColorPicker;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
