@@ -88,6 +88,6 @@ class AdminPanelProvider extends PanelProvider
     {
         $path = $this->brandValue($property);
 
-        return $path ? Storage::url($path) : null;
+        return $path ? Storage::disk('public')->url($path) : null;
     }
 }

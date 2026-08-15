@@ -47,11 +47,11 @@ class ConfigController extends ApiController
                 'brand' => [
                     'name' => $brand->name,
                     'tagline' => $brand->tagline,
-                    'logo_url' => $brand->logo_path ? Storage::url($brand->logo_path) : null,
-                    'logo_dark_url' => $brand->logo_dark_path ? Storage::url($brand->logo_dark_path) : null,
-                    'logo_light_url' => $brand->logo_light_path ? Storage::url($brand->logo_light_path) : null,
-                    'favicon_url' => $brand->favicon_path ? Storage::url($brand->favicon_path) : null,
-                    'hero_image_url' => $brand->hero_image_path ? Storage::url($brand->hero_image_path) : null,
+                    'logo_url' => $brand->logo_path ? Storage::disk('public')->url($brand->logo_path) : null,
+                    'logo_dark_url' => $brand->logo_dark_path ? Storage::disk('public')->url($brand->logo_dark_path) : null,
+                    'logo_light_url' => $brand->logo_light_path ? Storage::disk('public')->url($brand->logo_light_path) : null,
+                    'favicon_url' => $brand->favicon_path ? Storage::disk('public')->url($brand->favicon_path) : null,
+                    'hero_image_url' => $brand->hero_image_path ? Storage::disk('public')->url($brand->hero_image_path) : null,
                     'announcement' => $brand->announcement_enabled ? [
                         'emphasis' => $brand->announcement_emphasis,
                         'text' => $brand->announcement_text,
@@ -93,7 +93,7 @@ class ConfigController extends ApiController
                 'seo' => [
                     'default_title' => $seo->default_meta_title,
                     'default_description' => $seo->default_meta_description,
-                    'og_image_url' => $seo->og_image_path ? Storage::url($seo->og_image_path) : null,
+                    'og_image_url' => $seo->og_image_path ? Storage::disk('public')->url($seo->og_image_path) : null,
                     'google_analytics_id' => $seo->google_analytics_id,
                     'google_tag_manager_id' => $seo->google_tag_manager_id,
                     'facebook_pixel_id' => $seo->facebook_pixel_id,

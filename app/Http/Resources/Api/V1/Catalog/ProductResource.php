@@ -23,8 +23,8 @@ class ProductResource extends JsonResource
             'subtitle' => $this->subtitle,
             'short_description' => $this->short_description,
             'description' => $this->when($request->routeIs('api.v1.catalog.products.show'), $this->description),
-            'hero_image_url' => $this->hero_image_path ? Storage::url($this->hero_image_path) : null,
-            'gallery' => collect($this->gallery ?? [])->map(fn ($p) => Storage::url($p))->values()->all(),
+            'hero_image_url' => $this->hero_image_path ? Storage::disk('public')->url($this->hero_image_path) : null,
+            'gallery' => collect($this->gallery ?? [])->map(fn ($p) => Storage::disk('public')->url($p))->values()->all(),
             'status' => $this->status->value,
             'badge_text' => $this->badge_text,
             'highlights' => $highlights,
@@ -43,7 +43,7 @@ class ProductResource extends JsonResource
             'seo' => $this->when($request->routeIs('api.v1.catalog.products.show'), [
                 'meta_title' => $this->meta_title,
                 'meta_description' => $this->meta_description,
-                'og_image_url' => $this->og_image_path ? Storage::url($this->og_image_path) : null,
+                'og_image_url' => $this->og_image_path ? Storage::disk('public')->url($this->og_image_path) : null,
             ]),
             'provider' => [
                 'product_id' => $this->provider_product_id,

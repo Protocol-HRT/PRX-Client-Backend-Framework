@@ -66,7 +66,7 @@ class MediaResolver
         if (is_string($value)) {
             return [
                 'id' => null,
-                'url' => Storage::url(ltrim($value, '/')),
+                'url' => Storage::disk('public')->url(ltrim($value, '/')),
                 'alt' => null,
                 'width' => null,
                 'height' => null,

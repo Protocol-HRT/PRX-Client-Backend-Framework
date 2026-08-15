@@ -63,7 +63,7 @@ class NavigationSeeder extends Seeder
         $this->urlItem($mainNav, 'Get Started', '/stacks', badge: 'cta');
 
         $quickLinks = Menu::create([
-            'name' => 'Footer Quick Links',
+            'name' => 'Quick Links',
             'slug' => 'footer-quick-links',
             'description' => 'Footer "Quick Links" column.',
         ]);
@@ -72,7 +72,7 @@ class NavigationSeeder extends Seeder
         $this->pageItem($quickLinks, 'FAQ', $pages['faq']);
 
         $legal = Menu::create([
-            'name' => 'Footer Legal',
+            'name' => 'Legal',
             'slug' => 'footer-legal',
             'description' => 'Footer "Legal" column.',
         ]);

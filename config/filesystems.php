@@ -41,11 +41,11 @@ return [
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),
-            // Relative URL by default so storage works across any host (dev IP,
-            // staging, production) without requiring APP_URL to match the
-            // current request. Override with STORAGE_URL=https://cdn.example.com
-            // if assets are eventually served from a CDN.
-            'url' => env('STORAGE_URL', '/storage'),
+            // Absolute URL by default: the decoupled frontend lives on another
+            // origin, so relative /storage paths in API payloads would resolve
+            // against the FRONTEND host and 404. Override with
+            // STORAGE_URL=https://cdn.example.com when assets move to a CDN.
+            'url' => env('STORAGE_URL', rtrim((string) env('APP_URL'), '/').'/storage'),
             'visibility' => 'public',
             'throw' => false,
             'report' => false,

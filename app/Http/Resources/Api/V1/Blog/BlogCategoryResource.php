@@ -15,7 +15,7 @@ class BlogCategoryResource extends JsonResource
             'name' => $this->name,
             'slug' => $this->slug,
             'description' => $this->description,
-            'hero_image_url' => $this->hero_image_path ? Storage::url($this->hero_image_path) : null,
+            'hero_image_url' => $this->hero_image_path ? Storage::disk('public')->url($this->hero_image_path) : null,
             'is_visible' => $this->is_visible,
         ];
     }

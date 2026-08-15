@@ -28,7 +28,7 @@ class PageResource extends JsonResource
             'seo' => [
                 'title' => $this->meta_title ?? $this->title,
                 'description' => $this->meta_description,
-                'og_image_url' => $this->og_image_path ? Storage::url($this->og_image_path) : null,
+                'og_image_url' => $this->og_image_path ? Storage::disk('public')->url($this->og_image_path) : null,
                 'noindex' => (bool) $this->noindex,
             ],
         ];

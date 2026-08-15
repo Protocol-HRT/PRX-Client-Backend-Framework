@@ -22,8 +22,8 @@ class BlogPostResource extends JsonResource
                 $request->routeIs('api.v1.blog.posts.show'),
                 $this->content
             ),
-            'hero_image_url' => $this->hero_image_path ? Storage::url($this->hero_image_path) : null,
-            'gallery' => collect($this->gallery ?? [])->map(fn ($p) => Storage::url($p))->values()->all(),
+            'hero_image_url' => $this->hero_image_path ? Storage::disk('public')->url($this->hero_image_path) : null,
+            'gallery' => collect($this->gallery ?? [])->map(fn ($p) => Storage::disk('public')->url($p))->values()->all(),
             'status' => $this->status->value,
             'featured' => (bool) $this->featured,
             'published_at' => $this->published_at?->toISOString(),
@@ -38,7 +38,7 @@ class BlogPostResource extends JsonResource
             'seo' => $this->when($request->routeIs('api.v1.blog.posts.show'), [
                 'meta_title' => $this->meta_title,
                 'meta_description' => $this->meta_description,
-                'og_image_url' => $this->og_image_path ? Storage::url($this->og_image_path) : null,
+                'og_image_url' => $this->og_image_path ? Storage::disk('public')->url($this->og_image_path) : null,
             ]),
         ];
     }

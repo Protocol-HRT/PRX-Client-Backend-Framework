@@ -15,7 +15,7 @@ class CategoryResource extends JsonResource
             'name' => $this->name,
             'slug' => $this->slug,
             'description' => $this->description,
-            'hero_image_url' => $this->hero_image_path ? Storage::url($this->hero_image_path) : null,
+            'hero_image_url' => $this->hero_image_path ? Storage::disk('public')->url($this->hero_image_path) : null,
             'icon' => $this->icon,
             'provider_encounter_type_id' => $this->provider_encounter_type_id,
             'sort_order' => $this->position,
