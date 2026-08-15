@@ -215,6 +215,42 @@ class ProductSectionsTest extends TestCase
         $this->assertSame(279.99, (float) $price['effective']);
     }
 
+    // ─── category-grid ────────────────────────────────────────────────
+
+    public function test_category_grid_all_mode_lists_visible_categories_only(): void
+    {
+        $visible = Category::factory()->create(['is_visible' => true, 'name' => 'Anti-Aging']);
+        Category::factory()->create(['is_visible' => false]);
+
+        $this->pageWithSection('category-grid', [
+            'mode' => 'all',
+            'limit' => 12,
+        ]);
+
+        $categories = $this->getJson('/api/v1/pages/test-page')->json('data.sections.0.data.categories');
+
+        $this->assertCount(1, $categories);
+        $this->assertSame($visible->id, $categories[0]['id']);
+        $this->assertArrayHasKey('slug', $categories[0]);
+        $this->assertArrayHasKey('hero_image_url', $categories[0]);
+    }
+
+    public function test_category_grid_manual_mode_preserves_order_and_drops_hidden(): void
+    {
+        $a = Category::factory()->create(['is_visible' => true, 'name' => 'Healing']);
+        $b = Category::factory()->create(['is_visible' => true, 'name' => 'Longevity']);
+        $hidden = Category::factory()->create(['is_visible' => false]);
+
+        $this->pageWithSection('category-grid', [
+            'mode' => 'manual',
+            'category_ids' => [$b->id, $hidden->id, $a->id],
+        ]);
+
+        $categories = $this->getJson('/api/v1/pages/test-page')->json('data.sections.0.data.categories');
+
+        $this->assertSame(['Longevity', 'Healing'], array_column($categories, 'name'));
+    }
+
     public function test_inlined_payloads_survive_cache_serialization(): void
     {
         $package = Package::factory()->create();

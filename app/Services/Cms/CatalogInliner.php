@@ -2,8 +2,10 @@
 
 namespace App\Services\Cms;
 
+use App\Http\Resources\Api\V1\Catalog\CategoryResource;
 use App\Http\Resources\Api\V1\Catalog\PackageResource;
 use App\Http\Resources\Api\V1\Catalog\ProductResource;
+use App\Models\Catalog\Category;
 use App\Models\Catalog\Package;
 use App\Models\Catalog\Product;
 
@@ -104,6 +106,40 @@ class CatalogInliner
         };
 
         return $this->toPlainArray(PackageResource::collection($query->get()));
+    }
+
+    /**
+     * @param  list<int>  $ids
+     * @return list<array<string, mixed>>
+     */
+    public function categoriesByIds(array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        $categories = Category::query()
+            ->where('is_visible', true)
+            ->whereIn('id', $ids)
+            ->get()
+            ->sortBy(fn (Category $category): int => (int) array_search($category->id, $ids))
+            ->values();
+
+        return $this->toPlainArray(CategoryResource::collection($categories));
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function visibleCategories(int $limit): array
+    {
+        $categories = Category::query()
+            ->where('is_visible', true)
+            ->orderBy('position')
+            ->limit(max(1, min($limit, 24)))
+            ->get();
+
+        return $this->toPlainArray(CategoryResource::collection($categories));
     }
 
     /**

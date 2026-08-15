@@ -38,6 +38,7 @@ class HomePageSeeder extends Seeder
 
         $order = [
             SectionType::Hero,
+            SectionType::CategoryGrid,
             SectionType::ImageTextSplit,
             SectionType::HowItWorks,
             SectionType::Physicians,

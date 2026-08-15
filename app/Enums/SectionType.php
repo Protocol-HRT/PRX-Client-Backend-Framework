@@ -4,6 +4,7 @@ namespace App\Enums;
 
 use App\Cms\Sections\BenefitsHerSection;
 use App\Cms\Sections\BenefitsHimSection;
+use App\Cms\Sections\CategoryGridSection;
 use App\Cms\Sections\CtaBannerSection;
 use App\Cms\Sections\FaqSection;
 use App\Cms\Sections\FeaturesGridSection;
@@ -57,6 +58,7 @@ enum SectionType: string
     case ProductCallout = 'product-callout';
     case PackageSlider = 'package-slider';
     case PackagePricingComparison = 'package-pricing-comparison';
+    case CategoryGrid = 'category-grid';
 
     public function blueprint(): SectionBlueprint
     {
@@ -84,6 +86,7 @@ enum SectionType: string
             self::ProductCallout => app(ProductCalloutSection::class),
             self::PackageSlider => app(PackageSliderSection::class),
             self::PackagePricingComparison => app(PackagePricingComparisonSection::class),
+            self::CategoryGrid => app(CategoryGridSection::class),
         };
     }
 
