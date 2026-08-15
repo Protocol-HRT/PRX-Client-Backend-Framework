@@ -78,12 +78,12 @@ Route pattern: a catch-all route mapping URL path → page slug, plus `/` → sl
 - Point `API_BASE_URL` at the local backend vhost.
 - If the backend uses an mkcert TLS cert, run Node with `NODE_OPTIONS=--use-system-ca` (mkcert installs its root CA into the OS trust store). This must be set in the shell/npm script — Node reads it at startup, so `.env.local` is too late. Do **not** disable TLS verification.
 - A fresh backend has no CMS content: the config endpoint always answers, `/pages/home` 404s until the page is created in the admin. Build empty states accordingly.
-- Neutral dev catalog: `php artisan db:seed --class=DevCatalogSeeder` (backend repo) seeds generic products/packages; `HomePageSeeder` seeds a placeholder home page from blueprint defaults.
+- Neutral dev catalog: `php artisan db:seed --class=DevCatalogSeeder` (backend repo) seeds generic products/packages; `HomePageSeeder` seeds an **empty home-page scaffold** (8 standard section types, no content). Blueprint defaults are intentionally content-free, so nothing renders until content is authored in the admin (or loaded by a deployment-specific fill script kept in that deployment's frontend repo).
 
 ## 8. Hard rules for implementers
 
 1. **No hardcoded branding.** Company name, logos, colors, copy, contact info, tracking IDs — all must come from the API. If you find yourself typing a brand string into a component, it belongs in the admin.
 2. **Own your route patterns** for entity links; the backend only emits `{type, slug}`.
-3. **Render unknown section types visibly in dev** (placeholder), silently skip in production — never crash on a new backend type.
+3. **Render unknown section types visibly in dev** (placeholder), silently skip in production — never crash on a new backend type. Exception either way: a section whose `data` holds no authored content (all nulls / empty arrays) must render **nothing** — empty scaffold sections may never leak onto a page.
 4. **Respect `allow_indexing` and per-page `noindex`.**
 5. **Keep API tokens server-side.**

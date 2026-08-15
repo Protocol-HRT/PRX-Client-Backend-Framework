@@ -53,6 +53,7 @@ After saving, you'll land on the page's edit screen. Below the page form, the **
    - **Video embed** — YouTube or Vimeo embed
 3. (Optional) **Anchor ID** — sets the section's HTML `id` so you can link to `/{slug}#anchor` from elsewhere on the site. Examples: `pricing`, `faq`, `physicians`.
 4. **Enabled** — toggle off to hide a section without deleting it. Useful for A/B tests or seasonal blocks.
+5. **Sections start empty.** A newly added (or freshly seeded) section renders nothing on the public site until you fill in its content and save — there is no placeholder copy to overwrite.
 5. Fill in the type-specific form. Required fields are marked.
 6. **Create**.
 
@@ -88,8 +89,8 @@ To view a published page from the edit screen, use the **View public page** acti
 ### Make a copy of an existing page
 Not yet supported in v1. Workaround: create a new page, then re-add and re-fill its sections. Duplicate action coming soon.
 
-### Reset a section to defaults
-Delete the section, then re-add the same type. The form pre-fills with the section type's default content (matching the original PrescribeRx Open Source Backend home-page copy for the imported types).
+### Reset a section
+Delete the section, then re-add the same type. The form starts **empty** — sections have no default copy, and a section with no content renders nothing on the site. This is intentional: nothing appears on your pages that you didn't write.
 
 ### Take a section live but hidden
 Add the section with **Enabled** off. When you flip it on later, it appears on the next page load — no other action needed.

@@ -176,6 +176,12 @@ The data shape for each section is defined in **two places that must stay in syn
 
 When you change a field, change both. When you add a field, add to both, and add a `defaults()` entry so the form pre-fills sensibly.
 
+### Content-free defaults policy (2026-08-15)
+
+`defaults()` must contain **no copy** — only nulls, empty arrays, and structural flags (`theme`, `image_right`, …). Earlier blueprints shipped a legacy site's marketing copy as defaults; that meant a freshly added (or freshly seeded) section could render text belonging to another deployment. The rule now: **a section renders nothing until an operator authors its content.** Deployment-specific content lives in the DB (authored via admin, or loaded by a fill script kept in that deployment's frontend repo — see `atlas-dev-local/scripts/atlas-home-fill.php` for the pattern). Frontends enforce the same rule by rendering nothing for content-empty section envelopes.
+
+Blueprint shape changes shipped the same day: `hero` gained a `slides` repeater (image, heading + emphasis, description, CTA, text tone), `highlight_*` card fields, and `background_image` (static no-slides fallback; concierge-era fields removed); `physicians` entries are now name / title / specialty / image / bio / `badges[]` (legacy credentials chip, accent color, stats, and quote fields dropped); `faq` gained intro `description`, `cta_label`/`cta_url`, `image`/`image_alt`; `image-text-split` gained `lead`.
+
 ## Adding a new section type
 
 1. Add a new case to `App\Enums\SectionType`.
@@ -249,4 +255,4 @@ Targets:
 - Live preview iframe in the edit page.
 - Block versioning + draft/publish per section (currently per-page).
 - Section presets / pattern library — pre-filled section starting points beyond the type's defaults.
-- ~~Migrate the home page to CMS~~ — done. `database/seeders/HomePageSeeder.php` creates a `home` Page record with all 13 sections in the legacy order; `routes/web.php` resolves `/` through the CMS pipeline (with a fallback to the legacy `pages.home` view if the seed hasn't run). Output is byte-equivalent to the legacy view modulo whitespace.
+- ~~Migrate the home page to CMS~~ — done. `database/seeders/HomePageSeeder.php` now scaffolds a `home` Page with 8 standard section types in a typical landing order, all **content-free** (see the defaults policy above). Home is served to decoupled frontends via `GET /api/v1/pages/home`; nothing renders until content is authored.
