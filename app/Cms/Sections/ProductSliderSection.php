@@ -41,6 +41,10 @@ class ProductSliderSection extends SectionBlueprint
             'eyebrow' => null,
             'heading' => null,
             'subhead' => null,
+            'variant' => 'progressbar',
+            'cta_label' => null,
+            'cta_url' => null,
+            'card_cta_label' => null,
             'mode' => 'manual',
             'product_ids' => [],
             'category_id' => null,
@@ -57,6 +61,29 @@ class ProductSliderSection extends SectionBlueprint
                     TextInput::make('eyebrow')->maxLength(120),
                     TextInput::make('heading')->maxLength(255),
                     Textarea::make('subhead')->rows(2)->maxLength(500),
+                    TextInput::make('cta_label')
+                        ->label('Section CTA label')
+                        ->maxLength(120)
+                        ->helperText('Optional "view all"-style link rendered with the header.'),
+                    TextInput::make('cta_url')
+                        ->label('Section CTA URL')
+                        ->maxLength(500),
+                ]),
+            Section::make('Layout')
+                ->components([
+                    Select::make('variant')
+                        ->options([
+                            'progressbar' => 'Progress-bar slider (no header row)',
+                            'arrows' => 'Titled slider with arrows + dots',
+                        ])
+                        ->default('progressbar')
+                        ->required()
+                        ->native(false)
+                        ->helperText('Layout hint — the frontend maps each variant to a theme layout.'),
+                    TextInput::make('card_cta_label')
+                        ->label('Card CTA label')
+                        ->maxLength(120)
+                        ->helperText('Optional link text rendered on every product card (e.g. "Request Personalized Care").'),
                 ]),
             Section::make('Products')
                 ->components([
