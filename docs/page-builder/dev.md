@@ -115,6 +115,27 @@ frontend owns route patterns (`/products/{slug}`, etc.).
 `product`/`package`; `package-pricing-comparison` inlines ≤3 `packages` with plans.
 "Related to current product" is intentionally a frontend concern (catalog API).
 
+Added 2026-08-15:
+
+- `package-slider` — same selection model as `product-slider` but over packages
+  (`package_ids`; `CatalogInliner::packagesByMode`), emits a `packages` sibling
+  key with plans inlined. Plans now carry `price.intro` (`plans.intro_price`
+  column): an introductory first-billing-cycle price, distinct from `sale`
+  which discounts the ongoing recurring price.
+- `category-grid` — `mode` = `manual` (`category_ids`, order preserved) |
+  `all` (visible categories by position, `limit` ≤24); emits `categories`
+  (CategoryResource cards). Hidden categories are always dropped.
+- `product-slider` also gained presentation hints for the frontend: `variant`
+  (`progressbar` | `arrows`), section-level `cta_label`/`cta_url`, and
+  `card_cta_label` (link text rendered on every card).
+
+**Caching invariant:** `CatalogInliner` serializes every payload through the
+JSON pipeline (`json_encode`/`json_decode`), never bare `->resolve()` — section
+payloads are cached by `CmsCache`, and unresolved nested resource collections
+(plans/categories/tags) do not survive the serialize round-trip (they came back
+as `__PHP_Incomplete_Class` on cache hits). Regression-tested in
+`ProductSectionsTest::test_inlined_payloads_survive_cache_serialization`.
+
 ## Security
 
 - **SVG (stored XSS)**: `SvgSanitizer` parses with DOMDocument (entities normalized
