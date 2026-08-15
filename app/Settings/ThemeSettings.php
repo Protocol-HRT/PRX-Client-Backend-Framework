@@ -20,6 +20,10 @@ class ThemeSettings extends Settings
 
     public string $font_body;
 
+    public ?string $custom_css;
+
+    public string $frontend_template;
+
     public static function group(): string
     {
         return 'theme';

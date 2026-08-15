@@ -21,6 +21,9 @@ class UpdateSeoSettingsAction
             $this->settings->google_analytics_id = $data->google_analytics_id;
             $this->settings->google_tag_manager_id = $data->google_tag_manager_id;
             $this->settings->facebook_pixel_id = $data->facebook_pixel_id;
+            $this->settings->tiktok_pixel_id = $data->tiktok_pixel_id;
+            $this->settings->custom_head_scripts = $data->custom_head_scripts;
+            $this->settings->custom_body_scripts = $data->custom_body_scripts;
             $this->settings->allow_indexing = $data->allow_indexing;
             $this->settings->save();
 

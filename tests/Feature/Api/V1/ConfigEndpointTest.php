@@ -62,4 +62,33 @@ class ConfigEndpointTest extends TestCase
 
         $this->assertNotNull(cache()->get('api.v1.config'));
     }
+
+    public function test_config_seo_section_exposes_tracking_fields(): void
+    {
+        $this->getJson('/api/v1/config')
+            ->assertJsonStructure([
+                'data' => [
+                    'seo' => [
+                        'google_analytics_id',
+                        'google_tag_manager_id',
+                        'facebook_pixel_id',
+                        'tiktok_pixel_id',
+                        'custom_head_scripts',
+                        'custom_body_scripts',
+                        'allow_indexing',
+                    ],
+                ],
+            ]);
+    }
+
+    public function test_config_theme_section_exposes_frontend_hooks(): void
+    {
+        $this->getJson('/api/v1/config')
+            ->assertJsonStructure([
+                'data' => [
+                    'theme' => ['custom_css', 'frontend_template'],
+                ],
+            ])
+            ->assertJsonPath('data.theme.frontend_template', 'default');
+    }
 }

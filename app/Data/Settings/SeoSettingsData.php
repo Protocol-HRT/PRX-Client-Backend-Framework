@@ -21,6 +21,12 @@ class SeoSettingsData extends Data
         public ?string $google_tag_manager_id = null,
         #[Max(64)]
         public ?string $facebook_pixel_id = null,
+        #[Max(64)]
+        public ?string $tiktok_pixel_id = null,
+        #[Max(10000)]
+        public ?string $custom_head_scripts = null,
+        #[Max(10000)]
+        public ?string $custom_body_scripts = null,
         public bool $allow_indexing = true,
     ) {}
 }

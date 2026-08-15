@@ -22,6 +22,8 @@ class UpdateThemeSettingsAction
             $this->settings->text_color = $data->text_color;
             $this->settings->font_display = $data->font_display;
             $this->settings->font_body = $data->font_body;
+            $this->settings->custom_css = $data->custom_css;
+            $this->settings->frontend_template = $data->frontend_template;
             $this->settings->save();
 
             return $this->settings;

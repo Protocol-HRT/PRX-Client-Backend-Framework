@@ -78,6 +78,22 @@ class ManageTheme extends BaseSettingsPage
                             ->maxLength(100)
                             ->hintIcon(Heroicon::InformationCircle, 'Font family name used for body/paragraph text, e.g. "Inter" or "Source Sans Pro".'),
                     ]),
+                Section::make('Frontend')
+                    ->description('Layout and styling hooks consumed by the decoupled frontend via /api/v1/config.')
+                    ->components([
+                        TextInput::make('frontend_template')
+                            ->label('Frontend template')
+                            ->required()
+                            ->maxLength(100)
+                            ->regex('/^[a-z0-9][a-z0-9-]*$/')
+                            ->hintIcon(Heroicon::InformationCircle, 'Template/layout variant slug the frontend maps to its own component set, e.g. "default" or "atlas". The backend stores the choice; the frontend defines what it looks like.'),
+                        Textarea::make('custom_css')
+                            ->label('Custom CSS')
+                            ->rows(8)
+                            ->maxLength(50000)
+                            ->extraAttributes(['class' => 'font-mono'])
+                            ->hintIcon(Heroicon::InformationCircle, 'Raw CSS the frontend injects after its own styles — per-install overrides without touching frontend code.'),
+                    ]),
             ])
             ->statePath('data');
     }

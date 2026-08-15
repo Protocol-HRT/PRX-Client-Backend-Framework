@@ -82,6 +82,26 @@ class ManageSeo extends BaseSettingsPage
                             ->label('Facebook Pixel ID')
                             ->maxLength(64)
                             ->hintIcon(Heroicon::InformationCircle, 'Facebook/Meta Pixel ID for conversion tracking. Leave blank to disable.'),
+                        TextInput::make('tiktok_pixel_id')
+                            ->label('TikTok Pixel ID')
+                            ->maxLength(64)
+                            ->hintIcon(Heroicon::InformationCircle, 'TikTok Pixel ID for conversion tracking. Leave blank to disable.'),
+                    ]),
+                Section::make('Custom tracking scripts')
+                    ->description('Raw script tags for any vendor not covered above (Klaviyo, Hotjar, affiliate tags, …). The frontend injects these verbatim — paste complete <script> tags.')
+                    ->components([
+                        Textarea::make('custom_head_scripts')
+                            ->label('Head scripts')
+                            ->rows(5)
+                            ->maxLength(10000)
+                            ->extraAttributes(['class' => 'font-mono'])
+                            ->hintIcon(Heroicon::InformationCircle, 'Injected inside <head> on every public page. Use for pixels and analytics that must load early.'),
+                        Textarea::make('custom_body_scripts')
+                            ->label('Body scripts')
+                            ->rows(5)
+                            ->maxLength(10000)
+                            ->extraAttributes(['class' => 'font-mono'])
+                            ->hintIcon(Heroicon::InformationCircle, 'Injected before </body> on every public page. Use for chat widgets and non-critical tags.'),
                     ]),
                 Section::make('Indexing')
                     ->components([

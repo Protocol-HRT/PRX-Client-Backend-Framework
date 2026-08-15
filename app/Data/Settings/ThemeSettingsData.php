@@ -2,6 +2,7 @@
 
 namespace App\Data\Settings;
 
+use Spatie\LaravelData\Attributes\Validation\Max;
 use Spatie\LaravelData\Attributes\Validation\Regex;
 use Spatie\LaravelData\Attributes\Validation\Required;
 use Spatie\LaravelData\Data;
@@ -23,5 +24,9 @@ class ThemeSettingsData extends Data
         public string $font_display,
         #[Required]
         public string $font_body,
+        #[Max(50000)]
+        public ?string $custom_css = null,
+        #[Required, Max(100), Regex('/^[a-z0-9][a-z0-9-]*$/')]
+        public string $frontend_template = 'default',
     ) {}
 }

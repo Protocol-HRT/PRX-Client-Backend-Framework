@@ -65,6 +65,8 @@ class ConfigController extends ApiController
                     'text_color' => $theme->text_color,
                     'font_display' => $theme->font_display,
                     'font_body' => $theme->font_body,
+                    'custom_css' => $theme->custom_css,
+                    'frontend_template' => $theme->frontend_template,
                 ],
                 'contact' => array_filter([
                     'support_email' => $contact->support_email,
@@ -95,6 +97,9 @@ class ConfigController extends ApiController
                     'google_analytics_id' => $seo->google_analytics_id,
                     'google_tag_manager_id' => $seo->google_tag_manager_id,
                     'facebook_pixel_id' => $seo->facebook_pixel_id,
+                    'tiktok_pixel_id' => $seo->tiktok_pixel_id,
+                    'custom_head_scripts' => $seo->custom_head_scripts,
+                    'custom_body_scripts' => $seo->custom_body_scripts,
                     'allow_indexing' => $seo->allow_indexing,
                 ],
                 'provider' => [
