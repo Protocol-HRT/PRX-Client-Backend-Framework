@@ -27,7 +27,7 @@ class NavigationSeederTest extends TestCase
         $this->seed(NavigationSeeder::class);
 
         $this->assertSame(3, Menu::count());
-        $this->assertSame(9, MenuItem::count());
+        $this->assertSame(10, MenuItem::count());
         $this->assertSame(3, RegionItem::count());
 
         foreach (['about-us', 'how-it-works', 'faq', 'contact-us', 'privacy-policy', 'terms-and-conditions'] as $slug) {
@@ -46,7 +46,7 @@ class NavigationSeederTest extends TestCase
             ->json('data.regions');
 
         $this->assertSame('main-nav', $regions['header'][0]['menu']['slug']);
-        $this->assertCount(4, $regions['header'][0]['menu']['items']);
+        $this->assertCount(5, $regions['header'][0]['menu']['items']);
         $this->assertSame(
             ['footer-quick-links', 'footer-legal'],
             array_column(array_column($regions['footer'], 'menu'), 'slug'),
@@ -65,7 +65,7 @@ class NavigationSeederTest extends TestCase
         $this->seed(NavigationSeeder::class);
 
         $this->assertSame(3, Menu::count());
-        $this->assertSame(9, MenuItem::count());
+        $this->assertSame(10, MenuItem::count());
         $this->assertSame(3, RegionItem::count());
         $this->assertSame('Our Real About Copy', $existing->fresh()->title);
         $this->assertSame(1, Page::where('slug', 'about-us')->count());

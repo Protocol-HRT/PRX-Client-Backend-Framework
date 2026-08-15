@@ -58,6 +58,9 @@ class NavigationSeeder extends Seeder
         $this->pageItem($mainNav, 'How It Works', $pages['how-it-works']);
         $this->pageItem($mainNav, 'FAQ', $pages['faq']);
         $this->pageItem($mainNav, 'About', $pages['about-us']);
+        // badge "cta" renders as the header button, not a nav link — the
+        // frontend filters on it, keeping the CTA admin-managed.
+        $this->urlItem($mainNav, 'Get Started', '/stacks', badge: 'cta');
 
         $quickLinks = Menu::create([
             'name' => 'Footer Quick Links',
@@ -133,13 +136,14 @@ class NavigationSeeder extends Seeder
         ]);
     }
 
-    private function urlItem(Menu $menu, string $label, string $url): MenuItem
+    private function urlItem(Menu $menu, string $label, string $url, ?string $badge = null): MenuItem
     {
         return MenuItem::create([
             'menu_id' => $menu->id,
             'label' => $label,
             'link_type' => MenuLinkType::Url,
             'url' => $url,
+            'badge' => $badge,
             'enabled' => true,
         ]);
     }
