@@ -143,4 +143,41 @@ class PageEndpointTest extends TestCase
         $this->assertSame('hero', $sections[0]['type']);
         $this->assertArrayHasKey('headline', $sections[0]['data']);
     }
+
+    // ─── Cache invalidation ───────────────────────────────────────────
+
+    public function test_show_reflects_page_update_immediately(): void
+    {
+        $page = Page::factory()->create(['slug' => 'live-edit', 'title' => 'Before']);
+
+        $this->getJson('/api/v1/pages/live-edit')
+            ->assertJsonPath('data.title', 'Before');
+
+        $page->update(['title' => 'After']);
+
+        $this->getJson('/api/v1/pages/live-edit')
+            ->assertJsonPath('data.title', 'After');
+    }
+
+    public function test_show_reflects_section_change_immediately(): void
+    {
+        $page = Page::factory()->create(['slug' => 'live-sections']);
+        $this->getJson('/api/v1/pages/live-sections')
+            ->assertJsonCount(0, 'data.sections');
+
+        PageSection::factory()->hero()->create(['page_id' => $page->id, 'position' => 1]);
+
+        $this->getJson('/api/v1/pages/live-sections')
+            ->assertJsonCount(1, 'data.sections');
+    }
+
+    public function test_index_reflects_new_page_immediately(): void
+    {
+        Page::factory()->create(['slug' => 'first']);
+        $this->getJson('/api/v1/pages')->assertJsonCount(1, 'data');
+
+        Page::factory()->create(['slug' => 'second']);
+
+        $this->getJson('/api/v1/pages')->assertJsonCount(2, 'data');
+    }
 }

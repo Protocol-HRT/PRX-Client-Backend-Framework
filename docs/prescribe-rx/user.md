@@ -4,7 +4,7 @@
 
 ## What it is
 
-PrescribeRx is the in-house telehealth platform owned by the same client as ProtocolHRT. The unified-intake API lets this site:
+PrescribeRx is the in-house telehealth platform owned by the same client as PrescribeRx Open Source Backend. The unified-intake API lets this site:
 
 - **Submit a new patient + encounter + intake answers** in a single API call (`POST /telehealth/intake/unified`)
 - **Fetch the dynamic intake question schema** for any encounter type (`GET /telehealth/encounter-types/{id}/schema`) so the public site's intake wizard can render the right questions per protocol type
@@ -57,7 +57,7 @@ Expected on success: a green `✓` line + a list of encounter type names. On fai
 
 ## What this integration is *NOT* responsible for
 
-- **Local product catalog** — products and packages displayed on protocolhrt.com are **manually curated** in the local CMS (custom images + descriptions). Each product has a `prescribe_rx_product_id` mapping field so when the user adds the product to the cart and submits intake, the right remote product is referenced.
+- **Local product catalog** — products and packages displayed on PrescribeRx Open Source Backend.com are **manually curated** in the local CMS (custom images + descriptions). Each product has a `prescribe_rx_product_id` mapping field so when the user adds the product to the cart and submits intake, the right remote product is referenced.
 - **Local checkout** — for clients who use NMI / Authorize.net directly, the Payments module owns checkout. This integration only fires if the client routes orders through prescribe-rx.
 - **Bedrock LLM protocol generator** — the future "AI-suggested protocol" feature on the homepage hero is a separate integration (AWS Bedrock direct, same AWS account). The prescribe-rx side has its own Bedrock-backed protocol generator but it returns long-form clinical protocols; this site needs a "suggestive" variant. That's deferred work.
 

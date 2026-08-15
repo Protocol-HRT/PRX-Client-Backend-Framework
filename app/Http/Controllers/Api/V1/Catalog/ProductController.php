@@ -6,6 +6,7 @@ use App\Enums\CatalogStatus;
 use App\Http\Controllers\Api\V1\ApiController;
 use App\Http\Resources\Api\V1\Catalog\ProductResource;
 use App\Models\Catalog\Product;
+use Dedoc\Scramble\Attributes\QueryParameter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -20,13 +21,15 @@ class ProductController extends ApiController
      * List published catalog products.
      *
      * Returns a paginated list of published products with categories and tags.
-     * Supports filtering by category slug, tag slug, featured flag, and name/subtitle search.
-     *
      *
      * @tags Catalog
      *
      * @unauthenticated
      */
+    #[QueryParameter('search', 'Filter by product name or subtitle.', type: 'string', example: 'testosterone')]
+    #[QueryParameter('price_min', 'Filter products with an effective price at or above this amount (USD).', type: 'float', infer: false, example: 50)]
+    #[QueryParameter('price_max', 'Filter products with an effective price at or below this amount (USD).', type: 'float', infer: false, example: 300)]
+    #[QueryParameter('per_page', 'Results per page (1–50, default 15).', type: 'integer', example: 15)]
     public function index(Request $request): AnonymousResourceCollection
     {
         $perPage = min((int) $request->integer('per_page', 15), 50);
@@ -43,10 +46,27 @@ class ProductController extends ApiController
                 fn ($q) => $q->where('slug', $request->string('tag'))
             ))
             ->when($request->boolean('featured'), fn ($q) => $q->where('is_featured', true))
+            ->when($request->boolean('in_stock'), fn ($q) => $q->where('is_in_stock', true))
             ->when($request->filled('search'), fn ($q) => $q->where(function ($q) use ($request): void {
                 $term = '%'.$request->string('search').'%';
                 $q->where('name', 'like', $term)->orWhere('subtitle', 'like', $term);
             }))
+            ->when(
+                $request->filled('price_min') || $request->filled('price_max'),
+                function ($q) use ($request): void {
+                    $min = $request->filled('price_min') ? (float) $request->input('price_min') : null;
+                    $max = $request->filled('price_max') ? (float) $request->input('price_max') : null;
+
+                    $q->where(function ($q) use ($min, $max): void {
+                        if ($min !== null) {
+                            $q->whereRaw('COALESCE(sale_price, retail_price) >= ? + 0', [$min]);
+                        }
+                        if ($max !== null) {
+                            $q->whereRaw('COALESCE(sale_price, retail_price) <= ? + 0', [$max]);
+                        }
+                    });
+                }
+            )
             ->orderBy('position')
             ->orderBy('name')
             ->paginate($perPage);

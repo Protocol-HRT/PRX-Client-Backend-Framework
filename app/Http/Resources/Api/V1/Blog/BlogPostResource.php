@@ -8,6 +8,9 @@ use Illuminate\Support\Facades\Storage;
 
 class BlogPostResource extends JsonResource
 {
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray(Request $request): array
     {
         return [
@@ -20,11 +23,12 @@ class BlogPostResource extends JsonResource
                 $this->content
             ),
             'hero_image_url' => $this->hero_image_path ? Storage::url($this->hero_image_path) : null,
-            'gallery' => collect($this->gallery ?? [])->map(fn ($p) => Storage::url($p))->values(),
+            'gallery' => collect($this->gallery ?? [])->map(fn ($p) => Storage::url($p))->values()->all(),
             'status' => $this->status->value,
-            'featured' => $this->featured,
+            'featured' => (bool) $this->featured,
             'published_at' => $this->published_at?->toISOString(),
-            'read_time_minutes' => $this->read_time_minutes,
+            'updated_at' => $this->updated_at?->toISOString(),
+            'read_time_minutes' => $this->read_time_minutes !== null ? (int) $this->read_time_minutes : null,
             'author' => $this->whenLoaded('author', fn () => [
                 'id' => $this->author->id,
                 'name' => $this->author->name,

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\PageStatus;
+use App\Models\Cms\PageRevision;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -20,6 +21,7 @@ class Page extends Model
         'slug',
         'status',
         'template',
+        'title_banner',
         'meta_title',
         'meta_description',
         'og_image_path',
@@ -33,6 +35,7 @@ class Page extends Model
     {
         return [
             'status' => PageStatus::class,
+            'title_banner' => 'array',
             'noindex' => 'boolean',
             'publish_at' => 'datetime',
         ];
@@ -41,6 +44,11 @@ class Page extends Model
     public function sections(): HasMany
     {
         return $this->hasMany(PageSection::class)->orderBy('position');
+    }
+
+    public function revisions(): HasMany
+    {
+        return $this->hasMany(PageRevision::class)->latest('id');
     }
 
     public function creator(): BelongsTo

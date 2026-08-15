@@ -20,6 +20,7 @@ class ListProducts extends ListRecords
     {
         return [
             Action::make('sync_prx')
+                ->visible(fn (): bool => auth()->user()?->can('Create:Product') ?? false)
                 ->label('Sync from PRX')
                 ->icon('heroicon-o-arrow-path')
                 ->color('gray')

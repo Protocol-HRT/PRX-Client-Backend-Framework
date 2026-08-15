@@ -2,10 +2,28 @@
 
 namespace App\Providers;
 
+use App\Models\Blog\BlogCategory;
+use App\Models\Blog\BlogPost;
+use App\Models\Catalog\Category;
+use App\Models\Catalog\Package;
+use App\Models\Catalog\Product;
+use App\Models\Cms\FlexibleSectionType;
+use App\Models\Cms\GlobalSection;
+use App\Models\Cms\Menu;
+use App\Models\Cms\MenuItem;
+use App\Models\Cms\RegionItem;
+use App\Models\Page;
+use App\Models\PageSection;
+use App\Observers\CmsCacheObserver;
+use App\Observers\PageSectionObserver;
+use App\Services\Cms\PageRevisionService;
+use App\Services\Cms\SectionRegistry;
 use App\Services\Payments\PaymentGatewayManager;
+use App\Settings\BrandSettings;
 use Dedoc\Scramble\Scramble;
 use Dedoc\Scramble\Support\RouteInfo;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
@@ -16,12 +34,54 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(PaymentGatewayManager::class);
+        $this->app->singleton(SectionRegistry::class);
+        $this->app->singleton(PageRevisionService::class);
     }
 
     public function boot(): void
     {
         $this->configureRateLimiters();
         $this->configureApiDocs();
+        $this->configureCmsObservers();
+        $this->configureBrandMailFrom();
+    }
+
+    /**
+     * Outbound mail carries the install's brand name, not the .env app name.
+     * Rescue-guarded: the settings table doesn't exist during install.
+     */
+    private function configureBrandMailFrom(): void
+    {
+        $brandName = rescue(fn (): ?string => app(BrandSettings::class)->name, null, false);
+
+        if (filled($brandName)) {
+            config(['mail.from.name' => $brandName]);
+        }
+    }
+
+    private function configureCmsObservers(): void
+    {
+        // Any CMS content write bumps the versioned public-payload cache.
+        Page::observe(CmsCacheObserver::class);
+        PageSection::observe(CmsCacheObserver::class);
+        PageSection::observe(PageSectionObserver::class);
+        FlexibleSectionType::observe(CmsCacheObserver::class);
+        GlobalSection::observe(CmsCacheObserver::class);
+        Menu::observe(CmsCacheObserver::class);
+        MenuItem::observe(CmsCacheObserver::class);
+        RegionItem::observe(CmsCacheObserver::class);
+
+        // Menu items reference linkable entities by short alias so DB rows
+        // don't couple to class names. Non-enforcing: other morphs (tags,
+        // categories pivots) keep their stored class-name behavior.
+        Relation::morphMap([
+            'page' => Page::class,
+            'product' => Product::class,
+            'package' => Package::class,
+            'catalog_category' => Category::class,
+            'blog_post' => BlogPost::class,
+            'blog_category' => BlogCategory::class,
+        ]);
     }
 
     private function configureApiDocs(): void

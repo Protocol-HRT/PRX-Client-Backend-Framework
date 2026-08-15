@@ -3,6 +3,7 @@
 namespace App\Cms\Sections;
 
 use App\Enums\SectionType;
+use App\Filament\Support\SectionImagePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 
@@ -45,8 +46,14 @@ class VideoEmbedSection extends SectionBlueprint
             TextInput::make('heading')->maxLength(255),
             TextInput::make('caption')->maxLength(500),
             TextInput::make('video_url')->required()->url()->maxLength(2048)->helperText('YouTube or Vimeo URL.'),
-            TextInput::make('poster_image')->label('Poster image path')->maxLength(2048),
+            SectionImagePicker::make('poster_image')->label('Poster image'),
             Select::make('theme')->options(['light' => 'Light', 'dark' => 'Dark', 'cream' => 'Cream'])->default('light')->native(false),
         ];
+    }
+
+    /** @return array<string, string> */
+    public function fieldKinds(): array
+    {
+        return ['poster_image' => 'image'];
     }
 }

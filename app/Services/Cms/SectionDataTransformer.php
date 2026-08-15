@@ -1,0 +1,229 @@
+<?php
+
+namespace App\Services\Cms;
+
+use App\Cms\FlexibleDefinition;
+use App\Models\Cms\GlobalSection;
+use App\Models\PageSection;
+use Illuminate\Support\Collection;
+
+/**
+ * Turns raw section rows into the frontend section envelope:
+ *
+ *   { type, origin: code|flexible, anchor, global, data }
+ *
+ * Values whose keys are declared in the definition's fieldKinds() are
+ * transformed API-side (media ids -> url objects; later: catalog inlining).
+ * Two passes keep it one query per resource kind: collect every referenced
+ * id first, batch-load, then rewrite.
+ *
+ * Disabled sections and sections whose type no longer resolves are skipped.
+ */
+class SectionDataTransformer
+{
+    public function __construct(
+        private readonly SectionRegistry $registry,
+        private readonly MediaResolver $media,
+        private readonly CatalogInliner $catalog,
+    ) {}
+
+    /**
+     * @param  Collection<int, PageSection>  $sections
+     * @return list<array<string, mixed>>
+     */
+    public function transform(Collection $sections): array
+    {
+        $prepared = [];
+
+        foreach ($sections as $section) {
+            if (! $section->enabled) {
+                continue;
+            }
+
+            // Global indirection: the referenced global supplies type + data.
+            $global = $section->global_section_id !== null ? $section->globalSection : null;
+
+            if ($section->global_section_id !== null && ($global === null || ! $global->enabled)) {
+                continue;
+            }
+
+            $definition = $this->registry->resolve($global->type ?? $section->type);
+
+            if ($definition === null) {
+                continue;
+            }
+
+            $prepared[] = [
+                'section' => $section,
+                'definition' => $definition,
+                'global' => $global,
+                'data' => ($global !== null ? $global->data : $section->data) ?? [],
+            ];
+        }
+
+        $this->primeMedia($prepared);
+
+        return array_map(function (array $row): array {
+            $data = $row['data'];
+
+            foreach ($row['definition']->fieldKinds() as $path => $kind) {
+                $this->walk($data, explode('.', $path), fn (mixed $value): mixed => $this->transformValue($kind, $value));
+            }
+
+            $data = $row['definition']->resolveData($data);
+
+            $envelope = [
+                'type' => $row['definition']->type(),
+                'origin' => $row['definition']->isFlexible() ? 'flexible' : 'code',
+                'anchor' => $row['section']->anchor_id,
+                'global' => $row['global'] !== null ? [
+                    'id' => $row['global']->id,
+                    'slug' => $row['global']->slug,
+                    'name' => $row['global']->name,
+                ] : null,
+                'data' => $data,
+            ];
+
+            if ($row['definition'] instanceof FlexibleDefinition) {
+                $envelope['schema'] = $row['definition']->schemaMap();
+            }
+
+            return $envelope;
+        }, $prepared);
+    }
+
+    /**
+     * Build one section envelope outside a page context (layout regions).
+     * Pass the global when the content comes from a global block; returns
+     * null when the type doesn't resolve or the global is disabled.
+     *
+     * @param  array<string, mixed>|null  $data
+     * @return array<string, mixed>|null
+     */
+    public function envelopeFor(?string $type, ?array $data, ?GlobalSection $global = null, ?string $anchor = null): ?array
+    {
+        if ($global !== null) {
+            if (! $global->enabled) {
+                return null;
+            }
+
+            $type = $global->type;
+            $data = $global->data;
+        }
+
+        $definition = $type !== null ? $this->registry->resolve($type) : null;
+
+        if ($definition === null) {
+            return null;
+        }
+
+        $data ??= [];
+
+        foreach ($definition->fieldKinds() as $path => $kind) {
+            $this->walk($data, explode('.', $path), fn (mixed $value): mixed => $this->transformValue($kind, $value));
+        }
+
+        $data = $definition->resolveData($data);
+
+        $envelope = [
+            'type' => $definition->type(),
+            'origin' => $definition->isFlexible() ? 'flexible' : 'code',
+            'anchor' => $anchor,
+            'global' => $global !== null ? [
+                'id' => $global->id,
+                'slug' => $global->slug,
+                'name' => $global->name,
+            ] : null,
+            'data' => $data,
+        ];
+
+        if ($definition instanceof FlexibleDefinition) {
+            $envelope['schema'] = $definition->schemaMap();
+        }
+
+        return $envelope;
+    }
+
+    /**
+     * Batch-load every media id referenced by any prepared section.
+     *
+     * @param  list<array<string, mixed>>  $prepared
+     */
+    private function primeMedia(array $prepared): void
+    {
+        $ids = [];
+
+        foreach ($prepared as $row) {
+            foreach ($row['definition']->fieldKinds() as $path => $kind) {
+                if ($kind !== 'image') {
+                    continue;
+                }
+
+                $this->walk($row['data'], explode('.', $path), function (mixed $value) use (&$ids): mixed {
+                    if (is_numeric($value)) {
+                        $ids[] = (int) $value;
+                    }
+
+                    return $value;
+                });
+            }
+        }
+
+        $this->media->prime($ids);
+    }
+
+    private function transformValue(string $kind, mixed $value): mixed
+    {
+        return match ($kind) {
+            'image' => $this->media->resolve($value),
+            'products' => $this->catalog->productsByIds($this->intList($value)),
+            'packages' => $this->catalog->packagesByIds($this->intList($value)),
+            'svg' => is_string($value) ? SvgSanitizer::sanitize($value) : null,
+            default => $value,
+        };
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function intList(mixed $value): array
+    {
+        return array_values(array_map('intval', array_filter((array) $value, 'is_numeric')));
+    }
+
+    /**
+     * Apply $fn to every value at a dot path within $data, where a `*` segment
+     * fans out over list items (e.g. "physicians.*.image").
+     *
+     * @param  array<array-key, mixed>  $data
+     * @param  list<string>  $segments
+     */
+    private function walk(array &$data, array $segments, callable $fn): void
+    {
+        $key = array_shift($segments);
+
+        if ($key === '*') {
+            foreach ($data as &$item) {
+                if ($segments === []) {
+                    $item = $fn($item);
+                } elseif (is_array($item)) {
+                    $this->walk($item, $segments, $fn);
+                }
+            }
+
+            return;
+        }
+
+        if ($segments === []) {
+            if (array_key_exists($key, $data)) {
+                $data[$key] = $fn($data[$key]);
+            }
+
+            return;
+        }
+
+        if (isset($data[$key]) && is_array($data[$key])) {
+            $this->walk($data[$key], $segments, $fn);
+        }
+    }
+}

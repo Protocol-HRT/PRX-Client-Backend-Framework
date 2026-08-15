@@ -230,6 +230,8 @@ class PackageForm
                         ->columns(1)
                         ->components([
                             Toggle::make('is_featured')->label('Featured'),
+                            Toggle::make('is_in_stock')->label('In stock')->default(true)
+                                ->hintIcon(Heroicon::InformationCircle, 'Uncheck to hide this package from in-stock filters and surface an out-of-stock indicator on the frontend.'),
                             Toggle::make('requires_lab')->label('Requires lab work'),
                         ]),
                 ])->columnSpan(1),

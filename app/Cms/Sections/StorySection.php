@@ -3,6 +3,7 @@
 namespace App\Cms\Sections;
 
 use App\Enums\SectionType;
+use App\Filament\Support\SectionImagePicker;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -42,7 +43,7 @@ class StorySection extends SectionBlueprint
                     'name' => 'Dr. [First Name] [Last Name]',
                     'title' => 'Founding Physician · Lifestyle Management Expert',
                     'badge' => 'Published Author & Clinician',
-                    'image' => '/images/physicians/physician-1-formal.webp',
+                    'image' => null,
                     'image_alt' => 'Dr. [First Name] [Last Name], Founding Physician at [Brand Name]',
                     'body' => "Dr. [First Name] [Last Name]'s path to founding this practice began with a personal experience that conventional medicine couldn't solve. That pursuit of answers — of what the body is truly capable of with the right hormones, the right peptides, and the right protocol — became [Brand Name].",
                 ],
@@ -50,7 +51,7 @@ class StorySection extends SectionBlueprint
                     'name' => 'Dr. [First Name] [Last Name]',
                     'title' => 'Chief Medical Officer · ER Physician · Peptide Expert',
                     'badge' => 'World-Class Hormone Optimization Specialist',
-                    'image' => '/images/physicians/physician-2-formal.webp',
+                    'image' => null,
                     'image_alt' => 'Dr. [First Name] [Last Name], Chief Medical Officer at [Brand Name]',
                     'body' => 'Dr. [First Name] [Last Name] brings decades of frontline ER medicine and deep mastery of hormone and peptide science that most physicians never study. One of the most respected voices in hormone optimization, they built the clinical foundation that makes [Brand Name] unlike anything else in telemedicine.',
                 ],
@@ -81,7 +82,7 @@ class StorySection extends SectionBlueprint
                     TextInput::make('badge')
                         ->maxLength(255)
                         ->helperText('Gold pill below the title (e.g. "Author: Some Book").'),
-                    TextInput::make('image')->label('Portrait image path')->maxLength(2048),
+                    SectionImagePicker::make('image')->label('Portrait image'),
                     TextInput::make('image_alt')->maxLength(255),
                     Textarea::make('body')
                         ->label('Bio')
@@ -102,5 +103,11 @@ class StorySection extends SectionBlueprint
                         ->maxLength(255),
                 ]),
         ];
+    }
+
+    /** @return array<string, string> */
+    public function fieldKinds(): array
+    {
+        return ['physicians.*.image' => 'image'];
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Cms\Sections;
 
 use App\Enums\SectionType;
+use App\Filament\Support\SectionImagePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -65,9 +66,15 @@ class CtaBannerSection extends SectionBlueprint
             Section::make('Style')
                 ->columns(2)
                 ->components([
-                    TextInput::make('background_image')->label('Background image path')->maxLength(2048),
+                    SectionImagePicker::make('background_image')->label('Background image'),
                     Select::make('theme')->options(['light' => 'Light', 'dark' => 'Dark', 'cream' => 'Cream'])->default('dark')->native(false),
                 ]),
         ];
+    }
+
+    /** @return array<string, string> */
+    public function fieldKinds(): array
+    {
+        return ['background_image' => 'image'];
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Cms\Sections;
 
 use App\Enums\SectionType;
+use App\Filament\Support\SectionImagePicker;
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Textarea;
@@ -45,7 +46,7 @@ class PhysiciansSection extends SectionBlueprint
                     'credentials' => 'MD, FACS',
                     'title' => 'Founding Physician & CEO',
                     'specialty' => 'Lifestyle Medicine · Longevity Expert',
-                    'image' => '/images/physicians/physician-1-card.webp',
+                    'image' => null,
                     'image_alt' => 'Dr. [First Name] [Last Name], MD — Founding Physician and CEO of [Brand Name]',
                     'accent_color' => '#5a8a5e',
                     'stats' => [
@@ -60,7 +61,7 @@ class PhysiciansSection extends SectionBlueprint
                     'credentials' => 'MD, FACEP',
                     'title' => 'Chief Medical Officer',
                     'specialty' => 'Emergency Medicine · Peptide Science',
-                    'image' => '/images/physicians/physician-2-card.webp',
+                    'image' => null,
                     'image_alt' => 'Dr. [First Name] [Last Name], MD — Chief Medical Officer at [Brand Name]',
                     'accent_color' => '#c9a84c',
                     'stats' => [
@@ -107,7 +108,7 @@ class PhysiciansSection extends SectionBlueprint
                     ColorPicker::make('accent_color')
                         ->default('#5a8a5e')
                         ->helperText('Hex color used for the top accent bar, credentials chip, and quote rule.'),
-                    TextInput::make('image')->label('Portrait image path')->maxLength(2048),
+                    SectionImagePicker::make('image')->label('Portrait image'),
                     TextInput::make('image_alt')->maxLength(255),
                     Textarea::make('quote')->rows(3)->maxLength(500)->columnSpanFull(),
                     Repeater::make('stats')
@@ -136,5 +137,11 @@ class PhysiciansSection extends SectionBlueprint
                         ->columnSpanFull(),
                 ]),
         ];
+    }
+
+    /** @return array<string, string> */
+    public function fieldKinds(): array
+    {
+        return ['physicians.*.image' => 'image'];
     }
 }

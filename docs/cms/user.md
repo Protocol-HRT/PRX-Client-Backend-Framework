@@ -89,7 +89,7 @@ To view a published page from the edit screen, use the **View public page** acti
 Not yet supported in v1. Workaround: create a new page, then re-add and re-fill its sections. Duplicate action coming soon.
 
 ### Reset a section to defaults
-Delete the section, then re-add the same type. The form pre-fills with the section type's default content (matching the original ProtocolHRT home-page copy for the imported types).
+Delete the section, then re-add the same type. The form pre-fills with the section type's default content (matching the original PrescribeRx Open Source Backend home-page copy for the imported types).
 
 ### Take a section live but hidden
 Add the section with **Enabled** off. When you flip it on later, it appears on the next page load — no other action needed.
@@ -105,7 +105,7 @@ Add the section with **Enabled** off. When you flip it on later, it appears on t
 - **No audit trail / version history** — current state only. Coming with the Audit module.
 - **No revisions** — saving overwrites the current draft.
 - **Image picker is path-string only** — Curator media library is installed, but section forms use TextInput for image paths in this release.
-- Section types whose Blade markup hasn't yet been adjusted to read DB data will render their hard-coded ProtocolHRT defaults regardless of the data you enter. As of this release, the following five sections fully read from the DB: **Hero, FAQ, Pricing tiers, How it works, Final call-to-action**, plus all five generic types (Text block, Image + text split, CTA banner, Features grid, Video embed). The remaining 8 imported sections will be wired up next.
+- Section types whose Blade markup hasn't yet been adjusted to read DB data will render their hard-coded PrescribeRx Open Source Backend defaults regardless of the data you enter. As of this release, the following five sections fully read from the DB: **Hero, FAQ, Pricing tiers, How it works, Final call-to-action**, plus all five generic types (Text block, Image + text split, CTA banner, Features grid, Video embed). The remaining 8 imported sections will be wired up next.
 
 ## Troubleshooting
 

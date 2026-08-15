@@ -3,9 +3,9 @@
 namespace App\Data\Pages;
 
 use App\Enums\PageStatus;
-use Spatie\LaravelData\Attributes\WithCast;
 use Spatie\LaravelData\Attributes\Validation\Max;
 use Spatie\LaravelData\Attributes\Validation\Required;
+use Spatie\LaravelData\Attributes\WithCast;
 use Spatie\LaravelData\Casts\EnumCast;
 use Spatie\LaravelData\Data;
 
@@ -28,5 +28,7 @@ class PageData extends Data
         public ?string $og_image_path = null,
         public bool $noindex = false,
         public ?string $publish_at = null,
+        /** @var array{enabled?: bool, background_image?: int|string|null, title_override?: string|null, subtitle?: string|null, intro_text?: string|null, show_breadcrumbs?: bool}|null */
+        public ?array $title_banner = null,
     ) {}
 }

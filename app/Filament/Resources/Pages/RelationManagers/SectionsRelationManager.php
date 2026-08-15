@@ -2,15 +2,23 @@
 
 namespace App\Filament\Resources\Pages\RelationManagers;
 
-use App\Enums\SectionType;
+use App\Actions\Cms\DetachGlobalSectionAction;
+use App\Filament\Support\SectionFormBuilder;
+use App\Models\Cms\GlobalSection;
+use App\Models\PageSection;
+use App\Services\Cms\SectionRegistry;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
@@ -30,18 +38,53 @@ class SectionsRelationManager extends RelationManager
 
     public function form(Schema $schema): Schema
     {
+        $registry = app(SectionRegistry::class);
+
+        // A section either owns its own content ("new") or references a
+        // reusable global block. Global-backed sections hide the type/data
+        // fields — the block itself is the single place its content is edited.
+        $ownsOwnContent = fn (Get $get, string $operation, ?PageSection $record): bool => $operation === 'edit'
+            ? $record?->global_section_id === null
+            : $get('source') !== 'global';
+
         return $schema
             ->components([
                 Section::make('Section')
                     ->columns(2)
                     ->components([
+                        Radio::make('source')
+                            ->options([
+                                'new' => 'New section',
+                                'global' => 'Reuse a global block',
+                            ])
+                            ->default('new')
+                            ->live()
+                            ->dehydrated(false)
+                            ->hiddenOn('edit')
+                            ->columnSpanFull(),
+                        Select::make('global_section_id')
+                            ->label('Global block')
+                            ->options(fn (): array => GlobalSection::query()
+                                ->where('enabled', true)
+                                ->orderBy('name')
+                                ->pluck('name', 'id')
+                                ->all())
+                            ->searchable()
+                            ->visible(fn (Get $get, string $operation): bool => $operation !== 'edit' && $get('source') === 'global')
+                            ->required(fn (Get $get, string $operation): bool => $operation !== 'edit' && $get('source') === 'global'),
                         Select::make('type')
-                            ->options(SectionType::options())
-                            ->required()
+                            ->options($registry->options())
                             ->reactive()
                             ->disabledOn('edit')
                             ->native(false)
+                            ->visible($ownsOwnContent)
+                            ->required($ownsOwnContent)
                             ->helperText('The section type cannot be changed after creation. Delete and re-add to swap types.'),
+                        Placeholder::make('global_block_notice')
+                            ->hiddenLabel()
+                            ->columnSpanFull()
+                            ->visible(fn (string $operation, ?PageSection $record): bool => $operation === 'edit' && $record?->global_section_id !== null)
+                            ->content(fn (?PageSection $record): string => 'This section renders the global block "'.($record?->globalSection?->name ?? 'unknown').'". Edit the block itself to change its content, or detach below.'),
                         TextInput::make('anchor_id')
                             ->label('Anchor ID')
                             ->maxLength(64)
@@ -50,34 +93,16 @@ class SectionsRelationManager extends RelationManager
                             ->default(true)
                             ->helperText('Disabled sections are still saved but skipped on render.'),
                     ]),
-                ...static::dynamicSchema(),
-            ])
-            ->statePath('data');
-    }
-
-    /**
-     * Build a Filament Group per SectionType, visible only when that type is selected.
-     * Each Group's components are spread under the JSON `data` column.
-     *
-     * @return array<int, Group>
-     */
-    protected static function dynamicSchema(): array
-    {
-        $groups = [];
-
-        foreach (SectionType::cases() as $case) {
-            $blueprint = $case->blueprint();
-
-            $groups[] = Group::make($blueprint->formSchema())
-                ->statePath('data')
-                ->visible(fn (Get $get) => $get('../type') === $case->value);
-        }
-
-        return $groups;
+                Group::make([
+                    ...SectionFormBuilder::typeGroups(),
+                ])->visible($ownsOwnContent),
+            ]);
     }
 
     public function table(Table $table): Table
     {
+        $registry = app(SectionRegistry::class);
+
         return $table
             ->reorderable('position')
             ->defaultSort('position')
@@ -87,7 +112,12 @@ class SectionsRelationManager extends RelationManager
                     ->sortable(),
                 TextColumn::make('type')
                     ->badge()
-                    ->formatStateUsing(fn (SectionType $state): string => $state->blueprint()->label()),
+                    ->formatStateUsing(fn (string $state): string => $registry->labelFor($state)),
+                TextColumn::make('globalSection.name')
+                    ->label('Global')
+                    ->badge()
+                    ->color('info')
+                    ->placeholder('—'),
                 TextColumn::make('anchor_id')
                     ->label('Anchor')
                     ->placeholder('—')
@@ -99,23 +129,47 @@ class SectionsRelationManager extends RelationManager
             ])
             ->filters([
                 SelectFilter::make('type')
-                    ->options(SectionType::options()),
+                    ->options($registry->options()),
             ])
             ->headerActions([
                 CreateAction::make()
-                    ->mutateDataUsing(function (array $data): array {
+                    ->mutateDataUsing(function (array $data) use ($registry): array {
+                        if (! empty($data['global_section_id'])) {
+                            // Global-backed section: mirror the block's type and
+                            // keep the local payload empty — content is rendered
+                            // from the block itself.
+                            $global = GlobalSection::query()->find($data['global_section_id']);
+                            $data['type'] = $global?->type;
+                            $data['data'] = [];
+
+                            return $data;
+                        }
+
                         // Merge in defaults for unset keys when creating a new section
-                        $type = SectionType::from($data['type']);
-                        $data['data'] = array_replace(
-                            $type->blueprint()->defaults(),
-                            $data['data'] ?? [],
-                        );
+                        $defaults = $registry->resolve($data['type'])?->defaults() ?? [];
+                        $data['data'] = array_replace($defaults, $data['data'] ?? []);
 
                         return $data;
                     }),
             ])
             ->recordActions([
                 EditAction::make(),
+                Action::make('detach')
+                    ->label('Detach copy')
+                    ->icon('heroicon-o-scissors')
+                    ->visible(fn (PageSection $record): bool => $record->global_section_id !== null
+                        && (auth()->user()?->can('Update:Page') ?? false))
+                    ->requiresConfirmation()
+                    ->modalDescription('This copies the global block\'s current content into this section and stops following the block. Future edits to the block will no longer affect this section.')
+                    ->action(function (PageSection $record): void {
+                        app(DetachGlobalSectionAction::class)->execute($record);
+
+                        Notification::make()
+                            ->title('Section detached')
+                            ->body('The section now owns an independent copy of the content.')
+                            ->success()
+                            ->send();
+                    }),
                 DeleteAction::make(),
             ])
             ->toolbarActions([

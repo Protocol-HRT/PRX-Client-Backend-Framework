@@ -2,6 +2,8 @@
 
 namespace App\Http\Resources\Api\V1\Cms;
 
+use App\Services\Cms\MediaResolver;
+use App\Services\Cms\SectionDataTransformer;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Storage;
@@ -22,6 +24,7 @@ class PageResource extends JsonResource
         $base = [
             'title' => $this->title,
             'slug' => $this->slug,
+            'title_banner' => $this->resolveTitleBanner(),
             'seo' => [
                 'title' => $this->meta_title ?? $this->title,
                 'description' => $this->meta_description,
@@ -32,13 +35,30 @@ class PageResource extends JsonResource
 
         if ($this->includeSections) {
             $base['sections'] = $this->whenLoaded('sections', function () {
-                return $this->sections->map(fn ($section) => [
-                    'type' => $section->type->value,
-                    'data' => $section->data ?? [],
-                ])->values()->all();
+                return app(SectionDataTransformer::class)->transform($this->sections);
             }, []);
         }
 
         return $base;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function resolveTitleBanner(): ?array
+    {
+        $banner = $this->title_banner;
+
+        if (! is_array($banner) || ! ($banner['enabled'] ?? false)) {
+            return null;
+        }
+
+        return [
+            'title' => filled($banner['title_override'] ?? null) ? $banner['title_override'] : $this->title,
+            'subtitle' => $banner['subtitle'] ?? null,
+            'intro_text' => $banner['intro_text'] ?? null,
+            'show_breadcrumbs' => (bool) ($banner['show_breadcrumbs'] ?? true),
+            'background_image' => app(MediaResolver::class)->resolve($banner['background_image'] ?? null),
+        ];
     }
 }

@@ -37,6 +37,7 @@ class ProductFactory extends Factory
             'badge_text' => null,
             'highlights' => null,
             'is_featured' => false,
+            'is_in_stock' => true,
             'requires_lab' => false,
             'position' => 0,
         ];

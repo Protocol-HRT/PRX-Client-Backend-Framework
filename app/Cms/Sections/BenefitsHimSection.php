@@ -3,6 +3,7 @@
 namespace App\Cms\Sections;
 
 use App\Enums\SectionType;
+use App\Filament\Support\SectionImagePicker;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -37,19 +38,19 @@ class BenefitsHimSection extends SectionBlueprint
             'heading' => 'Reclaim your',
             'emphasis' => 'edge.',
             'lead' => 'Built for men who refuse to accept fatigue, decline, and mediocrity as inevitable. Your hormones drive everything: your strength, drive, clarity, confidence. We put you back in control.',
-            'image' => '/images/lifestyle/him-hero.webp',
+            'image' => null,
             'image_alt' => 'Lean, athletic male physique — the result of testosterone and hormone optimization',
             'cta_label' => 'Build My HIM Protocol',
             'cta_url' => '#pricing',
             'benefits' => [
                 ['category' => 'HORMONES',    'pill' => 'Most Popular',   'title' => 'Testosterone Optimization',
-                 'body' => "Low-T isn't just about libido. It affects your muscle mass, mental clarity, mood, and drive. Our TRT protocols are physician-designed, lab-verified, and built around your bloodwork, not a generic dose."],
+                    'body' => "Low-T isn't just about libido. It affects your muscle mass, mental clarity, mood, and drive. Our TRT protocols are physician-designed, lab-verified, and built around your bloodwork, not a generic dose."],
                 ['category' => 'PERFORMANCE', 'pill' => 'Elite Protocol', 'title' => 'Peptide Therapy',
-                 'body' => 'BPC-157, TB-500, CJC-1295, Ipamorelin: precision peptide stacks for accelerated recovery, lean muscle growth, and cellular regeneration. The same compounds elite athletes have used for years.'],
+                    'body' => 'BPC-157, TB-500, CJC-1295, Ipamorelin: precision peptide stacks for accelerated recovery, lean muscle growth, and cellular regeneration. The same compounds elite athletes have used for years.'],
                 ['category' => 'METABOLIC',   'pill' => 'Transform',      'title' => 'Body Recomposition',
-                 'body' => 'Lose fat. Build muscle. Optimize metabolic function. Our recomposition protocols combine hormone optimization with evidence-based metabolic compounds for measurable body transformation.'],
+                    'body' => 'Lose fat. Build muscle. Optimize metabolic function. Our recomposition protocols combine hormone optimization with evidence-based metabolic compounds for measurable body transformation.'],
                 ['category' => 'VITALITY',    'pill' => 'Restore',        'title' => 'Sexual Health & Vitality',
-                 'body' => 'Restore libido, performance, and confidence with targeted protocols addressing the root hormonal causes, not surface-level symptoms.'],
+                    'body' => 'Restore libido, performance, and confidence with targeted protocols addressing the root hormonal causes, not surface-level symptoms.'],
             ],
         ];
     }
@@ -69,7 +70,7 @@ class BenefitsHimSection extends SectionBlueprint
                     Textarea::make('lead')->rows(3)->maxLength(500)->columnSpanFull(),
                     TextInput::make('cta_label')->maxLength(60),
                     TextInput::make('cta_url')->maxLength(2048),
-                    TextInput::make('image')->label('Lifestyle image path')->maxLength(2048),
+                    SectionImagePicker::make('image')->label('Lifestyle image'),
                     TextInput::make('image_alt')->maxLength(255),
                 ]),
             Repeater::make('benefits')
@@ -85,5 +86,11 @@ class BenefitsHimSection extends SectionBlueprint
                 ->columnSpanFull()
                 ->itemLabel(fn (array $state): ?string => $state['title'] ?? null),
         ];
+    }
+
+    /** @return array<string, string> */
+    public function fieldKinds(): array
+    {
+        return ['image' => 'image'];
     }
 }

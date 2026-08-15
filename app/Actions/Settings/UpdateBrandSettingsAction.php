@@ -25,6 +25,8 @@ class UpdateBrandSettingsAction
             $this->settings->announcement_enabled = $data->announcement_enabled;
             $this->settings->announcement_emphasis = $data->announcement_emphasis;
             $this->settings->announcement_text = $data->announcement_text;
+            $this->settings->site_url = $data->site_url;
+            $this->settings->organization_type = $data->organization_type;
             $this->settings->save();
 
             return $this->settings;

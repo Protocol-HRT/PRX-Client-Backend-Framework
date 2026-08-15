@@ -75,6 +75,7 @@ class PlansTable
             ->toolbarActions([
                 BulkActionGroup::make([
                     BulkAction::make('publish')
+                        ->visible(fn (): bool => auth()->user()?->can('Update:Plan') ?? false)
                         ->label('Approve & Publish')
                         ->icon('heroicon-o-check-circle')
                         ->color('success')
@@ -82,6 +83,7 @@ class PlansTable
                         ->action(fn (Collection $records) => $records->each->update(['status' => CatalogStatus::Published]))
                         ->successNotificationTitle('Plans published'),
                     BulkAction::make('draft')
+                        ->visible(fn (): bool => auth()->user()?->can('Update:Plan') ?? false)
                         ->label('Set to Draft')
                         ->icon('heroicon-o-pencil')
                         ->color('gray')

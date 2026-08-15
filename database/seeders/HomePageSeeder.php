@@ -52,7 +52,7 @@ class HomePageSeeder extends Seeder
         foreach ($order as $i => $type) {
             PageSection::create([
                 'page_id' => $page->id,
-                'type' => $type,
+                'type' => $type->value,
                 'position' => $i + 1,
                 'enabled' => true,
                 'data' => $type->blueprint()->defaults(),

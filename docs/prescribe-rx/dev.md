@@ -4,7 +4,7 @@
 
 ## Why this module exists
 
-PrescribeRx is the canonical clinical backend — patient charts, encounters, prescriptions, orders, product catalog, lab routing, fulfillment. ProtocolHRT (this site) is the marketing + intake front end. The integration's job:
+PrescribeRx is the canonical clinical backend — patient charts, encounters, prescriptions, orders, product catalog, lab routing, fulfillment. PrescribeRx Open Source Backend (this site) is the marketing + intake front end. The integration's job:
 
 1. **Submit new intakes** — when a visitor finishes the intake wizard, we POST to `/telehealth/intake/unified` and prescribe-rx atomically creates the patient, encounter, and intake answers on its side.
 2. **Drive dynamic intake wizards** — the questions on the wizard come from `GET /telehealth/encounter-types/{id}/schema`, so when prescribe-rx adds a question or a new encounter type, the wizard updates without a redeploy here.
@@ -136,7 +136,7 @@ The homepage hero has a placeholder AI Concierge widget (chat UI). The eventual 
 
 Important note from product owner (2026-05-02):
 
-> The prescribe-rx side already has a Bedrock-backed protocol generator, but it returns long-form clinical protocols. The protocolhrt.com flow needs a more "suggestive" variant — click some focus areas, get back products + interaction recommendations.
+> The prescribe-rx side already has a Bedrock-backed protocol generator, but it returns long-form clinical protocols. The PrescribeRx Open Source Backend.com flow needs a more "suggestive" variant — click some focus areas, get back products + interaction recommendations.
 
 Plan when this comes in scope:
 - Same AWS account → use Bedrock direct (no per-call API hop through prescribe-rx)

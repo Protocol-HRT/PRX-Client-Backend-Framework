@@ -4,9 +4,11 @@ namespace App\Filament\Pages\Settings;
 
 use App\Actions\Settings\UpdateBrandSettingsAction;
 use App\Data\Settings\BrandSettingsData;
+use App\Enums\Settings\OrganizationType;
 use App\Settings\BrandSettings;
 use BackedEnum;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -141,6 +143,23 @@ class ManageBrand extends BaseSettingsPage
                             ->rows(2)
                             ->maxLength(500)
                             ->visible(fn (Get $get): bool => (bool) $get('announcement_enabled')),
+                    ]),
+
+                Section::make('Site & Schema')
+                    ->description('Used in JSON-LD structured data for search engine rich results.')
+                    ->columns(2)
+                    ->components([
+                        TextInput::make('site_url')
+                            ->label('Canonical site URL')
+                            ->hintIcon(Heroicon::InformationCircle, 'Full URL of the frontend site, e.g. https://example.com. Used in Organization and WebSite JSON-LD schemas.')
+                            ->url()
+                            ->maxLength(2048)
+                            ->columnSpanFull(),
+                        Select::make('organization_type')
+                            ->label('Organization type')
+                            ->hintIcon(Heroicon::InformationCircle, 'schema.org @type for the Organization JSON-LD block. Choose the type that best describes this business.')
+                            ->options(OrganizationType::class)
+                            ->placeholder('Select type…'),
                     ]),
 
             ])

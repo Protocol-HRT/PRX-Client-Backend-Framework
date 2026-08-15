@@ -11,8 +11,12 @@ use App\Cms\Sections\FinalCtaSection;
 use App\Cms\Sections\HeroSection;
 use App\Cms\Sections\HowItWorksSection;
 use App\Cms\Sections\ImageTextSplitSection;
+use App\Cms\Sections\PackagePricingComparisonSection;
 use App\Cms\Sections\PhysiciansSection;
 use App\Cms\Sections\PricingTiersSection;
+use App\Cms\Sections\ProductCalloutSection;
+use App\Cms\Sections\ProductGridSection;
+use App\Cms\Sections\ProductSliderSection;
 use App\Cms\Sections\ResultsStatsSection;
 use App\Cms\Sections\SectionBlueprint;
 use App\Cms\Sections\StatsMarqueeSection;
@@ -24,7 +28,7 @@ use App\Cms\Sections\VideoEmbedSection;
 
 enum SectionType: string
 {
-    // 13 imported from the protocolhrt template
+    // 13 imported from the PrescribeRx Open Source Backend template
     case Hero = 'hero';
     case StatsMarquee = 'stats-marquee';
     case ResultsStats = 'results-stats';
@@ -45,6 +49,12 @@ enum SectionType: string
     case CtaBanner = 'cta-banner';
     case FeaturesGrid = 'features-grid';
     case VideoEmbed = 'video-embed';
+
+    // Product-aware sections (catalog data inlined at API read time)
+    case ProductSlider = 'product-slider';
+    case ProductGrid = 'product-grid';
+    case ProductCallout = 'product-callout';
+    case PackagePricingComparison = 'package-pricing-comparison';
 
     public function blueprint(): SectionBlueprint
     {
@@ -67,6 +77,10 @@ enum SectionType: string
             self::CtaBanner => app(CtaBannerSection::class),
             self::FeaturesGrid => app(FeaturesGridSection::class),
             self::VideoEmbed => app(VideoEmbedSection::class),
+            self::ProductSlider => app(ProductSliderSection::class),
+            self::ProductGrid => app(ProductGridSection::class),
+            self::ProductCallout => app(ProductCalloutSection::class),
+            self::PackagePricingComparison => app(PackagePricingComparisonSection::class),
         };
     }
 

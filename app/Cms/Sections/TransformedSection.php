@@ -3,6 +3,7 @@
 namespace App\Cms\Sections;
 
 use App\Enums\SectionType;
+use App\Filament\Support\SectionImagePicker;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -42,7 +43,7 @@ class TransformedSection extends SectionBlueprint
                     'name' => '[Ambassador Name]',
                     'title' => 'Entrepreneur · Lifestyle Icon · Ambassador',
                     'protocol' => 'Performance & Hormone Optimization',
-                    'image' => '/images/ambassadors/ambassador-1.webp',
+                    'image' => null,
                     'image_alt' => '[Ambassador Name], [Brand Name] Ambassador',
                     'quote' => '"[Brand Name] delivers exactly what it promises: precision, results, and physician-backed science that actually works at the highest level."',
                 ],
@@ -50,7 +51,7 @@ class TransformedSection extends SectionBlueprint
                     'name' => 'Dr. [First Name] [Last Name]',
                     'title' => 'Chief Medical Officer · ER Physician',
                     'protocol' => 'Clinical Formulation Lead',
-                    'image' => '/images/physicians/physician-2-portrait.png',
+                    'image' => null,
                     'image_alt' => 'Dr. [First Name] [Last Name], Chief Medical Officer',
                     'quote' => '"I built the clinical foundation of [Brand Name] because I believe every person deserves access to the science that elite performers have always had."',
                 ],
@@ -58,17 +59,17 @@ class TransformedSection extends SectionBlueprint
                     'name' => 'Dr. [First Name] [Last Name]',
                     'title' => 'Founding Physician · Author · Clinician',
                     'protocol' => 'Lifestyle & Hormone Integration',
-                    'image' => '/images/physicians/physician-1-portrait.png',
+                    'image' => null,
                     'image_alt' => 'Dr. [First Name] [Last Name], Founding Physician',
                     'quote' => '"My personal experience showed me what the body can truly do with the right protocol. That experience is the DNA of everything we built here."',
                 ],
                 [
-                    'name' => 'Ashley R., NP',
+                    'name' => '[Provider Name], NP',
                     'title' => "Nurse Practitioner · Women's Health",
                     'protocol' => "Women's Hormone Optimization",
-                    'image' => '/images/physicians/provider-3-portrait.png',
-                    'image_alt' => "Ashley R., NP — Nurse Practitioner specializing in women's hormone optimization",
-                    'quote' => "\"What fills my heart every single day is hearing my patients say their lives have completely changed. When a woman finally feels like herself again — her energy, her confidence, her joy — because we optimized her hormones, there is nothing more rewarding.\"",
+                    'image' => null,
+                    'image_alt' => "[Provider Name], NP — Nurse Practitioner specializing in women's hormone optimization",
+                    'quote' => '"What fills my heart every single day is hearing my patients say their lives have completely changed. When a woman finally feels like herself again — her energy, her confidence, her joy — because we optimized her hormones, there is nothing more rewarding."',
                 ],
             ],
         ];
@@ -101,7 +102,7 @@ class TransformedSection extends SectionBlueprint
                         ->label('Protocol pill (mono uppercase)')
                         ->maxLength(120)
                         ->helperText('Small gold pill on the right of the footer (e.g. "Performance & Hormone Optimization").'),
-                    TextInput::make('image')->label('Portrait image path')->maxLength(2048),
+                    SectionImagePicker::make('image')->label('Portrait image'),
                     TextInput::make('image_alt')->maxLength(255),
                     Textarea::make('quote')->rows(4)->required()->columnSpanFull(),
                 ])
@@ -110,5 +111,11 @@ class TransformedSection extends SectionBlueprint
                 ->columnSpanFull()
                 ->itemLabel(fn (array $state): ?string => $state['name'] ?? null),
         ];
+    }
+
+    /** @return array<string, string> */
+    public function fieldKinds(): array
+    {
+        return ['quotes.*.image' => 'image'];
     }
 }

@@ -8,8 +8,14 @@ use Illuminate\Support\Facades\Storage;
 
 class ProductResource extends JsonResource
 {
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray(Request $request): array
     {
+        /** @var list<string> $highlights */
+        $highlights = $this->normalizeHighlights($this->highlights);
+
         return [
             'id' => $this->id,
             'name' => $this->name,
@@ -18,18 +24,21 @@ class ProductResource extends JsonResource
             'short_description' => $this->short_description,
             'description' => $this->when($request->routeIs('api.v1.catalog.products.show'), $this->description),
             'hero_image_url' => $this->hero_image_path ? Storage::url($this->hero_image_path) : null,
-            'gallery' => collect($this->gallery ?? [])->map(fn ($p) => Storage::url($p))->values(),
+            'gallery' => collect($this->gallery ?? [])->map(fn ($p) => Storage::url($p))->values()->all(),
             'status' => $this->status->value,
             'badge_text' => $this->badge_text,
-            'highlights' => $this->normalizeHighlights($this->highlights),
-            'is_featured' => $this->is_featured,
-            'requires_lab' => $this->requires_lab,
+            'highlights' => $highlights,
+            'is_featured' => (bool) $this->is_featured,
+            'is_in_stock' => (bool) $this->is_in_stock,
+            'is_on_sale' => $this->sale_price !== null,
+            'requires_lab' => (bool) $this->requires_lab,
             'sort_order' => $this->position,
             'price' => [
-                'retail' => $this->retail_price,
-                'sale' => $this->sale_price,
-                'effective' => $this->sale_price ?? $this->retail_price,
+                'retail' => $this->retail_price !== null ? (float) $this->retail_price : null,
+                'sale' => $this->sale_price !== null ? (float) $this->sale_price : null,
+                'effective' => (float) ($this->sale_price ?? $this->retail_price),
                 'suffix' => $this->price_suffix,
+                'currency' => 'USD',
             ],
             'seo' => $this->when($request->routeIs('api.v1.catalog.products.show'), [
                 'meta_title' => $this->meta_title,

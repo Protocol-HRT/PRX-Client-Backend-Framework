@@ -89,7 +89,7 @@ tests/Feature/Settings/
 |---|---|
 | `group` | `brand` |
 | `name` | `name` |
-| `payload` | `"ProtocolHRT"` (JSON-encoded value) |
+| `payload` | `"PrescribeRx Open Source Backend"` (JSON-encoded value) |
 | `locked` | `false` |
 
 One row per group/name combination. Each Settings class declares its `group()` (e.g. `BrandSettings::group()` returns `'brand'`) and its public properties become the `name` values.

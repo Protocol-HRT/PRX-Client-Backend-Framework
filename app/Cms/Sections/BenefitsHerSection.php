@@ -3,6 +3,7 @@
 namespace App\Cms\Sections;
 
 use App\Enums\SectionType;
+use App\Filament\Support\SectionImagePicker;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -37,19 +38,19 @@ class BenefitsHerSection extends SectionBlueprint
             'heading' => 'Optimized for',
             'emphasis' => 'her biology.',
             'lead' => "Women's hormones are complex, dynamic, and deeply personal. Our medical team builds protocols that honor the distinct physiology of the female body. No guesswork. No one-size-fits-all.",
-            'image' => '/images/lifestyle/her-hero.webp',
+            'image' => null,
             'image_alt' => 'Strikingly beautiful feminine woman with glowing skin in elegant silk dress, soft golden light, luxury setting, representing the radiant results of female hormone optimization',
             'cta_label' => 'Build My HER Protocol',
             'cta_url' => '#pricing',
             'benefits' => [
                 ['category' => 'HORMONES',  'pill' => 'Foundation', 'title' => 'Hormone Balance',
-                 'body' => 'Estrogen, progesterone, and testosterone work together in women too. Our bioidentical hormone protocols are precision-designed around your labs, your symptoms, and your goals.'],
+                    'body' => 'Estrogen, progesterone, and testosterone work together in women too. Our bioidentical hormone protocols are precision-designed around your labs, your symptoms, and your goals.'],
                 ['category' => 'METABOLIC', 'pill' => 'Transform',  'title' => 'Weight Loss & Metabolism',
-                 'body' => 'GLP-1 support, metabolic optimization, and body recomposition protocols built for female physiology. Clinically proven, physician-reviewed, and personalized to your biology.'],
+                    'body' => 'GLP-1 support, metabolic optimization, and body recomposition protocols built for female physiology. Clinically proven, physician-reviewed, and personalized to your biology.'],
                 ['category' => 'LONGEVITY', 'pill' => 'Rejuvenate', 'title' => 'Energy & Anti-Aging',
-                 'body' => 'Combat fatigue, brain fog, and accelerated aging with peptide and longevity protocols that target the root cause, declining hormones, not the symptoms.'],
+                    'body' => 'Combat fatigue, brain fog, and accelerated aging with peptide and longevity protocols that target the root cause, declining hormones, not the symptoms.'],
                 ['category' => 'VITALITY',  'pill' => 'Restore',    'title' => "Women's Sexual Health",
-                 'body' => 'Restore drive, sensitivity, and balance with targeted protocols addressing female hormonal health at every life stage: perimenopause, menopause, and beyond.'],
+                    'body' => 'Restore drive, sensitivity, and balance with targeted protocols addressing female hormonal health at every life stage: perimenopause, menopause, and beyond.'],
             ],
         ];
     }
@@ -69,7 +70,7 @@ class BenefitsHerSection extends SectionBlueprint
                     Textarea::make('lead')->rows(3)->maxLength(500)->columnSpanFull(),
                     TextInput::make('cta_label')->maxLength(60),
                     TextInput::make('cta_url')->maxLength(2048),
-                    TextInput::make('image')->label('Lifestyle image path')->maxLength(2048),
+                    SectionImagePicker::make('image')->label('Lifestyle image'),
                     TextInput::make('image_alt')->maxLength(255),
                 ]),
             Repeater::make('benefits')
@@ -85,5 +86,11 @@ class BenefitsHerSection extends SectionBlueprint
                 ->columnSpanFull()
                 ->itemLabel(fn (array $state): ?string => $state['title'] ?? null),
         ];
+    }
+
+    /** @return array<string, string> */
+    public function fieldKinds(): array
+    {
+        return ['image' => 'image'];
     }
 }

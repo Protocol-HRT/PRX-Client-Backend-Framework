@@ -4,6 +4,7 @@ namespace App\Data\Settings;
 
 use Spatie\LaravelData\Attributes\Validation\Max;
 use Spatie\LaravelData\Attributes\Validation\Required;
+use Spatie\LaravelData\Attributes\Validation\Url;
 use Spatie\LaravelData\Data;
 
 class BrandSettingsData extends Data
@@ -28,5 +29,9 @@ class BrandSettingsData extends Data
         public ?string $announcement_emphasis = null,
         #[Max(500)]
         public ?string $announcement_text = null,
+        #[Url, Max(2048)]
+        public ?string $site_url = null,
+        #[Max(100)]
+        public ?string $organization_type = null,
     ) {}
 }

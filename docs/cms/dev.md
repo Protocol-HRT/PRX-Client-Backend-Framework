@@ -1,5 +1,14 @@
 # CMS — Developer Guide
 
+> **Superseded in part (2026-07-22):** the CMS grew into the full page builder —
+> hybrid section registry (code + admin-defined types), Curator media, product
+> sections, global blocks, menus, layout regions, and revisions. Read
+> **`docs/page-builder/dev.md`** first; this file remains accurate for the
+> original Page/PageSection foundation and the 18 imported blueprint schemas.
+> Note the Blade render layer described below was removed — the app is headless
+> (`/api/v1/pages/{slug}`), and `PageSection.type` is now a plain string, not an
+> enum cast.
+
 **Status:** Phase 1 shipped 2026-05-01. Foundation + 18 section types + 5 fully-DB-driven Blade components. The remaining 8 imported sections render hard-coded fallbacks until refactored.
 **Owners:** Anyone touching pages, sections, or content composition will read or write through this layer.
 
@@ -186,7 +195,7 @@ The imported sections (`hero`, `stats-marquee`, etc.) use top-of-file `@php` arr
 5. Update the corresponding `SectionBlueprint::defaults()` to match the same default values, so admin sees them when adding the section.
 6. Test: `<x-sections.your-section />` (no props) renders identically; `<x-sections.your-section :data="['x' => 'override']" />` renders the override.
 
-**All 13 imported sections + 5 generics now read DB data with hard-coded fallbacks (as of 2026-05-01).** Adding a section in the CMS and customizing its data flows through to the public render for every type. The remaining work is the visual pass against the Next.js style reference at `/docs/theme-landing-page-in-ts/protocolhrt/src/app/homepage/components/` — best done section-by-section as the user reviews each.
+**All 13 imported sections + 5 generics now read DB data with hard-coded fallbacks (as of 2026-05-01).** Adding a section in the CMS and customizing its data flows through to the public render for every type. The remaining work is the visual pass against the Next.js style reference at `/docs/atlas-dev-local` — best done section-by-section as the user reviews each.
 
 ## How creation/update routes through Actions
 

@@ -12,6 +12,8 @@ use App\Http\Controllers\Api\V1\Catalog\PackageController;
 use App\Http\Controllers\Api\V1\Catalog\ProductController;
 use App\Http\Controllers\Api\V1\Catalog\TagController;
 use App\Http\Controllers\Api\V1\Checkout\CheckoutController;
+use App\Http\Controllers\Api\V1\Cms\LayoutController;
+use App\Http\Controllers\Api\V1\Cms\MenuController;
 use App\Http\Controllers\Api\V1\Cms\PageController;
 use App\Http\Controllers\Api\V1\ConfigController;
 use App\Http\Controllers\Api\V1\Content\FaqController;
@@ -74,6 +76,13 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
         Route::get('/', [PageController::class, 'index'])->name('index');
         Route::get('{slug}', [PageController::class, 'show'])->name('show');
     });
+
+    Route::prefix('menus')->name('menus.')->middleware('throttle:api')->group(function (): void {
+        Route::get('/', [MenuController::class, 'index'])->name('index');
+        Route::get('{slug}', [MenuController::class, 'show'])->name('show');
+    });
+
+    Route::get('layout', LayoutController::class)->name('layout')->middleware('throttle:api');
 
     // ── Catalog ──────────────────────────────────────────────────────────
     // Fully public — storefront browse does not require login.

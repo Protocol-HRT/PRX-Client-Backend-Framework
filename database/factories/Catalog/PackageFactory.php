@@ -38,6 +38,7 @@ class PackageFactory extends Factory
             'highlights' => null,
             'banner_image_path' => null,
             'is_featured' => false,
+            'is_in_stock' => true,
             'requires_lab' => false,
             'position' => 0,
         ];

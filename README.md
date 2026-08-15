@@ -1,6 +1,6 @@
-# ProtocolHRT — Blade Template Port
+# PrescribeRx Open Source Backend — Blade Template Port
 
-Port of the Rocket-built ProtocolHRT marketing site into Laravel 12 + Livewire 3 Blade components. Design tokens, primitives, and section composition are split so the home page can be re-ordered, themed, or driven from a CMS without touching markup.
+Port of the Example Next.js/React example front end marketing site into Laravel 12 + Livewire 3 Blade components. Design tokens, primitives, and section composition are split so the home page can be re-ordered, themed, or driven from a CMS without touching markup.
 
 ## Quick start
 

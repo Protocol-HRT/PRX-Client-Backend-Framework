@@ -18,7 +18,7 @@ class PageSectionFactory extends Factory
     {
         return [
             'page_id' => Page::factory(),
-            'type' => fake()->randomElement(SectionType::cases()),
+            'type' => fake()->randomElement(SectionType::cases())->value,
             'position' => fake()->numberBetween(1, 10),
             'data' => [],
         ];
@@ -27,7 +27,7 @@ class PageSectionFactory extends Factory
     public function hero(): static
     {
         return $this->state([
-            'type' => SectionType::Hero,
+            'type' => SectionType::Hero->value,
             'data' => [
                 'headline' => 'Transform Your Health',
                 'subheadline' => 'Physician-guided care.',

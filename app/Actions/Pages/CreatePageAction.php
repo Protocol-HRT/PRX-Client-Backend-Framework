@@ -21,6 +21,7 @@ class CreatePageAction
                 'slug' => $data->slug ?: Page::generateUniqueSlug($data->title),
                 'status' => $data->status,
                 'template' => $data->template,
+                'title_banner' => $data->title_banner,
                 'meta_title' => $data->meta_title,
                 'meta_description' => $data->meta_description,
                 'og_image_path' => $data->og_image_path,

@@ -1,0 +1,66 @@
+<?php
+
+namespace App\Models\Cms;
+
+use App\Models\PageSection;
+use App\Models\User;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+/**
+ * An admin-defined section type: a named field schema whose instances live in
+ * page_sections rows exactly like code-blueprint sections (type = slug).
+ */
+class FlexibleSectionType extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'name',
+        'slug',
+        'description',
+        'icon',
+        'schema',
+        'enabled',
+        'created_by',
+        'updated_by',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'schema' => 'array',
+            'enabled' => 'boolean',
+        ];
+    }
+
+    public function sections(): HasMany
+    {
+        return $this->hasMany(PageSection::class, 'type', 'slug');
+    }
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function updater(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function fields(): array
+    {
+        return array_values($this->schema['fields'] ?? []);
+    }
+
+    public function usageCount(): int
+    {
+        return $this->sections()->count();
+    }
+}

@@ -208,6 +208,10 @@ class ProductForm
                         ->components([
                             Toggle::make('is_featured')
                                 ->label('Featured'),
+                            Toggle::make('is_in_stock')
+                                ->label('In stock')
+                                ->default(true)
+                                ->hintIcon(Heroicon::InformationCircle, 'Uncheck to hide this product from in-stock filters and surface an out-of-stock indicator on the frontend.'),
                             Toggle::make('requires_lab')
                                 ->label('Requires lab work')
                                 ->helperText('Surfaces a "Lab required" badge on the public detail page.'),

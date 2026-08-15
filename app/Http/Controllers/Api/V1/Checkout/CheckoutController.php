@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1\Checkout;
 
+use App\Actions\Checkout\SubmitLocalCheckoutAction;
 use App\Actions\Checkout\SubmitPrescribeRxCheckoutAction;
 use App\Data\Checkout\CheckoutData;
 use App\Http\Controllers\Api\V1\ApiController;
@@ -9,6 +10,7 @@ use App\Http\Resources\Api\V1\Checkout\CheckoutResource;
 use App\Models\Commerce\Cart;
 use App\Models\Lead;
 use App\Services\Payments\PaymentGatewayManager;
+use App\Settings\BillingSettings;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -19,17 +21,19 @@ use Throwable;
  * POST /api/v1/checkout
  *
  * Submits a cart + lead to the configured checkout provider and returns
- * the order UUID + a checkout path the frontend uses to load the next step
- * (e.g. loading the PRX embed with the returned encounter_id).
+ * the order UUID + a checkout path the frontend uses to load the next step.
  *
- * Currently only the 'prx' path is implemented. The 'local' path returns
- * 503 until PaymentGatewayInterface and the local gateway are wired up.
+ * The active path is controlled by BillingSettings::$checkout_path:
+ *   'prx'   — Forwards to Prescribe-Rx; PRX embed handles payment + intake.
+ *   'local' — Charges locally via the default merchant account gateway.
  */
 class CheckoutController extends ApiController
 {
     public function __construct(
         private readonly SubmitPrescribeRxCheckoutAction $prescribeRx,
+        private readonly SubmitLocalCheckoutAction $localCheckout,
         private readonly PaymentGatewayManager $gatewayManager,
+        private readonly BillingSettings $billingSettings,
     ) {}
 
     /**
@@ -92,13 +96,22 @@ class CheckoutController extends ApiController
         }
 
         try {
-            $result = $this->prescribeRx->execute($cart, $lead, $data->intake_answers);
+            if ($this->billingSettings->checkout_path === 'local') {
+                if (empty($data->payment_method)) {
+                    return $this->error('payment_method is required for local checkout.', 422);
+                }
+
+                $result = $this->localCheckout->execute($cart, $lead, $data->payment_method);
+            } else {
+                $result = $this->prescribeRx->execute($cart, $lead, $data->intake_answers);
+            }
         } catch (RuntimeException $e) {
             return $this->error($e->getMessage(), 422);
         } catch (Throwable $e) {
             Log::error('Checkout failed', [
                 'cart_ulid' => $data->cart_ulid,
                 'lead_uuid' => $data->lead_uuid,
+                'checkout_path' => $this->billingSettings->checkout_path,
                 'error' => $e->getMessage(),
             ]);
 

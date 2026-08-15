@@ -3,6 +3,7 @@
 namespace App\Cms\Sections;
 
 use App\Enums\SectionType;
+use App\Filament\Support\SectionImagePicker;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -76,7 +77,7 @@ class TestimonialsSection extends SectionBlueprint
                     'quote' => 'The clinical foundation of [Brand Name] is unlike anything else in telemedicine. Decades of frontline medicine and deep mastery of hormone and peptide science are built into every protocol.',
                     'stars' => 5,
                     'initials' => 'JP',
-                    'image' => '/images/physicians/physician-2-thumb.webp',
+                    'image' => null,
                 ],
                 [
                     'name' => 'Dr. [First Name] [Last Name]',
@@ -85,7 +86,7 @@ class TestimonialsSection extends SectionBlueprint
                     'quote' => '[Brand Name] was born from a relentless pursuit of what the body is actually capable of when given the right tools: the right hormones, the right peptides, the right protocol.',
                     'stars' => 5,
                     'initials' => 'BB',
-                    'image' => '/images/physicians/physician-1-thumb.webp',
+                    'image' => null,
                 ],
                 [
                     'name' => 'Jennifer M., 44',
@@ -97,13 +98,13 @@ class TestimonialsSection extends SectionBlueprint
                     'image' => null,
                 ],
                 [
-                    'name' => 'Ashley R., NP',
+                    'name' => '[Provider Name], NP',
                     'title' => "Nurse Practitioner · Women's Health",
                     'protocol' => "WOMEN'S HORMONE OPTIMIZATION",
                     'quote' => 'What fills my heart every single day is hearing my patients say their lives have completely changed. When a woman finally feels like herself again — her energy, her confidence, her joy — because we optimized her hormones, there is nothing more rewarding.',
                     'stars' => 5,
                     'initials' => 'AR',
-                    'image' => '/images/physicians/provider-3-thumb.webp',
+                    'image' => null,
                 ],
             ],
         ];
@@ -147,7 +148,7 @@ class TestimonialsSection extends SectionBlueprint
                         ->helperText('0–5 gold stars rendered above the quote.'),
                     TextInput::make('name')->required()->maxLength(255),
                     TextInput::make('title')->label('Title / role')->maxLength(255),
-                    TextInput::make('image')->label('Headshot path')->maxLength(2048),
+                    SectionImagePicker::make('image')->label('Headshot'),
                     TextInput::make('initials')
                         ->maxLength(4)
                         ->helperText('Fallback when no image is set.'),
@@ -158,5 +159,11 @@ class TestimonialsSection extends SectionBlueprint
                 ->columnSpanFull()
                 ->itemLabel(fn (array $state): ?string => $state['name'] ?? null),
         ];
+    }
+
+    /** @return array<string, string> */
+    public function fieldKinds(): array
+    {
+        return ['quotes.*.image' => 'image'];
     }
 }

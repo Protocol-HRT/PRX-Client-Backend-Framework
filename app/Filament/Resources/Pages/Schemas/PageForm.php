@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Pages\Schemas;
 
 use App\Enums\PageStatus;
+use App\Filament\Support\SectionImagePicker;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -53,6 +54,39 @@ class PageForm
                         DateTimePicker::make('publish_at')
                             ->hintIcon(Heroicon::InformationCircle, 'Schedule a future publish date. The page stays draft until this time arrives.')
                             ->helperText('Optional. If set in the future, the page stays draft-equivalent until that time.'),
+                    ]),
+                Section::make('Title banner')
+                    ->description('Optional banner the frontend renders above the page content — background image, title, subtitle, and breadcrumbs.')
+                    ->columns(2)
+                    ->components([
+                        Toggle::make('title_banner.enabled')
+                            ->label('Show title banner')
+                            ->live()
+                            ->columnSpanFull(),
+                        SectionImagePicker::make('title_banner.background_image')
+                            ->label('Background image')
+                            ->visible(fn (callable $get): bool => (bool) $get('title_banner.enabled'))
+                            ->columnSpanFull(),
+                        TextInput::make('title_banner.title_override')
+                            ->label('Title override')
+                            ->maxLength(255)
+                            ->hintIcon(Heroicon::InformationCircle, 'Overrides the page title inside the banner. Leave blank to show the page title.')
+                            ->visible(fn (callable $get): bool => (bool) $get('title_banner.enabled')),
+                        TextInput::make('title_banner.subtitle')
+                            ->label('Subtitle')
+                            ->maxLength(255)
+                            ->visible(fn (callable $get): bool => (bool) $get('title_banner.enabled')),
+                        Textarea::make('title_banner.intro_text')
+                            ->label('Intro text')
+                            ->rows(2)
+                            ->maxLength(1000)
+                            ->visible(fn (callable $get): bool => (bool) $get('title_banner.enabled'))
+                            ->columnSpanFull(),
+                        Toggle::make('title_banner.show_breadcrumbs')
+                            ->label('Show breadcrumbs')
+                            ->default(true)
+                            ->helperText('The frontend computes the breadcrumb trail from the URL.')
+                            ->visible(fn (callable $get): bool => (bool) $get('title_banner.enabled')),
                     ]),
                 Section::make('SEO overrides')
                     ->description('Leave blank to fall back to the global SEO settings (/admin/settings/seo).')

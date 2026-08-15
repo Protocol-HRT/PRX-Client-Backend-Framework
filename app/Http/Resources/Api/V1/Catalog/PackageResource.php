@@ -8,8 +8,14 @@ use Illuminate\Support\Facades\Storage;
 
 class PackageResource extends JsonResource
 {
+    /**
+     * @return array<string, mixed>
+     */
     public function toArray(Request $request): array
     {
+        /** @var list<string> $highlights */
+        $highlights = $this->normalizeHighlights($this->highlights);
+
         return [
             'id' => $this->id,
             'name' => $this->name,
@@ -19,12 +25,14 @@ class PackageResource extends JsonResource
             'description' => $this->description,
             'hero_image_url' => $this->hero_image_path ? Storage::url($this->hero_image_path) : null,
             'banner_image_url' => $this->banner_image_path ? Storage::url($this->banner_image_path) : null,
-            'gallery' => collect($this->gallery ?? [])->map(fn ($p) => Storage::url($p))->values(),
+            'gallery' => collect($this->gallery ?? [])->map(fn ($p) => Storage::url($p))->values()->all(),
             'status' => $this->status->value,
             'badge_text' => $this->badge_text,
-            'highlights' => $this->normalizeHighlights($this->highlights),
-            'is_featured' => $this->is_featured,
-            'requires_lab' => $this->requires_lab,
+            'highlights' => $highlights,
+            'is_featured' => (bool) $this->is_featured,
+            'is_in_stock' => (bool) $this->is_in_stock,
+            'is_on_sale' => (bool) ($this->relationLoaded('plans') && $this->plans->contains(fn ($p) => $p->sale_price !== null)),
+            'requires_lab' => (bool) $this->requires_lab,
             'sort_order' => $this->position,
             'price_range' => $this->when(
                 $this->relationLoaded('plans') && $this->plans->isNotEmpty(),
@@ -47,7 +55,7 @@ class PackageResource extends JsonResource
         ];
     }
 
-    /** @return array{from: string|null, to: string|null, currency: string} */
+    /** @return array{from: float|null, to: float|null, currency: string} */
     private function buildPriceRange(): array
     {
         $prices = $this->plans
@@ -55,8 +63,8 @@ class PackageResource extends JsonResource
             ->map(fn ($p) => (float) ($p->sale_price ?? $p->retail_price));
 
         return [
-            'from' => $prices->isNotEmpty() ? number_format($prices->min(), 2) : null,
-            'to' => $prices->isNotEmpty() ? number_format($prices->max(), 2) : null,
+            'from' => $prices->isNotEmpty() ? round((float) $prices->min(), 2) : null,
+            'to' => $prices->isNotEmpty() ? round((float) $prices->max(), 2) : null,
             'currency' => 'USD',
         ];
     }

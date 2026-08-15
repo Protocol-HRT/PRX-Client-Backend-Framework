@@ -5,9 +5,10 @@ namespace App\Filament\Resources\Pages;
 use App\Filament\Resources\Pages\Pages\CreatePage;
 use App\Filament\Resources\Pages\Pages\EditPage;
 use App\Filament\Resources\Pages\Pages\ListPages;
+use App\Filament\Resources\Pages\RelationManagers\RevisionsRelationManager;
+use App\Filament\Resources\Pages\RelationManagers\SectionsRelationManager;
 use App\Filament\Resources\Pages\Schemas\PageForm;
 use App\Filament\Resources\Pages\Tables\PagesTable;
-use App\Filament\Resources\Pages\RelationManagers\SectionsRelationManager;
 use App\Models\Page;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -44,6 +45,7 @@ class PageResource extends Resource
     {
         return [
             SectionsRelationManager::class,
+            RevisionsRelationManager::class,
         ];
     }
 

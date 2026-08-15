@@ -3,6 +3,7 @@
 namespace App\Cms\Sections;
 
 use App\Enums\SectionType;
+use App\Filament\Support\SectionImagePicker;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -61,11 +62,17 @@ class ImageTextSplitSection extends SectionBlueprint
             Section::make('Image')
                 ->columns(2)
                 ->components([
-                    TextInput::make('image')->label('Image path')->maxLength(2048),
+                    SectionImagePicker::make('image')->label('Image'),
                     TextInput::make('image_alt')->maxLength(255),
                     Toggle::make('image_right')->label('Image on the right')->helperText('Default is image on the left.'),
                     Select::make('theme')->options(['light' => 'Light', 'dark' => 'Dark', 'cream' => 'Cream'])->default('light')->native(false),
                 ]),
         ];
+    }
+
+    /** @return array<string, string> */
+    public function fieldKinds(): array
+    {
+        return ['image' => 'image'];
     }
 }

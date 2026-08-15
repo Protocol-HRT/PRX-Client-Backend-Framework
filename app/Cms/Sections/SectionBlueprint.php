@@ -50,4 +50,29 @@ abstract class SectionBlueprint
     {
         return null;
     }
+
+    /**
+     * Map of data key (dot syntax for repeater children, e.g. "items.image") => field kind
+     * for keys whose values need API-side transformation (media id resolution,
+     * catalog inlining). Blueprints opt in per field; default is no transformation.
+     *
+     * @return array<string, string>
+     */
+    public function fieldKinds(): array
+    {
+        return [];
+    }
+
+    /**
+     * Section-level API payload hook, called after per-key field-kind
+     * transformation. Override to compute derived content (e.g. inline the
+     * products matching this section's query mode). Default: pass-through.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    public function resolveData(array $data): array
+    {
+        return $data;
+    }
 }

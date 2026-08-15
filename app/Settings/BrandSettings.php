@@ -31,6 +31,12 @@ class BrandSettings extends Settings
     /** Body text after the emphasis. Plain text, no HTML. */
     public ?string $announcement_text = null;
 
+    /** Canonical site URL used in JSON-LD Organization and WebSite schemas. */
+    public ?string $site_url = null;
+
+    /** schema.org @type for the Organization JSON-LD block. */
+    public ?string $organization_type = null;
+
     public static function group(): string
     {
         return 'brand';
