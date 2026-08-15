@@ -34,24 +34,15 @@ class BenefitsHimSection extends SectionBlueprint
     public function defaults(): array
     {
         return [
-            'eyebrow' => 'For Him',
-            'heading' => 'Reclaim your',
-            'emphasis' => 'edge.',
-            'lead' => 'Built for men who refuse to accept fatigue, decline, and mediocrity as inevitable. Your hormones drive everything: your strength, drive, clarity, confidence. We put you back in control.',
+            'eyebrow' => null,
+            'heading' => null,
+            'emphasis' => null,
+            'lead' => null,
             'image' => null,
-            'image_alt' => 'Lean, athletic male physique — the result of testosterone and hormone optimization',
-            'cta_label' => 'Build My HIM Protocol',
-            'cta_url' => '#pricing',
-            'benefits' => [
-                ['category' => 'HORMONES',    'pill' => 'Most Popular',   'title' => 'Testosterone Optimization',
-                    'body' => "Low-T isn't just about libido. It affects your muscle mass, mental clarity, mood, and drive. Our TRT protocols are physician-designed, lab-verified, and built around your bloodwork, not a generic dose."],
-                ['category' => 'PERFORMANCE', 'pill' => 'Elite Protocol', 'title' => 'Peptide Therapy',
-                    'body' => 'BPC-157, TB-500, CJC-1295, Ipamorelin: precision peptide stacks for accelerated recovery, lean muscle growth, and cellular regeneration. The same compounds elite athletes have used for years.'],
-                ['category' => 'METABOLIC',   'pill' => 'Transform',      'title' => 'Body Recomposition',
-                    'body' => 'Lose fat. Build muscle. Optimize metabolic function. Our recomposition protocols combine hormone optimization with evidence-based metabolic compounds for measurable body transformation.'],
-                ['category' => 'VITALITY',    'pill' => 'Restore',        'title' => 'Sexual Health & Vitality',
-                    'body' => 'Restore libido, performance, and confidence with targeted protocols addressing the root hormonal causes, not surface-level symptoms.'],
-            ],
+            'image_alt' => null,
+            'cta_label' => null,
+            'cta_url' => null,
+            'benefits' => [],
         ];
     }
 

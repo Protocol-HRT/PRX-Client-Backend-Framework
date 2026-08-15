@@ -34,44 +34,11 @@ class TransformedSection extends SectionBlueprint
     public function defaults(): array
     {
         return [
-            'eyebrow' => "Trusted by the World's Best",
-            'heading' => "There's a reason people are",
-            'emphasis' => 'raving about us.',
-            'lead' => "[Brand Name]'s protocols have been used and validated by some of the world's most influential athletes, executives, and public figures.",
-            'quotes' => [
-                [
-                    'name' => '[Ambassador Name]',
-                    'title' => 'Entrepreneur · Lifestyle Icon · Ambassador',
-                    'protocol' => 'Performance & Hormone Optimization',
-                    'image' => null,
-                    'image_alt' => '[Ambassador Name], [Brand Name] Ambassador',
-                    'quote' => '"[Brand Name] delivers exactly what it promises: precision, results, and physician-backed science that actually works at the highest level."',
-                ],
-                [
-                    'name' => 'Dr. [First Name] [Last Name]',
-                    'title' => 'Chief Medical Officer · ER Physician',
-                    'protocol' => 'Clinical Formulation Lead',
-                    'image' => null,
-                    'image_alt' => 'Dr. [First Name] [Last Name], Chief Medical Officer',
-                    'quote' => '"I built the clinical foundation of [Brand Name] because I believe every person deserves access to the science that elite performers have always had."',
-                ],
-                [
-                    'name' => 'Dr. [First Name] [Last Name]',
-                    'title' => 'Founding Physician · Author · Clinician',
-                    'protocol' => 'Lifestyle & Hormone Integration',
-                    'image' => null,
-                    'image_alt' => 'Dr. [First Name] [Last Name], Founding Physician',
-                    'quote' => '"My personal experience showed me what the body can truly do with the right protocol. That experience is the DNA of everything we built here."',
-                ],
-                [
-                    'name' => '[Provider Name], NP',
-                    'title' => "Nurse Practitioner · Women's Health",
-                    'protocol' => "Women's Hormone Optimization",
-                    'image' => null,
-                    'image_alt' => "[Provider Name], NP — Nurse Practitioner specializing in women's hormone optimization",
-                    'quote' => '"What fills my heart every single day is hearing my patients say their lives have completely changed. When a woman finally feels like herself again — her energy, her confidence, her joy — because we optimized her hormones, there is nothing more rewarding."',
-                ],
-            ],
+            'eyebrow' => null,
+            'heading' => null,
+            'emphasis' => null,
+            'lead' => null,
+            'quotes' => [],
         ];
     }
 

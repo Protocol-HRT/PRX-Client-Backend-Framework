@@ -31,11 +31,7 @@ class StatsMarqueeSection extends SectionBlueprint
     public function defaults(): array
     {
         return [
-            'items' => [
-                ['value' => '50', 'label' => 'States Licensed'],
-                ['value' => '10,000+', 'label' => 'Patients'],
-                ['value' => '24/7', 'label' => 'AI Support'],
-            ],
+            'items' => [],
         ];
     }
 

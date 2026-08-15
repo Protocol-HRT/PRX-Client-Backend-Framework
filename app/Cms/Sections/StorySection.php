@@ -34,30 +34,13 @@ class StorySection extends SectionBlueprint
     public function defaults(): array
     {
         return [
-            'eyebrow' => 'The Story Behind [Brand Name]',
-            'heading' => 'Trusted by experts,',
-            'emphasis' => 'built for you.',
-            'lead' => "[Brand Name] wasn't built in a boardroom. It was built by physicians who lived it, treated it, and refused to accept the limits of conventional medicine.",
-            'physicians' => [
-                [
-                    'name' => 'Dr. [First Name] [Last Name]',
-                    'title' => 'Founding Physician · Lifestyle Management Expert',
-                    'badge' => 'Published Author & Clinician',
-                    'image' => null,
-                    'image_alt' => 'Dr. [First Name] [Last Name], Founding Physician at [Brand Name]',
-                    'body' => "Dr. [First Name] [Last Name]'s path to founding this practice began with a personal experience that conventional medicine couldn't solve. That pursuit of answers — of what the body is truly capable of with the right hormones, the right peptides, and the right protocol — became [Brand Name].",
-                ],
-                [
-                    'name' => 'Dr. [First Name] [Last Name]',
-                    'title' => 'Chief Medical Officer · ER Physician · Peptide Expert',
-                    'badge' => 'World-Class Hormone Optimization Specialist',
-                    'image' => null,
-                    'image_alt' => 'Dr. [First Name] [Last Name], Chief Medical Officer at [Brand Name]',
-                    'body' => 'Dr. [First Name] [Last Name] brings decades of frontline ER medicine and deep mastery of hormone and peptide science that most physicians never study. One of the most respected voices in hormone optimization, they built the clinical foundation that makes [Brand Name] unlike anything else in telemedicine.',
-                ],
-            ],
-            'pull_quote' => "Built by physicians. Proven by the world's best. Made for everyone.",
-            'pull_quote_attribution' => '— The Founding Physicians of [Brand Name]',
+            'eyebrow' => null,
+            'heading' => null,
+            'emphasis' => null,
+            'lead' => null,
+            'physicians' => [],
+            'pull_quote' => null,
+            'pull_quote_attribution' => null,
         ];
     }
 

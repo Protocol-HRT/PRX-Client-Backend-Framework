@@ -6,6 +6,7 @@ use App\Enums\SectionType;
 use App\Filament\Support\SectionImagePicker;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
@@ -37,6 +38,7 @@ class ImageTextSplitSection extends SectionBlueprint
         return [
             'eyebrow' => null,
             'heading' => null,
+            'lead' => null,
             'body' => null,
             'image' => null,
             'image_alt' => null,
@@ -54,6 +56,11 @@ class ImageTextSplitSection extends SectionBlueprint
                 ->components([
                     TextInput::make('eyebrow')->maxLength(120),
                     TextInput::make('heading')->maxLength(255),
+                    Textarea::make('lead')
+                        ->rows(3)
+                        ->maxLength(500)
+                        ->helperText('Short paragraph rendered under the heading, beside the body column.')
+                        ->columnSpanFull(),
                     RichEditor::make('body')->columnSpanFull(),
                     TextInput::make('cta_label')->maxLength(60),
                     TextInput::make('cta_url')->maxLength(2048),

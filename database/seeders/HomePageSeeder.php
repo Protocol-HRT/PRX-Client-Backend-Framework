@@ -9,13 +9,16 @@ use App\Models\PageSection;
 use Illuminate\Database\Seeder;
 
 /**
- * Seeds a starter "home" page in the CMS with all 13 standard section types
- * pre-populated from their blueprint defaults.
+ * Seeds a starter "home" page in the CMS with an empty scaffold of the
+ * standard landing-page section types, in a typical order.
  *
- * Idempotent: deletes any existing `home` page (cascades sections) and re-creates it.
- * Run after a fresh migrate to give admins a fully editable starting point at
- * /admin/pages/{home}/edit. All section content comes from blueprint defaults —
- * replace with real copy via the admin UI.
+ * Blueprint defaults are intentionally content-free: nothing renders on the
+ * frontend until an operator authors content in the admin UI, so a fresh
+ * install can never leak copy that belongs to another deployment.
+ *
+ * Idempotent: deletes any existing `home` page (cascades sections) and
+ * re-creates it. Run after a fresh migrate for an editable starting point at
+ * /admin/pages/{home}/edit.
  */
 class HomePageSeeder extends Seeder
 {
@@ -35,18 +38,13 @@ class HomePageSeeder extends Seeder
 
         $order = [
             SectionType::Hero,
-            SectionType::StatsMarquee,
-            SectionType::ResultsStats,
-            SectionType::PricingTiers,
-            SectionType::Physicians,
-            SectionType::Story,
-            SectionType::BenefitsHim,
-            SectionType::BenefitsHer,
+            SectionType::ImageTextSplit,
             SectionType::HowItWorks,
-            SectionType::Testimonials,
-            SectionType::Transformed,
+            SectionType::Physicians,
+            SectionType::ProductSlider,
             SectionType::Faq,
             SectionType::FinalCta,
+            SectionType::Testimonials,
         ];
 
         foreach ($order as $i => $type) {

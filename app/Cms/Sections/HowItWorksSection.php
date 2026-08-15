@@ -33,32 +33,13 @@ class HowItWorksSection extends SectionBlueprint
     public function defaults(): array
     {
         return [
-            'eyebrow' => 'The Process',
-            'heading' => 'Begin your hormone optimization',
-            'emphasis' => 'journey.',
-            'lead' => 'Three simple steps between you and the protocol that changes everything.',
-            'cta_label' => 'Get Started',
-            'cta_url' => '#pricing',
-            'steps' => [
-                [
-                    'number' => '01',
-                    'title' => 'Consult',
-                    'meta' => 'Takes about 5 minutes',
-                    'body' => 'Complete a quick online evaluation. Our AI concierge, trained on thousands of peer-reviewed clinical studies, listens, learns, and begins building your personalized profile.',
-                ],
-                [
-                    'number' => '02',
-                    'title' => 'Your Protocol',
-                    'meta' => 'Physician-reviewed · All 50 states',
-                    'body' => 'Our AI cross-references your profile against our clinical database to build your protocol. A licensed [Brand Name] physician reviews and approves every recommendation before it reaches you.',
-                ],
-                [
-                    'number' => '03',
-                    'title' => 'Delivered',
-                    'meta' => 'Ongoing AI support 24/7',
-                    'body' => 'Your medication ships directly to your door. Check in with our AI concierge anytime. Your protocol evolves as your body responds, with ongoing support 24/7.',
-                ],
-            ],
+            'eyebrow' => null,
+            'heading' => null,
+            'emphasis' => null,
+            'lead' => null,
+            'cta_label' => null,
+            'cta_url' => null,
+            'steps' => [],
         ];
     }
 

@@ -34,36 +34,11 @@ class ResultsStatsSection extends SectionBlueprint
     public function defaults(): array
     {
         return [
-            'eyebrow' => 'By the Numbers',
-            'heading' => 'The results speak',
-            'emphasis' => 'for themselves.',
-            'stats' => [
-                [
-                    'value' => '12,400+',
-                    'label' => 'Patients Optimized',
-                    'sublabel' => 'Active patients on protocol',
-                    'icon' => 'patients',
-                ],
-                [
-                    'value' => '38,600+',
-                    'label' => 'Protocols Delivered',
-                    'sublabel' => 'Physician-reviewed prescriptions',
-                    'icon' => 'protocols',
-                ],
-                [
-                    'value' => '50',
-                    'label' => 'States Licensed',
-                    'sublabel' => 'Nationwide telemedicine coverage',
-                    'icon' => 'states',
-                ],
-                [
-                    'value' => '97%',
-                    'label' => 'Patient Satisfaction',
-                    'sublabel' => 'Would recommend to a friend',
-                    'icon' => 'satisfaction',
-                ],
-            ],
-            'footer_note' => '* Data reflects [Brand Name] patient metrics as of '.now()->subYear()->year,
+            'eyebrow' => null,
+            'heading' => null,
+            'emphasis' => null,
+            'stats' => [],
+            'footer_note' => null,
         ];
     }
 

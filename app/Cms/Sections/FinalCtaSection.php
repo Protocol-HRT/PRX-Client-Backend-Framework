@@ -27,14 +27,14 @@ class FinalCtaSection extends SectionBlueprint
     public function defaults(): array
     {
         return [
-            'eyebrow' => '[Brand Name] Guarantee',
-            'heading' => "The only thing you'll lose",
-            'emphasis' => "is what's holding you back.",
+            'eyebrow' => null,
+            'heading' => null,
+            'emphasis' => null,
             'lead' => null,
-            'primary_cta_label' => 'Find My Protocol',
-            'primary_cta_url' => '#pricing',
-            'secondary_cta_label' => 'Talk to Our Team',
-            'secondary_cta_url' => 'mailto:support@example.com',
+            'primary_cta_label' => null,
+            'primary_cta_url' => null,
+            'secondary_cta_label' => null,
+            'secondary_cta_url' => null,
         ];
     }
 
