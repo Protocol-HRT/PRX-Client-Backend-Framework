@@ -4,11 +4,13 @@ namespace App\Http\Controllers\Api\V1\Cart;
 
 use App\Http\Controllers\Api\V1\ApiController;
 use App\Http\Resources\Api\V1\Cart\CartResource;
+use App\Http\Resources\Api\V1\Catalog\CatalogRelationItemResource;
 use App\Models\Catalog\Package;
 use App\Models\Catalog\Plan;
 use App\Models\Catalog\Product;
 use App\Models\Commerce\Cart;
 use App\Models\Commerce\CartItem;
+use App\Settings\BillingSettings;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -66,6 +68,62 @@ class CartController extends ApiController
         $cart->load(['items.itemable', 'items.plan']);
 
         return $this->success((new CartResource($cart))->toArray($request));
+    }
+
+    /**
+     * Get upsell suggestions for the current cart.
+     *
+     * Returns catalog items related to what is already in the cart, driven by the
+     * admin-curated "Pairs With" and "Related" catalog relations. Pairs-with items
+     * are preferred; related items fill any remaining slots. Items already in the
+     * cart are excluded. Returns an empty list when upsells are disabled in the
+     * admin billing settings or the cart is empty.
+     *
+     * @tags Cart
+     *
+     * @unauthenticated
+     */
+    public function suggestions(Request $request, BillingSettings $billing): JsonResponse
+    {
+        if (! $billing->upsells_enabled) {
+            return $this->success([]);
+        }
+
+        $cart = $this->resolveCart($request);
+        $cart->load('items.itemable');
+
+        $itemables = $cart->items
+            ->map(fn (CartItem $item) => $item->itemable)
+            ->filter();
+
+        $inCart = $itemables
+            ->map(fn ($itemable) => $itemable::class.':'.$itemable->id)
+            ->all();
+
+        $suggestions = collect();
+
+        // Pairs-with suggestions first (curated companions), then related
+        // items to fill remaining slots. Dedupe across both passes and
+        // exclude anything already in the cart.
+        foreach (['pairsWithItems', 'relatedItems'] as $method) {
+            foreach ($itemables as $itemable) {
+                foreach ($itemable->{$method}() as $target) {
+                    $key = $target::class.':'.$target->id;
+
+                    if (in_array($key, $inCart, true) || $suggestions->has($key)) {
+                        continue;
+                    }
+
+                    $suggestions->put($key, $target);
+                }
+            }
+        }
+
+        $suggestions = $suggestions->values()->take($billing->upsells_limit);
+
+        return $this->success(
+            CatalogRelationItemResource::collection($suggestions)->toArray($request)
+        );
     }
 
     /**

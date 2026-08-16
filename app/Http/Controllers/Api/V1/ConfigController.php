@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Services\Telehealth\TelehealthManager;
+use App\Settings\BillingSettings;
 use App\Settings\BrandSettings;
 use App\Settings\ContactSettings;
 use App\Settings\SeoSettings;
@@ -38,9 +39,10 @@ class ConfigController extends ApiController
         ThemeSettings $theme,
         ContactSettings $contact,
         SeoSettings $seo,
+        BillingSettings $billing,
         TelehealthManager $telehealth,
     ): JsonResponse {
-        $config = Cache::remember('api.v1.config', (int) config('api.config_ttl', 300), function () use ($brand, $theme, $contact, $seo, $telehealth): array {
+        $config = Cache::remember('api.v1.config', (int) config('api.config_ttl', 300), function () use ($brand, $theme, $contact, $seo, $billing, $telehealth): array {
             $provider = $telehealth->provider();
 
             return [
@@ -101,6 +103,17 @@ class ConfigController extends ApiController
                     'custom_head_scripts' => $seo->custom_head_scripts,
                     'custom_body_scripts' => $seo->custom_body_scripts,
                     'allow_indexing' => $seo->allow_indexing,
+                ],
+                'checkout' => [
+                    // 'prx' — frontend collects lead info then redirects to the
+                    // backend handoff page (lead.handoff_url) where the PRX embed
+                    // runs clinical intake + payment. 'local' — frontend tokenizes
+                    // payment via the gateway SDK and posts it to /api/v1/checkout.
+                    'path' => $billing->checkout_path,
+                    'upsells' => [
+                        'enabled' => $billing->upsells_enabled,
+                        'limit' => $billing->upsells_limit,
+                    ],
                 ],
                 'provider' => [
                     'name' => $provider->getName(),

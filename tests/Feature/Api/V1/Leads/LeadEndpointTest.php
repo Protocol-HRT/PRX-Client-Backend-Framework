@@ -40,6 +40,20 @@ class LeadEndpointTest extends TestCase
         $this->assertDatabaseHas('leads', ['email' => 'jane@example.com']);
     }
 
+    public function test_lead_response_includes_handoff_url(): void
+    {
+        $response = $this->postJson('/api/v1/leads', [
+            'first_name' => 'Jane',
+            'last_name' => 'Smith',
+            'email' => 'jane@example.com',
+        ]);
+
+        $uuid = $response->json('data.uuid');
+
+        $response->assertStatus(201)
+            ->assertJsonPath('data.handoff_url', route('checkout.handoff', ['lead' => $uuid]));
+    }
+
     public function test_creates_lead_with_all_optional_fields(): void
     {
         $response = $this->postJson('/api/v1/leads', [

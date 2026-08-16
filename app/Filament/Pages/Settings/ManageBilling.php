@@ -7,6 +7,8 @@ use App\Data\Settings\BillingSettingsData;
 use App\Settings\BillingSettings;
 use BackedEnum;
 use Filament\Forms\Components\Radio;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -50,6 +52,20 @@ class ManageBilling extends BaseSettingsPage
                                 'prx' => 'Cart is submitted to Prescribe-Rx. PRX collects payment and clinical intake inside its hosted embed. No local card processing.',
                                 'local' => 'Payment is captured locally through the configured merchant account. The frontend tokenizes the card via the gateway SDK and sends the token to /api/v1/checkout.',
                             ])
+                            ->required(),
+                    ]),
+                Section::make('Upsells & cross-sells')
+                    ->description('Suggestions shown in the cart drawer and on the checkout page. Driven entirely by the "Related" / "Pairs With" relations configured on catalog items — nothing is hardcoded.')
+                    ->schema([
+                        Toggle::make('upsells_enabled')
+                            ->label('Show upsell suggestions')
+                            ->helperText('When off, the cart and checkout upsell placements are hidden on the frontend.'),
+                        TextInput::make('upsells_limit')
+                            ->label('Maximum suggestions')
+                            ->helperText('Cap on how many suggested items are returned per request (1–12).')
+                            ->numeric()
+                            ->minValue(1)
+                            ->maxValue(12)
                             ->required(),
                     ]),
             ])

@@ -81,6 +81,15 @@ class ConfigEndpointTest extends TestCase
             ]);
     }
 
+    public function test_config_checkout_section_exposes_path_and_upsell_knobs(): void
+    {
+        $this->getJson('/api/v1/config')
+            ->assertOk()
+            ->assertJsonPath('data.checkout.path', 'prx')
+            ->assertJsonPath('data.checkout.upsells.enabled', true)
+            ->assertJsonPath('data.checkout.upsells.limit', 4);
+    }
+
     public function test_config_theme_section_exposes_frontend_hooks(): void
     {
         $this->getJson('/api/v1/config')

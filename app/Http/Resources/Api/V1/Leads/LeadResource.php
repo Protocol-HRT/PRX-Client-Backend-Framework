@@ -39,6 +39,10 @@ class LeadResource extends JsonResource
                 'given_at' => $this->consent_given_at?->toISOString(),
             ],
             'checkout_path' => $this->checkout_path?->value,
+            // Absolute URL of the server-rendered PRX embed handoff page.
+            // The frontend redirects here after lead creation when the
+            // configured checkout path is 'prx'.
+            'handoff_url' => route('checkout.handoff', $this->resource),
             'cart_items' => $this->cart_items ?? [],
             'cart_subtotal' => $this->cart_subtotal,
             'handed_off_at' => $this->handed_off_at?->toISOString(),

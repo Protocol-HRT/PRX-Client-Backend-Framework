@@ -16,6 +16,15 @@ class BillingSettings extends Settings
      */
     public string $checkout_path = 'prx';
 
+    /**
+     * Show upsell / cross-sell suggestions (driven by catalog relations)
+     * in the cart drawer and on the checkout page.
+     */
+    public bool $upsells_enabled = true;
+
+    /** Maximum number of upsell suggestions returned per request. */
+    public int $upsells_limit = 4;
+
     public static function group(): string
     {
         return 'billing';

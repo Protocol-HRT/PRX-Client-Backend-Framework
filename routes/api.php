@@ -136,6 +136,7 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
 
     Route::prefix('cart')->name('cart.')->middleware('throttle:api')->group(function (): void {
         Route::get('/', [CartController::class, 'show'])->name('show');
+        Route::get('suggestions', [CartController::class, 'suggestions'])->name('suggestions');
         Route::post('items', [CartController::class, 'addItem'])->name('items.add');
         Route::patch('items/{cartItem}', [CartController::class, 'updateItem'])->name('items.update');
         Route::delete('items/{cartItem}', [CartController::class, 'removeItem'])->name('items.remove');
