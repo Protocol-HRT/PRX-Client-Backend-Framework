@@ -574,6 +574,154 @@ class SectionTypeSeeder extends Seeder
                     ],
                 ],
             ],
+            [
+                'slug' => 'product-grid',
+                'name' => 'Product grid',
+                'icon' => 'heroicon-o-squares-2x2',
+                'description' => 'Grid of product cards. Pick products by hand or let a rule (featured, newest, category) choose them.',
+                'schema' => [
+                    'fields' => [
+                        ['key' => 'eyebrow', 'kind' => 'text', 'max' => 120],
+                        ['key' => 'heading', 'kind' => 'text', 'max' => 255],
+                        ['key' => 'subhead', 'kind' => 'textarea', 'max' => 500],
+                        ['key' => 'columns', 'kind' => 'select', 'default' => '3', 'help' => 'Layout hint for the frontend grid.', 'options' => [
+                            ['value' => '2', 'label' => '2 columns'],
+                            ['value' => '3', 'label' => '3 columns'],
+                            ['value' => '4', 'label' => '4 columns'],
+                        ]],
+                        ['key' => 'mode', 'kind' => 'select', 'default' => 'manual', 'required' => true, 'options' => [
+                            ['value' => 'manual', 'label' => 'Pick products by hand'],
+                            ['value' => 'featured', 'label' => 'Featured products'],
+                            ['value' => 'newest', 'label' => 'Newest products'],
+                            ['value' => 'category', 'label' => 'All products in a category'],
+                        ]],
+                        ['key' => 'product_ids', 'kind' => 'products', 'label' => 'Products', 'raw' => true, 'default' => [], 'help' => 'Shown in the order selected. Unpublished products are dropped automatically.', 'visible_when' => [
+                            ['field' => 'mode', 'operator' => 'equals', 'value' => 'manual'],
+                        ]],
+                        ['key' => 'category_id', 'kind' => 'category', 'label' => 'Category', 'visible_when' => [
+                            ['field' => 'mode', 'operator' => 'equals', 'value' => 'category'],
+                        ]],
+                        ['key' => 'limit', 'kind' => 'number', 'default' => 12, 'min' => 1, 'max' => 24, 'visible_when' => [
+                            ['field' => 'mode', 'operator' => 'not_equals', 'value' => 'manual'],
+                        ]],
+                    ],
+                    'resolvers' => [
+                        ['op' => 'products_by_mode', 'output' => 'products'],
+                    ],
+                ],
+            ],
+            [
+                'slug' => 'package-slider',
+                'name' => 'Package slider',
+                'icon' => 'heroicon-o-queue-list',
+                'description' => 'Horizontal carousel of package cards with live plan pricing. Pick packages by hand or let a rule (featured, newest, category) choose them.',
+                'schema' => [
+                    'fields' => [
+                        ['key' => 'eyebrow', 'kind' => 'text', 'max' => 120],
+                        ['key' => 'heading', 'kind' => 'text', 'max' => 255],
+                        ['key' => 'subhead', 'kind' => 'textarea', 'max' => 500],
+                        ['key' => 'mode', 'kind' => 'select', 'default' => 'manual', 'required' => true, 'options' => [
+                            ['value' => 'manual', 'label' => 'Pick packages by hand'],
+                            ['value' => 'featured', 'label' => 'Featured packages'],
+                            ['value' => 'newest', 'label' => 'Newest packages'],
+                            ['value' => 'category', 'label' => 'All packages in a category'],
+                        ]],
+                        ['key' => 'package_ids', 'kind' => 'packages', 'label' => 'Packages', 'raw' => true, 'default' => [], 'help' => 'Shown in the order selected. Unpublished packages are dropped automatically.', 'visible_when' => [
+                            ['field' => 'mode', 'operator' => 'equals', 'value' => 'manual'],
+                        ]],
+                        ['key' => 'category_id', 'kind' => 'category', 'label' => 'Category', 'visible_when' => [
+                            ['field' => 'mode', 'operator' => 'equals', 'value' => 'category'],
+                        ]],
+                        ['key' => 'limit', 'kind' => 'number', 'default' => 8, 'min' => 1, 'max' => 24, 'visible_when' => [
+                            ['field' => 'mode', 'operator' => 'not_equals', 'value' => 'manual'],
+                        ]],
+                        ['key' => 'autoplay', 'kind' => 'boolean', 'default' => false, 'help' => 'Layout hint for the frontend carousel.'],
+                    ],
+                    'resolvers' => [
+                        ['op' => 'packages_by_mode', 'output' => 'packages'],
+                    ],
+                ],
+            ],
+            [
+                'slug' => 'package-pricing-comparison',
+                'name' => 'Package pricing comparison',
+                'icon' => 'heroicon-o-scale',
+                'description' => 'Side-by-side comparison columns for 2–3 packages using live plan pricing from the catalog.',
+                'schema' => [
+                    'fields' => [
+                        ['key' => 'eyebrow', 'kind' => 'text', 'max' => 120],
+                        ['key' => 'heading', 'kind' => 'text', 'max' => 255],
+                        ['key' => 'subhead', 'kind' => 'textarea', 'max' => 500],
+                        ['key' => 'package_ids', 'kind' => 'packages', 'label' => 'Packages to compare', 'raw' => true, 'default' => [], 'max' => 3, 'help' => '2–3 packages, shown in the order selected with live plan pricing.'],
+                        ['key' => 'highlight_package_id', 'kind' => 'package', 'label' => 'Highlighted package', 'raw' => true, 'help' => 'Optional. The frontend emphasizes this column (e.g. "Most popular").'],
+                    ],
+                    'resolvers' => [
+                        ['op' => 'inline_packages', 'input' => 'package_ids', 'output' => 'packages'],
+                    ],
+                ],
+            ],
+            [
+                'slug' => 'product-callout',
+                'name' => 'Product callout',
+                'icon' => 'heroicon-o-megaphone',
+                'description' => 'Single featured product or package promo with custom headline and copy overriding the catalog text.',
+                'schema' => [
+                    'fields' => [
+                        ['key' => 'item_type', 'kind' => 'select', 'default' => 'product', 'required' => true, 'options' => [
+                            ['value' => 'product', 'label' => 'Product'],
+                            ['value' => 'package', 'label' => 'Package'],
+                        ]],
+                        ['key' => 'product_id', 'kind' => 'product', 'label' => 'Product', 'raw' => true, 'visible_when' => [
+                            ['field' => 'item_type', 'operator' => 'equals', 'value' => 'product'],
+                        ]],
+                        ['key' => 'package_id', 'kind' => 'package', 'label' => 'Package', 'raw' => true, 'visible_when' => [
+                            ['field' => 'item_type', 'operator' => 'equals', 'value' => 'package'],
+                        ]],
+                        ['key' => 'eyebrow', 'kind' => 'text', 'max' => 120],
+                        ['key' => 'headline', 'kind' => 'text', 'max' => 255],
+                        ['key' => 'body', 'kind' => 'textarea', 'max' => 1000],
+                        ['key' => 'cta_label', 'kind' => 'text', 'max' => 80],
+                        ['key' => 'cta_url', 'kind' => 'text', 'max' => 2048],
+                        ['key' => 'image', 'kind' => 'image', 'label' => 'Image', 'help' => 'Optional custom image. Falls back to the catalog hero image when left blank.'],
+                        ['key' => 'image_alt', 'kind' => 'text', 'max' => 255],
+                        ['key' => 'image_right', 'kind' => 'boolean', 'label' => 'Image on the right', 'default' => false, 'help' => 'Default is image on the left.'],
+                    ],
+                    'resolvers' => [
+                        ['op' => 'inline_product', 'input' => 'product_id', 'output' => 'product', 'when' => [
+                            ['field' => 'item_type', 'operator' => 'equals', 'value' => 'product'],
+                        ]],
+                        ['op' => 'inline_package', 'input' => 'package_id', 'output' => 'package', 'when' => [
+                            ['field' => 'item_type', 'operator' => 'equals', 'value' => 'package'],
+                        ]],
+                    ],
+                ],
+            ],
+            [
+                'slug' => 'category-grid',
+                'name' => 'Category grid',
+                'icon' => 'heroicon-o-squares-2x2',
+                'description' => 'Grid of catalog category cards linking to their listings. Pick categories by hand or show all visible ones.',
+                'schema' => [
+                    'fields' => [
+                        ['key' => 'eyebrow', 'kind' => 'text', 'max' => 120],
+                        ['key' => 'heading', 'kind' => 'text', 'max' => 255],
+                        ['key' => 'subhead', 'kind' => 'textarea', 'max' => 500],
+                        ['key' => 'mode', 'kind' => 'select', 'default' => 'all', 'required' => true, 'options' => [
+                            ['value' => 'all', 'label' => 'All visible categories'],
+                            ['value' => 'manual', 'label' => 'Pick categories by hand'],
+                        ]],
+                        ['key' => 'category_ids', 'kind' => 'categories', 'label' => 'Categories', 'default' => [], 'help' => 'Shown in the order selected. Hidden categories are dropped automatically.', 'visible_when' => [
+                            ['field' => 'mode', 'operator' => 'equals', 'value' => 'manual'],
+                        ]],
+                        ['key' => 'limit', 'kind' => 'number', 'default' => 12, 'min' => 1, 'max' => 24, 'visible_when' => [
+                            ['field' => 'mode', 'operator' => 'not_equals', 'value' => 'manual'],
+                        ]],
+                    ],
+                    'resolvers' => [
+                        ['op' => 'categories', 'output' => 'categories'],
+                    ],
+                ],
+            ],
         ];
     }
 

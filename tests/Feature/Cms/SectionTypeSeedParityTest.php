@@ -5,6 +5,8 @@ namespace Tests\Feature\Cms;
 use App\Actions\Cms\SetFlexibleSectionTypeModeAction;
 use App\Cms\FlexibleDefinition;
 use App\Enums\Cms\SectionTypeMode;
+use App\Models\Catalog\Category;
+use App\Models\Catalog\Package;
 use App\Models\Catalog\Product;
 use App\Models\Cms\FlexibleSectionType;
 use App\Services\Cms\FlexibleSchemaValidator;
@@ -452,6 +454,183 @@ class SectionTypeSeedParityTest extends TestCase
             'background_image' => $background->id,
             'background_video_url' => null,
         ]);
+    }
+
+    public function test_product_grid_seed_matches_blueprint_in_manual_mode(): void
+    {
+        $published = Product::factory()->count(2)->create();
+        $draft = Product::factory()->draft()->create();
+
+        $envelope = $this->assertSeedParity('product-grid', [
+            'eyebrow' => 'Shop',
+            'heading' => 'All protocols',
+            'subhead' => null,
+            'columns' => '3',
+            'mode' => 'manual',
+            'product_ids' => [...$published->pluck('id')->all(), $draft->id],
+            'category_id' => null,
+            'limit' => 12,
+        ]);
+
+        $this->assertCount(2, $envelope['data']['products']);
+    }
+
+    public function test_product_grid_seed_matches_blueprint_in_category_mode(): void
+    {
+        $category = Category::factory()->create();
+        $inCategory = Product::factory()->count(2)->create();
+        $inCategory->each(fn (Product $product) => $product->categories()->attach($category->id));
+        Product::factory()->create();
+
+        $envelope = $this->assertSeedParity('product-grid', [
+            'eyebrow' => null,
+            'heading' => 'Category picks',
+            'subhead' => null,
+            'columns' => '4',
+            'mode' => 'category',
+            'product_ids' => [],
+            'category_id' => $category->id,
+            'limit' => 12,
+        ]);
+
+        $this->assertCount(2, $envelope['data']['products']);
+    }
+
+    public function test_package_slider_seed_matches_blueprint(): void
+    {
+        $published = Package::factory()->count(2)->create();
+        $draft = Package::factory()->draft()->create();
+
+        $envelope = $this->assertSeedParity('package-slider', [
+            'eyebrow' => 'Bundles',
+            'heading' => 'Protocol stacks',
+            'subhead' => 'Save with a bundle.',
+            'mode' => 'manual',
+            'package_ids' => [...$published->pluck('id')->all(), $draft->id],
+            'category_id' => null,
+            'limit' => 8,
+            'autoplay' => false,
+        ]);
+
+        $this->assertCount(2, $envelope['data']['packages']);
+    }
+
+    public function test_package_slider_seed_matches_blueprint_in_featured_mode(): void
+    {
+        Package::factory()->featured()->count(2)->create();
+        Package::factory()->create();
+
+        $envelope = $this->assertSeedParity('package-slider', [
+            'eyebrow' => null,
+            'heading' => 'Featured stacks',
+            'subhead' => null,
+            'mode' => 'featured',
+            'package_ids' => [],
+            'category_id' => null,
+            'limit' => 8,
+            'autoplay' => true,
+        ]);
+
+        $this->assertCount(2, $envelope['data']['packages']);
+    }
+
+    public function test_package_pricing_comparison_seed_matches_blueprint(): void
+    {
+        $packages = Package::factory()->count(3)->create();
+
+        $envelope = $this->assertSeedParity('package-pricing-comparison', [
+            'eyebrow' => 'Compare',
+            'heading' => 'Which stack fits?',
+            'subhead' => null,
+            'package_ids' => $packages->pluck('id')->all(),
+            'highlight_package_id' => $packages[1]->id,
+        ]);
+
+        $this->assertCount(3, $envelope['data']['packages']);
+        $this->assertSame($packages[1]->id, $envelope['data']['highlight_package_id']);
+    }
+
+    public function test_product_callout_seed_matches_blueprint_for_product(): void
+    {
+        $product = Product::factory()->create();
+        $media = $this->media('sections/callout.jpg');
+
+        $envelope = $this->assertSeedParity('product-callout', [
+            'item_type' => 'product',
+            'product_id' => $product->id,
+            'package_id' => null,
+            'eyebrow' => 'Featured',
+            'headline' => 'The flagship protocol',
+            'body' => 'Custom copy overriding the catalog text.',
+            'cta_label' => 'Learn more',
+            'cta_url' => '/products/flagship',
+            'image' => $media->id,
+            'image_alt' => 'Product shot',
+            'image_right' => true,
+        ]);
+
+        $this->assertSame($product->name, $envelope['data']['product']['name']);
+        $this->assertNull($envelope['data']['package']);
+    }
+
+    public function test_product_callout_seed_matches_blueprint_for_package_with_stale_product_id(): void
+    {
+        $product = Product::factory()->create();
+        $package = Package::factory()->create();
+
+        // The non-selected branch must null out even when its id is set —
+        // this is the conditional the resolver `when` gate replicates.
+        $envelope = $this->assertSeedParity('product-callout', [
+            'item_type' => 'package',
+            'product_id' => $product->id,
+            'package_id' => $package->id,
+            'eyebrow' => null,
+            'headline' => null,
+            'body' => null,
+            'cta_label' => null,
+            'cta_url' => null,
+            'image' => null,
+            'image_alt' => null,
+            'image_right' => false,
+        ]);
+
+        $this->assertNull($envelope['data']['product']);
+        $this->assertSame($package->name, $envelope['data']['package']['name']);
+    }
+
+    public function test_category_grid_seed_matches_blueprint_in_all_mode(): void
+    {
+        Category::factory()->count(2)->create();
+        Category::factory()->hidden()->create();
+
+        $envelope = $this->assertSeedParity('category-grid', [
+            'eyebrow' => 'Browse',
+            'heading' => 'By category',
+            'subhead' => null,
+            'mode' => 'all',
+            'category_ids' => [],
+            'limit' => 12,
+        ]);
+
+        $this->assertCount(2, $envelope['data']['categories']);
+    }
+
+    public function test_category_grid_seed_matches_blueprint_in_manual_mode(): void
+    {
+        $categories = Category::factory()->count(3)->create();
+        $picked = [$categories[2]->id, $categories[0]->id];
+
+        $envelope = $this->assertSeedParity('category-grid', [
+            'eyebrow' => null,
+            'heading' => 'Hand-picked',
+            'subhead' => null,
+            'mode' => 'manual',
+            'category_ids' => $picked,
+            'limit' => 12,
+        ]);
+
+        $this->assertSame($picked, $envelope['data']['category_ids']);
+        $this->assertSame($categories[2]->name, $envelope['data']['categories'][0]['name']);
     }
 
     public function test_every_seeded_schema_passes_validation(): void
