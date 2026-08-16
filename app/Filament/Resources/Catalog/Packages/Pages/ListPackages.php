@@ -56,6 +56,10 @@ class ListPackages extends ListRecords
                 ->modifyQueryUsing(fn (Builder $query) => $query->where('status', CatalogStatus::Pending))
                 ->badge(fn () => $this->getResource()::getModel()::where('status', CatalogStatus::Pending)->count())
                 ->badgeColor('warning'),
+            'unmapped' => Tab::make('Unmapped')
+                ->modifyQueryUsing(fn (Builder $query) => $query->whereNull('provider_package_id'))
+                ->badge(fn () => $this->getResource()::getModel()::whereNull('provider_package_id')->count())
+                ->badgeColor('gray'),
             'draft' => Tab::make('Draft')
                 ->modifyQueryUsing(fn (Builder $query) => $query->where('status', CatalogStatus::Draft)),
             'published' => Tab::make('Published')

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Catalog\Packages\Tables;
 
 use App\Enums\CatalogStatus;
+use App\Filament\Resources\Catalog\Actions\MatchToPrxTableAction;
 use App\Services\Llm\SeoMetaGenerator;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
@@ -81,6 +82,10 @@ class PackagesTable
                 TrashedFilter::make(),
             ])
             ->recordActions([
+                MatchToPrxTableAction::make()
+                    ->visible(fn ($record): bool => $record->provider_package_id === null && (auth()->user()?->can('Update:Package') ?? false)),
+                MatchToPrxTableAction::unmap()
+                    ->visible(fn ($record): bool => $record->provider_package_id !== null && (auth()->user()?->can('Update:Package') ?? false)),
                 Action::make('generateSeo')
                     ->visible(fn (): bool => auth()->user()?->can('Update:Package') ?? false)
                     ->label('Generate SEO')
