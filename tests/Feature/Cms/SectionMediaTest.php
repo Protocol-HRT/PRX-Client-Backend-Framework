@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Cms;
 
+use App\Models\Catalog\CatalogItemSection;
+use App\Models\Catalog\Product;
 use App\Models\Page;
 use App\Models\PageSection;
 use App\Services\Cms\MediaResolver;
@@ -210,6 +212,21 @@ class SectionMediaTest extends TestCase
             ->assertSuccessful();
 
         $this->assertSame('brand/photo.jpg', $section->fresh()->data['image']);
+    }
+
+    public function test_backfill_converts_catalog_item_section_paths(): void
+    {
+        $media = $this->makeMedia(['path' => 'sections/pen.png']);
+        $section = CatalogItemSection::factory()
+            ->type('image-text-split', ['image' => 'sections/pen.png'])
+            ->for(Product::factory(), 'sectionable')
+            ->create();
+
+        $this->artisan('cms:backfill-section-media')
+            ->expectsOutputToContain('1 image value(s) converted')
+            ->assertSuccessful();
+
+        $this->assertSame($media->id, $section->fresh()->data['image']);
     }
 
     public function test_backfill_leaves_unresolvable_paths_untouched(): void

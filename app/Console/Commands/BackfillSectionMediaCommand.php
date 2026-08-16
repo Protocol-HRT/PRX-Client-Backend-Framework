@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\Catalog\CatalogItemSection;
 use App\Models\PageSection;
 use App\Services\Cms\SectionRegistry;
 use Awcodes\Curator\Models\Media;
@@ -34,7 +35,8 @@ class BackfillSectionMediaCommand extends Command
     {
         $dry = (bool) $this->option('dry-run');
 
-        $sections = PageSection::query()->whereNotNull('data')->get();
+        $sections = PageSection::query()->whereNotNull('data')->get()
+            ->concat(CatalogItemSection::query()->whereNotNull('data')->get());
 
         foreach ($sections as $section) {
             $definition = $registry->resolve($section->type);
