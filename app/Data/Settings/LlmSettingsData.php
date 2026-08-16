@@ -2,13 +2,14 @@
 
 namespace App\Data\Settings;
 
+use App\Enums\Llm\LlmProvider;
 use Spatie\LaravelData\Attributes\Validation\Max;
 use Spatie\LaravelData\Data;
 
 class LlmSettingsData extends Data
 {
     public function __construct(
-        public ?string $active_provider = null,
+        public ?LlmProvider $active_provider = null,
         #[Max(500)]
         public ?string $claude_api_key = null,
         #[Max(200)]

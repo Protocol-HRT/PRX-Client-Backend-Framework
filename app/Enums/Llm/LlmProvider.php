@@ -2,10 +2,17 @@
 
 namespace App\Enums\Llm;
 
-enum LlmProvider: string
+use Filament\Support\Contracts\HasLabel;
+
+enum LlmProvider: string implements HasLabel
 {
     case Claude = 'claude';
     case OpenAi = 'openai';
+
+    public function getLabel(): string
+    {
+        return $this->label();
+    }
 
     public function label(): string
     {

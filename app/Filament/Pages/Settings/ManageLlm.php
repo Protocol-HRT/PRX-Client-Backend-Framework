@@ -13,6 +13,7 @@ use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 /**
@@ -108,15 +109,17 @@ class ManageLlm extends BaseSettingsPage
 
             $existing = app(LlmSettings::class);
 
-            if (empty($data->claude_api_key)) {
-                $data = $data->with(['claude_api_key' => $existing->claude_api_key]);
+            if (blank($data->claude_api_key)) {
+                $data->claude_api_key = $existing->claude_api_key;
             }
 
-            if (empty($data->openai_api_key)) {
-                $data = $data->with(['openai_api_key' => $existing->openai_api_key]);
+            if (blank($data->openai_api_key)) {
+                $data->openai_api_key = $existing->openai_api_key;
             }
 
             app(UpdateLlmSettingsAction::class)->execute($data);
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (Throwable $e) {
             Notification::make()
                 ->title('Could not save AI / LLM settings')
