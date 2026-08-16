@@ -70,6 +70,9 @@ class ConfigController extends ApiController
                     'font_body' => $theme->font_body,
                     'custom_css' => $theme->custom_css,
                     'frontend_template' => $theme->frontend_template,
+                    // Named color utilities: the frontend emits .tx-{name} CSS
+                    // for each entry so admins can color spans in rich text.
+                    'text_classes' => $theme->text_classes,
                 ],
                 'contact' => array_filter([
                     'support_email' => $contact->support_email,

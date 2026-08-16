@@ -25,6 +25,10 @@ class UpdateThemeSettingsAction
             $this->settings->font_body = $data->font_body;
             $this->settings->custom_css = $data->custom_css;
             $this->settings->frontend_template = $data->frontend_template;
+            $this->settings->text_classes = array_values(array_filter(
+                $data->text_classes,
+                fn (array $class): bool => filled($class['name'] ?? null) && filled($class['color'] ?? null),
+            ));
             $this->settings->save();
 
             // The public config bundle exposes these settings — drop the

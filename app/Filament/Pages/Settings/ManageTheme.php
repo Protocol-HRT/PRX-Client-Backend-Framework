@@ -7,6 +7,7 @@ use App\Data\Settings\ThemeSettingsData;
 use App\Settings\ThemeSettings;
 use BackedEnum;
 use Filament\Forms\Components\ColorPicker;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
@@ -78,6 +79,24 @@ class ManageTheme extends BaseSettingsPage
                             ->required()
                             ->maxLength(100)
                             ->hintIcon(Heroicon::InformationCircle, 'Font family name used for body/paragraph text, e.g. "Inter" or "Source Sans Pro".'),
+                    ]),
+                Section::make('Text color classes')
+                    ->description('Named utility classes the frontend generates CSS for (class "gold" → .tx-gold). Use them in rich text and custom HTML: <span class="tx-gold">…</span>.')
+                    ->components([
+                        Repeater::make('text_classes')
+                            ->label('Classes')
+                            ->schema([
+                                TextInput::make('name')
+                                    ->required()
+                                    ->maxLength(50)
+                                    ->regex('/^[a-z0-9][a-z0-9-]*$/')
+                                    ->helperText('Lowercase slug. Rendered as .tx-{name} on the frontend.'),
+                                ColorPicker::make('color')->required(),
+                            ])
+                            ->columns(2)
+                            ->reorderable()
+                            ->defaultItems(0)
+                            ->itemLabel(fn (array $state): ?string => $state['name'] ?? null),
                     ]),
                 Section::make('Frontend')
                     ->description('Layout and styling hooks consumed by the decoupled frontend via /api/v1/config.')

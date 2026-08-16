@@ -169,6 +169,10 @@ DTO validation throws `Illuminate\Validation\ValidationException` on bad input. 
 
 **To run them, you need either `pdo_sqlite` (in-memory test DB)** — install via `sudo apt install php8.5-sqlite3 && sudo systemctl reload php-fpm` — **or a dedicated MySQL test DB** named `protocol-hrt-website-test` plus a phpunit.xml override pointing to `mysql`. As of 2026-05-01 neither is set up; the tests are syntax-clean but un-run.
 
+## Theme text classes (added 2026-08-16)
+
+`ThemeSettings.text_classes` — a repeater of `{name, color}` rows (Settings → Theme → "Text color classes"). Exposed via `/api/v1/config` → `theme.text_classes`; the frontend generates a `.tx-{name}` CSS rule per row so admins can color rich-text runs (`<span class="tx-gold">…</span>`) without frontend changes. `UpdateThemeSettingsAction` drops incomplete rows and clears the config cache on save. Note: the settings class property carries **no `@var` array-shape docblock** — spatie/laravel-settings reflects property docblocks for casts and its parser rejects array-shape syntax.
+
 ## Future work
 
 - Image-upload field for Brand → Logo / Favicon / Hero (depends on Media Library module)

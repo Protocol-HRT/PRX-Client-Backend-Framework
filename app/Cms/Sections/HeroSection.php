@@ -5,6 +5,7 @@ namespace App\Cms\Sections;
 use App\Enums\SectionType;
 use App\Filament\Support\SectionImagePicker;
 use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -76,7 +77,10 @@ class HeroSection extends SectionBlueprint
                         ->label('Heading accent (italic)')
                         ->maxLength(120)
                         ->helperText('Optional accent run rendered after the heading.'),
-                    Textarea::make('description')->rows(2)->maxLength(500)->columnSpanFull(),
+                    RichEditor::make('description')
+                        ->toolbarButtons(['bold', 'italic', 'link', 'undo', 'redo'])
+                        ->columnSpanFull()
+                        ->helperText('Rendered as HTML on the public site — bold/italic/line breaks are honored.'),
                     TextInput::make('cta_label')->label('CTA label')->maxLength(60),
                     TextInput::make('cta_url')->label('CTA URL')->maxLength(2048),
                     Select::make('text_theme')

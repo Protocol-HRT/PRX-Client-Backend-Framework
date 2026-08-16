@@ -29,12 +29,16 @@ Keep the token server-side (env var). Never ship it in client-side JavaScript.
 | Key | Contents | Frontend responsibility |
 |---|---|---|
 | `brand` | name, tagline, logo variants, favicon, hero image, announcement | Render chrome; never hardcode a brand string or logo file |
-| `theme` | `primary_color`, `accent_color`, `accent_secondary_color`, `background_color`, `text_color`, `font_display`, `font_body`, `custom_css`, `frontend_template` | Map colors/fonts to CSS custom properties on `<html>`; inject `custom_css` **after** your own styles; switch component/layout variants on `frontend_template` |
+| `theme` | `primary_color`, `accent_color`, `accent_secondary_color`, `background_color`, `text_color`, `font_display`, `font_body`, `custom_css`, `frontend_template`, `text_classes` | Map colors/fonts to CSS custom properties on `<html>`; inject `custom_css` **after** your own styles; switch component/layout variants on `frontend_template` |
 | `contact` | emails, phone, address, business hours, social links | Contact page, footer, JSON-LD |
 | `seo` | default title/description, OG image, `google_analytics_id`, `google_tag_manager_id`, `facebook_pixel_id`, `tiktok_pixel_id`, `custom_head_scripts`, `custom_body_scripts`, `allow_indexing` | Metadata defaults, robots handling, analytics bootstrapping. Inject the custom script fields verbatim (head / end-of-body) |
 | `provider` | telehealth provider name/slug, `supports_embed`, `supports_patient_portal_auth` | Feature-gate checkout embed and patient portal |
 
 **Trust note on `custom_css` / `custom_*_scripts`:** these execute verbatim in the page. They are writable only by the install's permission-gated admins and served from the install's own backend — the same trust level as the frontend deploy itself. Never point a frontend at a backend you don't control.
+
+**Text color classes:** `theme.text_classes` is a list of `{name, color}` rows (managed in Settings → Theme). The frontend emits a `.tx-{name} { color: … }` rule for each, so admins can color runs of rich text with `<span class="tx-gold">…</span>` without touching CSS.
+
+**Section presentation:** every section's `data` may carry `extra_padding` (`sm`|`md`|`lg`) — a shared knob added by the section editor; the renderer wraps the section to add vertical breathing room. Long-copy fields (hero slide `description`, image-callout `content`, timeline `body`, hero-banner `subhead`) are HTML: render them with the shared `Html` component (plain legacy text passes through with newlines converted to `<br />`).
 
 **Theming model:** the frontend defines *structure* with neutral CSS variables (`--color-primary`, `--font-display`, …); the backend supplies *values*. Per-install visual identity therefore requires zero frontend code changes: colors/fonts via theme settings, arbitrary overrides via `custom_css`, and wholesale layout swaps via `frontend_template` (the frontend maps each supported template slug to its own component set; unknown slugs should fall back to `default`).
 

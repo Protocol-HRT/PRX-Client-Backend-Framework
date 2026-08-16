@@ -7,8 +7,8 @@ use App\Enums\SectionType;
 use App\Filament\Support\SectionImagePicker;
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 
@@ -103,7 +103,10 @@ class ImageCalloutBannerSection extends SectionBlueprint
                         ->maxValue(600)
                         ->helperText('Rendered width of the icon/logo. Leave empty for the small default.'),
                     TextInput::make('title')->maxLength(255),
-                    Textarea::make('content')->rows(4)->maxLength(2000)->columnSpanFull(),
+                    RichEditor::make('content')
+                        ->toolbarButtons(['bold', 'italic', 'link', 'undo', 'redo'])
+                        ->columnSpanFull()
+                        ->helperText('Rendered as HTML on the public site — bold/italic/line breaks are honored.'),
                     ...$this->ctaFields(),
                 ])
                 ->columns(2)
@@ -124,7 +127,15 @@ class ImageCalloutBannerSection extends SectionBlueprint
     public function resolveData(array $data): array
     {
         $data['callouts'] = array_map(
-            fn (array $callout): array => $this->resolveCta($callout),
+            function (array $callout): array {
+                // Filament re-saves select values as integers; the API
+                // contract for slot positions is string '0' / '1'.
+                if (isset($callout['position'])) {
+                    $callout['position'] = (string) $callout['position'];
+                }
+
+                return $this->resolveCta($callout);
+            },
             array_values($data['callouts'] ?? []),
         );
 
