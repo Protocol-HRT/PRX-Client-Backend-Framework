@@ -152,7 +152,10 @@ class BackfillSectionMediaCommand extends Command
 
         $media = Media::query()->create([
             'disk' => 'public',
-            'directory' => Str::beforeLast($normalized, '/'),
+            // beforeLast() returns the WHOLE string when there is no
+            // delimiter — a root-level file must get a null directory or
+            // curator reconstructs a bogus nested path and 404s.
+            'directory' => Str::contains($normalized, '/') ? Str::beforeLast($normalized, '/') : null,
             'visibility' => 'public',
             'name' => Str::of($normalized)->afterLast('/')->beforeLast('.')->toString(),
             'path' => $normalized,

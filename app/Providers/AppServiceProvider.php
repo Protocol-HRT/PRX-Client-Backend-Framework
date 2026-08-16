@@ -20,6 +20,8 @@ use App\Services\Cms\PageRevisionService;
 use App\Services\Cms\SectionRegistry;
 use App\Services\Payments\PaymentGatewayManager;
 use App\Settings\BrandSettings;
+use Awcodes\Curator\Config\GlideManager;
+use Awcodes\Curator\Glide\SymfonyResponseFactory;
 use Dedoc\Scramble\Scramble;
 use Dedoc\Scramble\Support\RouteInfo;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -44,6 +46,28 @@ class AppServiceProvider extends ServiceProvider
         $this->configureApiDocs();
         $this->configureCmsObservers();
         $this->configureBrandMailFrom();
+        $this->configureGlideCache();
+    }
+
+    /**
+     * Curator's default Glide transform cache is storage/app/.cache — once
+     * one server user (php-fpm's www-data vs `artisan serve`'s shell user)
+     * creates it 700, the other 500s on every thumbnail with "Could not
+     * write the image". Relocate the cache to a dedicated pre-created dir
+     * (see storage/app/glide-cache/.gitignore) instead of sharing a hidden
+     * one nobody knows to fix.
+     */
+    private function configureGlideCache(): void
+    {
+        app(GlideManager::class)->serverConfig([
+            'response' => new SymfonyResponseFactory(app('request')),
+            'source' => storage_path('app'),
+            'source_path_prefix' => 'public',
+            'cache' => storage_path('app'),
+            'cache_path_prefix' => 'glide-cache',
+            'max_image_size' => 2000 * 2000,
+            'base_url' => 'curator',
+        ]);
     }
 
     /**
