@@ -33,6 +33,8 @@ class PlanResource extends JsonResource
             'billing' => [
                 'period' => $this->billing_period?->value,
                 'period_label' => $this->billing_period?->label(),
+                'mode' => $this->billing_mode?->value,
+                'mode_label' => $this->billing_mode?->label(),
                 'term_months' => $this->term_months !== null ? (int) $this->term_months : null,
                 'is_recurring' => (bool) $this->is_recurring,
                 'rebill_strategy' => $this->rebill_strategy?->value,

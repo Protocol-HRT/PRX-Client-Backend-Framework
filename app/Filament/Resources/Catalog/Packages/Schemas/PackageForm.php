@@ -204,6 +204,12 @@ class PackageForm
                                 ->maxLength(32)
                                 ->placeholder('e.g. /mo, starting at')
                                 ->hintIcon(Heroicon::InformationCircle, 'Optional copy appended after the price, e.g. "/mo" or "starting at".'),
+                            TextInput::make('cost')
+                                ->numeric()
+                                ->prefix('$')
+                                ->step(0.01)
+                                ->minValue(0)
+                                ->hintIcon(Heroicon::InformationCircle, 'Internal cost — what the company pays. Used for reporting and P&L only; never shown on the storefront or public API.'),
                         ]),
                     Section::make('Categories & tags')
                         ->columnSpanFull()

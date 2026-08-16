@@ -2,10 +2,13 @@
 
 namespace App\Models\Catalog;
 
+use App\Enums\BillingMode;
 use App\Enums\BillingPeriod;
 use App\Enums\CatalogStatus;
 use App\Enums\RebillStrategy;
+use App\Models\Concerns\HasCategories;
 use App\Models\Concerns\HasFulfillmentCenter;
+use App\Models\Concerns\HasTags;
 use App\Models\User;
 use Database\Factories\Catalog\PlanFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -20,7 +23,7 @@ use Spatie\Sluggable\SlugOptions;
 
 class Plan extends Model implements Sortable
 {
-    use HasFactory, HasFulfillmentCenter, HasSlug, SoftDeletes, SortableTrait;
+    use HasCategories, HasFactory, HasFulfillmentCenter, HasSlug, HasTags, SoftDeletes, SortableTrait;
 
     public function getSlugOptions(): SlugOptions
     {
@@ -42,9 +45,11 @@ class Plan extends Model implements Sortable
         'gallery',
         'status',
         'billing_period',
+        'billing_mode',
         'retail_price',
         'sale_price',
         'intro_price',
+        'cost',
         'price_suffix',
         'provider_plan_id',
         'provider_plan_sku',
@@ -78,10 +83,12 @@ class Plan extends Model implements Sortable
         return [
             'status' => CatalogStatus::class,
             'billing_period' => BillingPeriod::class,
+            'billing_mode' => BillingMode::class,
             'gallery' => 'array',
             'retail_price' => 'decimal:2',
             'sale_price' => 'decimal:2',
             'intro_price' => 'decimal:2',
+            'cost' => 'decimal:2',
             'is_featured' => 'boolean',
             'requires_lab' => 'boolean',
             'is_recurring' => 'boolean',

@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\Api\V1\Catalog;
 
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Storage;
@@ -30,9 +31,45 @@ class ProductResource extends JsonResource
             'highlights' => $highlights,
             'is_featured' => (bool) $this->is_featured,
             'is_in_stock' => (bool) $this->is_in_stock,
+            'inventory_status' => $this->inventory_status?->value,
             'is_on_sale' => $this->sale_price !== null,
             'requires_lab' => (bool) $this->requires_lab,
+            'rx_required' => (bool) $this->rx_required,
+            'is_controlled_substance' => (bool) $this->is_controlled_substance,
             'sort_order' => $this->position,
+            'classification' => [
+                'class' => $this->lookup($this->whenLoaded('productClass')),
+                'type' => $this->lookup($this->whenLoaded('productType')),
+                'form' => $this->lookup($this->whenLoaded('productForm')),
+                'administration_method' => $this->lookup($this->whenLoaded('administrationMethod')),
+            ],
+            'volume' => [
+                'value' => $this->volume !== null ? (float) $this->volume : null,
+                'unit' => $this->whenLoaded('volumeUnit', fn () => $this->volumeUnit?->abbreviation, null),
+            ],
+            'ingredients' => $this->whenLoaded('ingredients', fn () => $this->ingredients->map(fn ($ingredient) => [
+                'name' => $ingredient->name,
+                'slug' => $ingredient->slug,
+                'concentration' => $ingredient->pivot->concentration !== null ? (float) $ingredient->pivot->concentration : null,
+                'per_volume' => $ingredient->pivot->per_volume !== null ? (float) $ingredient->pivot->per_volume : null,
+                'label' => $ingredient->pivot->potencyLabel(),
+            ])->values()->all()),
+            'coas' => $this->whenLoaded('coas', fn () => $this->coas
+                ->where('is_visible', true)
+                ->map(fn ($coa) => [
+                    'batch_number' => $coa->batch_number,
+                    'file_url' => Storage::disk('public')->url($coa->file_path),
+                    'file_type' => $coa->file_type,
+                    'issued_at' => $coa->issued_at?->toDateString(),
+                ])->values()->all()),
+            'related' => $this->when(
+                $request->routeIs('api.v1.catalog.products.show'),
+                fn () => CatalogRelationItemResource::collection($this->relatedItems())->toArray($request)
+            ),
+            'pairs_with' => $this->when(
+                $request->routeIs('api.v1.catalog.products.show'),
+                fn () => CatalogRelationItemResource::collection($this->pairsWithItems())->toArray($request)
+            ),
             'price' => [
                 'retail' => $this->retail_price !== null ? (float) $this->retail_price : null,
                 'sale' => $this->sale_price !== null ? (float) $this->sale_price : null,
@@ -52,6 +89,24 @@ class ProductResource extends JsonResource
             ],
             'categories' => CategoryResource::collection($this->whenLoaded('categories')),
             'tags' => TagResource::collection($this->whenLoaded('tags')),
+        ];
+    }
+
+    /**
+     * Maps a loaded lookup model (class/type/form/method) to {id, name, slug} or null.
+     *
+     * @return array{id: int, name: string, slug: string|null}|null
+     */
+    private function lookup(mixed $model): ?array
+    {
+        if (! $model instanceof Model) {
+            return null;
+        }
+
+        return [
+            'id' => $model->id,
+            'name' => $model->name,
+            'slug' => $model->slug ?? null,
         ];
     }
 

@@ -52,6 +52,14 @@ class PackageResource extends JsonResource
             'plans' => PlanResource::collection($this->whenLoaded('plans')),
             'categories' => CategoryResource::collection($this->whenLoaded('categories')),
             'tags' => TagResource::collection($this->whenLoaded('tags')),
+            'related' => $this->when(
+                $request->routeIs('api.v1.catalog.packages.show'),
+                fn () => CatalogRelationItemResource::collection($this->relatedItems())->toArray($request)
+            ),
+            'pairs_with' => $this->when(
+                $request->routeIs('api.v1.catalog.packages.show'),
+                fn () => CatalogRelationItemResource::collection($this->pairsWithItems())->toArray($request)
+            ),
         ];
     }
 

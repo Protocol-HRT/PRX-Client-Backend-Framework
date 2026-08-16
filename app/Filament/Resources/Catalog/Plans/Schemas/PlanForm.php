@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Catalog\Plans\Schemas;
 
+use App\Enums\BillingMode;
 use App\Enums\BillingPeriod;
 use App\Enums\CatalogStatus;
 use App\Enums\RebillStrategy;
@@ -175,10 +176,22 @@ class PlanForm
                                 ->maxLength(32)
                                 ->placeholder('e.g. /mo, every 3 mo')
                                 ->hintIcon(Heroicon::InformationCircle, 'Optional copy appended after the price.'),
+                            TextInput::make('cost')
+                                ->numeric()
+                                ->prefix('$')
+                                ->step(0.01)
+                                ->minValue(0)
+                                ->hintIcon(Heroicon::InformationCircle, 'Internal cost per billing cycle — what the company pays. Used for reporting and P&L only; never exposed publicly.'),
                         ]),
                     Section::make('Subscription')
                         ->columnSpanFull()
                         ->components([
+                            Select::make('billing_mode')
+                                ->options(BillingMode::class)
+                                ->native(false)
+                                ->label('Billing mode')
+                                ->placeholder('Not set')
+                                ->hintIcon(Heroicon::InformationCircle, 'Commercial billing structure, mirroring the provider: prepaid term, recurring, installment, or externally billed.'),
                             TextInput::make('term_months')
                                 ->label('Term (months)')
                                 ->numeric()

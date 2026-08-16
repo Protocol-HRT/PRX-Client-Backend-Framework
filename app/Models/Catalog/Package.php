@@ -3,6 +3,7 @@
 namespace App\Models\Catalog;
 
 use App\Enums\CatalogStatus;
+use App\Models\Concerns\HasCatalogRelations;
 use App\Models\Concerns\HasCategories;
 use App\Models\Concerns\HasFulfillmentCenter;
 use App\Models\Concerns\HasTags;
@@ -22,7 +23,7 @@ use Spatie\Sluggable\SlugOptions;
 
 class Package extends Model implements Sortable
 {
-    use HasCategories, HasFactory, HasFulfillmentCenter, HasSlug, HasTags, SoftDeletes, SortableTrait;
+    use HasCatalogRelations, HasCategories, HasFactory, HasFulfillmentCenter, HasSlug, HasTags, SoftDeletes, SortableTrait;
 
     public function getSlugOptions(): SlugOptions
     {
@@ -44,6 +45,7 @@ class Package extends Model implements Sortable
         'status',
         'retail_price',
         'sale_price',
+        'cost',
         'price_suffix',
         'provider_package_id',
         'provider_package_sku',
@@ -77,6 +79,7 @@ class Package extends Model implements Sortable
             'gallery' => 'array',
             'retail_price' => 'decimal:2',
             'sale_price' => 'decimal:2',
+            'cost' => 'decimal:2',
             'is_featured' => 'boolean',
             'is_in_stock' => 'boolean',
             'requires_lab' => 'boolean',

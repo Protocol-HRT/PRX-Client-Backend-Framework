@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Catalog\Products\Schemas;
 
 use App\Enums\CatalogStatus;
+use App\Enums\InventoryStatus;
 use App\Models\Catalog\Category;
 use App\Models\Catalog\Tag;
 use Filament\Forms\Components\FileUpload;
@@ -60,6 +61,46 @@ class ProductForm
                                 ->columnSpanFull()
                                 ->hintIcon(Heroicon::InformationCircle, 'Full product description shown on the detail page.')
                                 ->helperText('Long-form description for the product detail page.'),
+                        ]),
+                    Section::make('Classification')
+                        ->columnSpanFull()
+                        ->description('Clinical taxonomy and physical form. Manage the option lists under Shop → Product Classes / Types / Forms / Administration Methods / Units.')
+                        ->columns(2)
+                        ->components([
+                            Select::make('product_class_id')
+                                ->label('Product class')
+                                ->relationship('productClass', 'name', fn ($query) => $query->active()->orderBy('position'))
+                                ->preload()
+                                ->searchable()
+                                ->hintIcon(Heroicon::InformationCircle, 'Top-level clinical grouping, e.g. Peptides, HRT, GLP-1.'),
+                            Select::make('product_type_id')
+                                ->label('Product type')
+                                ->relationship('productType', 'name', fn ($query) => $query->active()->orderBy('position'))
+                                ->preload()
+                                ->searchable()
+                                ->hintIcon(Heroicon::InformationCircle, 'Specific type within the class, e.g. a particular therapy line.'),
+                            Select::make('product_form_id')
+                                ->label('Product form')
+                                ->relationship('productForm', 'name', fn ($query) => $query->active()->orderBy('position'))
+                                ->preload()
+                                ->searchable()
+                                ->hintIcon(Heroicon::InformationCircle, 'Physical form: vial, troche, capsule, cream, nasal inhaler, etc.'),
+                            Select::make('administration_method_id')
+                                ->label('Administration method')
+                                ->relationship('administrationMethod', 'name', fn ($query) => $query->active()->orderBy('position'))
+                                ->preload()
+                                ->searchable()
+                                ->hintIcon(Heroicon::InformationCircle, 'Route of delivery: oral, sub-q injection, topical, etc.'),
+                            TextInput::make('volume')
+                                ->numeric()
+                                ->minValue(0)
+                                ->step(0.0001)
+                                ->hintIcon(Heroicon::InformationCircle, 'Container volume or total content amount, e.g. 10 for a 10 mg vial or 3 for a 3 ml vial.'),
+                            Select::make('volume_unit_id')
+                                ->label('Volume unit')
+                                ->relationship('volumeUnit', 'abbreviation', fn ($query) => $query->active()->orderBy('position'))
+                                ->preload()
+                                ->hintIcon(Heroicon::InformationCircle, 'Unit for the volume value: mg, ml, g, etc.'),
                         ]),
                     Section::make('Imagery')
                         ->columnSpanFull()
@@ -182,6 +223,21 @@ class ProductForm
                                 ->maxLength(32)
                                 ->placeholder('e.g. /mo, /vial')
                                 ->hintIcon(Heroicon::InformationCircle, 'Optional copy appended after the price.'),
+                            TextInput::make('cost')
+                                ->numeric()
+                                ->prefix('$')
+                                ->step(0.01)
+                                ->minValue(0)
+                                ->hintIcon(Heroicon::InformationCircle, 'Internal unit cost — what the company pays. Used for reporting and P&L only; never shown on the storefront or public API.'),
+                        ]),
+                    Section::make('Inventory')
+                        ->columnSpanFull()
+                        ->components([
+                            Select::make('inventory_status')
+                                ->options(InventoryStatus::class)
+                                ->native(false)
+                                ->placeholder('Not tracked')
+                                ->hintIcon(Heroicon::InformationCircle, 'When set, the In-stock flag below is derived automatically (In Stock / Back Ordered = purchasable). Leave empty to manage the flag manually.'),
                         ]),
                     Section::make('Categories & tags')
                         ->columnSpanFull()
@@ -215,6 +271,12 @@ class ProductForm
                             Toggle::make('requires_lab')
                                 ->label('Requires lab work')
                                 ->helperText('Surfaces a "Lab required" badge on the public detail page.'),
+                            Toggle::make('rx_required')
+                                ->label('Prescription required')
+                                ->hintIcon(Heroicon::InformationCircle, 'Product requires a prescription; mirrors the provider rx_required flag on sync.'),
+                            Toggle::make('is_controlled_substance')
+                                ->label('Controlled substance')
+                                ->hintIcon(Heroicon::InformationCircle, 'Marks the product as a controlled substance for compliance handling and reporting.'),
                         ]),
                 ])->columnSpan(1),
             ]);

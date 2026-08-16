@@ -3,6 +3,8 @@
 namespace App\Models\Catalog;
 
 use App\Enums\CatalogStatus;
+use App\Enums\InventoryStatus;
+use App\Models\Concerns\HasCatalogRelations;
 use App\Models\Concerns\HasCategories;
 use App\Models\Concerns\HasFulfillmentCenter;
 use App\Models\Concerns\HasTags;
@@ -13,6 +15,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\EloquentSortable\Sortable;
 use Spatie\EloquentSortable\SortableTrait;
@@ -21,7 +24,7 @@ use Spatie\Sluggable\SlugOptions;
 
 class Product extends Model implements Sortable
 {
-    use HasCategories, HasFactory, HasFulfillmentCenter, HasSlug, HasTags, SoftDeletes, SortableTrait;
+    use HasCatalogRelations, HasCategories, HasFactory, HasFulfillmentCenter, HasSlug, HasTags, SoftDeletes, SortableTrait;
 
     public function getSlugOptions(): SlugOptions
     {
@@ -41,8 +44,18 @@ class Product extends Model implements Sortable
         'hero_image_path',
         'gallery',
         'status',
+        'product_class_id',
+        'product_type_id',
+        'product_form_id',
+        'administration_method_id',
+        'volume',
+        'volume_unit_id',
+        'inventory_status',
+        'is_controlled_substance',
+        'rx_required',
         'retail_price',
         'sale_price',
+        'cost',
         'price_suffix',
         'provider_product_id',
         'provider_product_sku',
@@ -72,15 +85,31 @@ class Product extends Model implements Sortable
     {
         return [
             'status' => CatalogStatus::class,
+            'inventory_status' => InventoryStatus::class,
             'gallery' => 'array',
             'retail_price' => 'decimal:2',
             'sale_price' => 'decimal:2',
+            'cost' => 'decimal:2',
+            'volume' => 'decimal:4',
             'is_featured' => 'boolean',
             'is_in_stock' => 'boolean',
+            'is_controlled_substance' => 'boolean',
+            'rx_required' => 'boolean',
             'requires_lab' => 'boolean',
             'highlights' => 'array',
             'last_synced_at' => 'datetime',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        // inventory_status is the source of truth when set; is_in_stock stays
+        // the storefront-facing boolean the API and filters already consume.
+        static::saving(function (Product $product): void {
+            if ($product->inventory_status !== null) {
+                $product->is_in_stock = $product->inventory_status->isPurchasable();
+            }
+        });
     }
 
     public function packages(): BelongsToMany
@@ -88,6 +117,52 @@ class Product extends Model implements Sortable
         return $this->belongsToMany(Package::class, 'package_product')
             ->withPivot('sort_order', 'is_included')
             ->orderByPivot('sort_order');
+    }
+
+    public function productClass(): BelongsTo
+    {
+        return $this->belongsTo(ProductClass::class);
+    }
+
+    public function productType(): BelongsTo
+    {
+        return $this->belongsTo(ProductType::class);
+    }
+
+    public function productForm(): BelongsTo
+    {
+        return $this->belongsTo(ProductForm::class);
+    }
+
+    public function administrationMethod(): BelongsTo
+    {
+        return $this->belongsTo(AdministrationMethod::class);
+    }
+
+    public function volumeUnit(): BelongsTo
+    {
+        return $this->belongsTo(MeasurementUnit::class, 'volume_unit_id');
+    }
+
+    public function ingredients(): BelongsToMany
+    {
+        return $this->belongsToMany(Ingredient::class)
+            ->using(IngredientProduct::class)
+            ->withPivot([
+                'concentration',
+                'concentration_unit_id',
+                'per_volume',
+                'per_volume_unit_id',
+                'provider_quantity_label',
+                'position',
+            ])
+            ->withTimestamps()
+            ->orderByPivot('position');
+    }
+
+    public function coas(): HasMany
+    {
+        return $this->hasMany(ProductCoa::class)->orderByDesc('issued_at')->orderByDesc('id');
     }
 
     protected static function newFactory(): ProductFactory

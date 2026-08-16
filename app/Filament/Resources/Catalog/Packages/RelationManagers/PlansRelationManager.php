@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Catalog\Packages\RelationManagers;
 
+use App\Enums\BillingMode;
 use App\Enums\BillingPeriod;
 use App\Enums\CatalogStatus;
 use Filament\Actions\BulkActionGroup;
@@ -74,6 +75,12 @@ class PlansRelationManager extends RelationManager
                             ->prefix('$')
                             ->step(0.01)
                             ->helperText('First-billing-cycle price; later cycles bill at retail/sale.'),
+                        TextInput::make('cost')
+                            ->numeric()
+                            ->prefix('$')
+                            ->step(0.01)
+                            ->minValue(0)
+                            ->helperText('Internal cost — P&L only, never public.'),
                         TextInput::make('price_suffix')
                             ->maxLength(32)
                             ->placeholder('e.g. /mo, every 3 mo'),
@@ -83,6 +90,12 @@ class PlansRelationManager extends RelationManager
                     ->components([
                         Toggle::make('is_featured')->label('Featured'),
                         Toggle::make('requires_lab')->label('Requires lab work'),
+                        Select::make('billing_mode')
+                            ->options(BillingMode::class)
+                            ->native(false)
+                            ->label('Billing mode')
+                            ->placeholder('Not set')
+                            ->helperText('Prepaid term, recurring, installment, or externally billed — mirrors the provider.'),
                         Toggle::make('is_recurring')
                             ->label('Recurring / subscription')
                             ->helperText('Enables rebill cycle. Off = one-time purchase.'),

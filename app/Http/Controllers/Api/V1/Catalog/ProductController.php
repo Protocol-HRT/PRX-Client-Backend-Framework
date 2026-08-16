@@ -36,7 +36,7 @@ class ProductController extends ApiController
 
         $products = Product::query()
             ->where('status', CatalogStatus::Published)
-            ->with(['categories', 'tags'])
+            ->with(['categories', 'tags', 'productClass', 'productType', 'productForm', 'administrationMethod', 'volumeUnit'])
             ->when($request->filled('category'), fn ($q) => $q->whereHas(
                 'categories',
                 fn ($q) => $q->where('slug', $request->string('category'))
@@ -87,7 +87,18 @@ class ProductController extends ApiController
     {
         abort_if($product->status !== CatalogStatus::Published, 404);
 
-        $product->load(['categories', 'tags', 'packages.plans']);
+        $product->load([
+            'categories',
+            'tags',
+            'packages.plans',
+            'productClass',
+            'productType',
+            'productForm',
+            'administrationMethod',
+            'volumeUnit',
+            'ingredients',
+            'coas',
+        ]);
 
         return $this->success((new ProductResource($product))->toArray(request()));
     }
