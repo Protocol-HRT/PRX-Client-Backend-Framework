@@ -2,6 +2,7 @@
 
 namespace App\Enums;
 
+use App\Cms\Sections\BenefitsDiagramSection;
 use App\Cms\Sections\BenefitsHerSection;
 use App\Cms\Sections\BenefitsHimSection;
 use App\Cms\Sections\CategoryGridSection;
@@ -10,7 +11,9 @@ use App\Cms\Sections\FaqSection;
 use App\Cms\Sections\FeaturesGridSection;
 use App\Cms\Sections\FinalCtaSection;
 use App\Cms\Sections\HeroSection;
+use App\Cms\Sections\HighlightBannerSection;
 use App\Cms\Sections\HowItWorksSection;
+use App\Cms\Sections\ImageCalloutBannerSection;
 use App\Cms\Sections\ImageTextSplitSection;
 use App\Cms\Sections\PackagePricingComparisonSection;
 use App\Cms\Sections\PackageSliderSection;
@@ -51,6 +54,9 @@ enum SectionType: string
     case CtaBanner = 'cta-banner';
     case FeaturesGrid = 'features-grid';
     case VideoEmbed = 'video-embed';
+    case HighlightBanner = 'highlight-banner';
+    case ImageCalloutBanner = 'image-callout-banner';
+    case BenefitsDiagram = 'benefits-diagram';
 
     // Product-aware sections (catalog data inlined at API read time)
     case ProductSlider = 'product-slider';
@@ -81,6 +87,9 @@ enum SectionType: string
             self::CtaBanner => app(CtaBannerSection::class),
             self::FeaturesGrid => app(FeaturesGridSection::class),
             self::VideoEmbed => app(VideoEmbedSection::class),
+            self::HighlightBanner => app(HighlightBannerSection::class),
+            self::ImageCalloutBanner => app(ImageCalloutBannerSection::class),
+            self::BenefitsDiagram => app(BenefitsDiagramSection::class),
             self::ProductSlider => app(ProductSliderSection::class),
             self::ProductGrid => app(ProductGridSection::class),
             self::ProductCallout => app(ProductCalloutSection::class),
