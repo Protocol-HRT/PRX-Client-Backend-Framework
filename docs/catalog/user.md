@@ -90,7 +90,12 @@ A **Package** bundles one or more products together and is sold via **Plans** (p
 
 ## Plans
 
-A **Plan** belongs to a Package and defines a pricing tier and billing cadence.
+A **Plan** belongs to a Package **or a Product** (never both) and defines a
+pricing tier and billing cadence. Products get the same Plans tab as
+packages — add term plans (e.g. 3/6/12-month pricing) to sell a single
+product on subscription; a plan with "Recurring / subscription" enabled IS
+the subscription, no separate toggle needed. The product's own retail/sale
+price remains the one-time "buy once" option shown alongside the plan grid.
 
 **Example:** A "Testosterone" package might have three plans:
 - Monthly — $299/mo, auto-renews

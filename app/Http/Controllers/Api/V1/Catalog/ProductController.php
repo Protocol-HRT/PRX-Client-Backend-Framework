@@ -113,6 +113,7 @@ class ProductController extends ApiController
             'categories',
             'tags',
             'packages.plans',
+            'plans' => fn ($q) => $q->where('status', CatalogStatus::Published)->orderBy('position'),
             'productClass',
             'productType',
             'productForm',

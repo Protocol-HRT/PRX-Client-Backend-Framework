@@ -2205,6 +2205,12 @@
                                                         "currency"
                                                     ]
                                                 },
+                                                "plans": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/PlanResource"
+                                                    }
+                                                },
                                                 "seo": {
                                                     "anyOf": [
                                                         {
@@ -2291,6 +2297,7 @@
                                                 "related",
                                                 "pairs_with",
                                                 "price",
+                                                "plans",
                                                 "seo",
                                                 "provider",
                                                 "categories",
@@ -5497,7 +5504,10 @@
                                 ]
                             },
                             "effective": {
-                                "type": "number"
+                                "type": [
+                                    "number",
+                                    "null"
+                                ]
                             },
                             "suffix": {
                                 "type": "string"
@@ -6546,6 +6556,12 @@
                             "suffix",
                             "currency"
                         ]
+                    },
+                    "plans": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/PlanResource"
+                        }
                     },
                     "seo": {
                         "type": "object",

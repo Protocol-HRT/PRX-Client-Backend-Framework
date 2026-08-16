@@ -36,6 +36,7 @@ class Plan extends Model implements Sortable
 
     protected $fillable = [
         'package_id',
+        'product_id',
         'name',
         'slug',
         'subtitle',
@@ -105,9 +106,27 @@ class Plan extends Model implements Sortable
         return PlanFactory::new();
     }
 
+    /**
+     * A plan belongs to a Package OR a Product (term plans), never both —
+     * the DB check is dialect-dependent, so the guard lives here.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (Plan $plan): void {
+            if ($plan->package_id !== null && $plan->product_id !== null) {
+                throw new \InvalidArgumentException('A plan may belong to a package or a product, not both.');
+            }
+        });
+    }
+
     public function package(): BelongsTo
     {
         return $this->belongsTo(Package::class);
+    }
+
+    public function product(): BelongsTo
+    {
+        return $this->belongsTo(Product::class);
     }
 
     public function creator(): BelongsTo

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Catalog\Products;
 
+use App\Filament\Resources\Catalog\Packages\RelationManagers\PlansRelationManager;
 use App\Filament\Resources\Catalog\Products\Pages\CreateProduct;
 use App\Filament\Resources\Catalog\Products\Pages\EditProduct;
 use App\Filament\Resources\Catalog\Products\Pages\ListProducts;
@@ -45,6 +46,7 @@ class ProductResource extends Resource
     public static function getRelations(): array
     {
         return [
+            PlansRelationManager::class,
             IngredientsRelationManager::class,
             CoasRelationManager::class,
             CatalogRelationsRelationManager::class,

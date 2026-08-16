@@ -13,6 +13,7 @@ products   → hasMany → product_coas
 products   → belongsTo → product_classes / product_types / product_forms /
              administration_methods / measurement_units (volume_unit_id)
 packages   → hasMany → plans
+products   → hasMany → plans   (term plans — package_id XOR product_id, model-guarded)
 products & packages → morphMany → catalog_relations (source) → morphTo related
 ```
 
@@ -126,7 +127,12 @@ Full product detail. Adds over the card shape: `seo`, `ingredients`
 potency e.g. `"10 mg / 3 ml"`), `coas` (visible only —
 `[{batch_number, file_url, file_type, issued_at}]`), `detail_sections`
 (`[{title, placement: accordion|tab, content}]`), `related` and `pairs_with`
-(published-only light cards with `type: product|package` for routing).
+(published-only light cards with `type: product|package` for routing), and
+`plans` (published product term plans, position-ordered — same PlanResource
+shape as package plans; drives the detail-page deal grid, with the product's
+own `price` as the one-time/buy-once option). A plan belongs to a package OR
+a product, never both. Relation light cards price packages from their
+default plan; `price.effective` is `null` (never `0.00`) when unpriced.
 
 ### `GET /api/v1/catalog/packages`
 

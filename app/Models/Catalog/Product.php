@@ -167,6 +167,12 @@ class Product extends Model implements Sortable
         return $this->hasMany(ProductCoa::class)->orderByDesc('issued_at')->orderByDesc('id');
     }
 
+    /** Product term plans (3/6/9/12-month pricing) — same Plan machinery packages use. */
+    public function plans(): HasMany
+    {
+        return $this->hasMany(Plan::class)->orderBy('position');
+    }
+
     protected static function newFactory(): ProductFactory
     {
         return ProductFactory::new();

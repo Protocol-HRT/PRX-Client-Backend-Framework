@@ -83,6 +83,7 @@ class ProductResource extends JsonResource
                 'suffix' => $this->price_suffix,
                 'currency' => 'USD',
             ],
+            'plans' => PlanResource::collection($this->whenLoaded('plans')),
             'seo' => $this->when($request->routeIs('api.v1.catalog.products.show'), [
                 'meta_title' => $this->meta_title,
                 'meta_description' => $this->meta_description,
