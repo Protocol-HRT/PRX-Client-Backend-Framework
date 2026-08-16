@@ -30,6 +30,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use League\Flysystem\Filesystem;
+use League\Flysystem\Local\LocalFilesystemAdapter;
+use League\Flysystem\UnixVisibility\PortableVisibilityConverter;
+use League\Flysystem\Visibility;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -50,12 +54,13 @@ class AppServiceProvider extends ServiceProvider
     }
 
     /**
-     * Curator's default Glide transform cache is storage/app/.cache — once
-     * one server user (php-fpm's www-data vs `artisan serve`'s shell user)
-     * creates it 700, the other 500s on every thumbnail with "Could not
-     * write the image". Relocate the cache to a dedicated pre-created dir
-     * (see storage/app/glide-cache/.gitignore) instead of sharing a hidden
-     * one nobody knows to fix.
+     * Curator's default Glide transform cache breaks whenever two server
+     * users share it (php-fpm's www-data vs `artisan serve`'s shell user):
+     * Flysystem's local adapter creates intermediate cache directories with
+     * PRIVATE (700) visibility, so whichever user transforms an image first
+     * locks the other out and every later thumbnail 500s with "Could not
+     * write the image". Give Glide a dedicated cache filesystem whose
+     * visibility keeps directories group/world-writable instead.
      */
     private function configureGlideCache(): void
     {
@@ -63,8 +68,13 @@ class AppServiceProvider extends ServiceProvider
             'response' => new SymfonyResponseFactory(app('request')),
             'source' => storage_path('app'),
             'source_path_prefix' => 'public',
-            'cache' => storage_path('app'),
-            'cache_path_prefix' => 'glide-cache',
+            'cache' => new Filesystem(new LocalFilesystemAdapter(
+                storage_path('app/glide-cache'),
+                PortableVisibilityConverter::fromArray([
+                    'file' => ['public' => 0666, 'private' => 0666],
+                    'dir' => ['public' => 0777, 'private' => 0777],
+                ], Visibility::PUBLIC),
+            )),
             'max_image_size' => 2000 * 2000,
             'base_url' => 'curator',
         ]);
