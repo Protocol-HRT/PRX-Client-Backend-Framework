@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\Blog\BlogTagController;
 use App\Http\Controllers\Api\V1\Blog\PostController;
 use App\Http\Controllers\Api\V1\Cart\CartController;
 use App\Http\Controllers\Api\V1\Catalog\CategoryController;
+use App\Http\Controllers\Api\V1\Catalog\FacetController;
 use App\Http\Controllers\Api\V1\Catalog\PackageController;
 use App\Http\Controllers\Api\V1\Catalog\ProductController;
 use App\Http\Controllers\Api\V1\Catalog\TagController;
@@ -98,6 +99,8 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
         Route::get('packages/{package:slug}', [PackageController::class, 'show'])->name('packages.show');
 
         Route::get('tags', [TagController::class, 'index'])->name('tags.index');
+
+        Route::get('facets', [FacetController::class, 'index'])->name('facets.index');
     });
 
     // ── Blog ─────────────────────────────────────────────────────────────

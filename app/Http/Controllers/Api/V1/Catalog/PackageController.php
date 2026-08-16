@@ -17,6 +17,8 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
  */
 class PackageController extends ApiController
 {
+    use Concerns\SortsCatalogQueries;
+
     /**
      * List published catalog packages.
      *
@@ -29,6 +31,7 @@ class PackageController extends ApiController
     #[QueryParameter('search', 'Filter by package name or subtitle.', type: 'string', example: 'hormone')]
     #[QueryParameter('price_min', 'Filter packages with at least one plan priced at or above this amount (USD).', type: 'float', infer: false, example: 50)]
     #[QueryParameter('price_max', 'Filter packages with at least one plan priced at or below this amount (USD).', type: 'float', infer: false, example: 300)]
+    #[QueryParameter('sort', 'Sort order: position (default), name, -name, price, -price, newest, oldest.', type: 'string', example: '-price')]
     #[QueryParameter('per_page', 'Results per page (1–50, default 15).', type: 'integer', example: 15)]
     public function index(Request $request): AnonymousResourceCollection
     {
@@ -75,8 +78,7 @@ class PackageController extends ApiController
                     });
                 }
             )
-            ->orderBy('position')
-            ->orderBy('name')
+            ->tap(fn ($q) => $this->applyCatalogSort($q, $request->input('sort')))
             ->paginate($perPage);
 
         return PackageResource::collection($packages);
