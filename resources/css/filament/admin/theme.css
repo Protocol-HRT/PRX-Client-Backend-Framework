@@ -19,8 +19,8 @@
     --prx-teal-light:    #e0f5f9;
     --prx-text-dim:      rgba(203 213 225 / 0.65);
     --prx-border:        rgba(255 255 255 / 0.07);
-    --atlas-gold:        #ecab06;
-    --atlas-gold-hover:  #fdc330;
+    --prx-gold:        #ecab06;
+    --prx-gold-hover:  #fdc330;
 }
 
 /* ── Sidebar: deep navy clinical dark ─────────────────────── */
@@ -32,15 +32,43 @@
 .dark .fi-sidebar {
     background-color: var(--prx-navy) !important;
 }
-
+/* Button Color */
+.fi-bg-color-400 {
+    color: var(--prx-gold);
+}
+.hover\:fi-bg-color-300
+{
+    color: var(--prx-gold-hover);
+}
+.dark\:fi-bg-color-600
+{
+    color: var(--prx-gold);
+}
+.dark\:hover\:fi-bg-color-700
+{
+    color: var(--prx-gold-hover);
+}
 /* Sidebar header / branding area */
+.fi-sidebar-group.fi-active .fi-sidebar-group-dropdown-trigger-btn .fi-icon
+{
+    color: var(--prx-gold);
+}
 .fi-sidebar-header {
     background-color: var(--prx-navy-800) !important;
     border-bottom: 1px solid var(--prx-border) !important;
 }
+.fi-tabs-item.fi-active .fi-tabs-item-label, .fi-tabs-item.fi-active > .fi-icon {
+    color: var(--prx-gold);
+}
 .fi-sidebar-item.fi-active > .fi-sidebar-item-btn > .fi-sidebar-item-label
 {
-    color: var(--atlas-gold)
+    color: var(--prx-gold);
+}
+.fi-sidebar-item.fi-active > .fi-sidebar-item-btn > .fi-icon {
+    color: var(--prx-gold);
+}
+.fi-sidebar-item-label {
+    color: var(--prx-text-dim);
 }
 /* Sidebar nav group labels */
 .fi-sidebar-group-label {
