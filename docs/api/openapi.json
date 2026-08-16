@@ -1102,7 +1102,7 @@
         "/cart/items": {
             "post": {
                 "operationId": "v1.cart.items.add",
-                "description": "Adds a product or package+plan combination to the cart. Increments quantity if the\nsame item and plan already exist in the cart. Requires `type`, `id`, and (for packages)\n`plan_id`. Returns the updated cart.",
+                "description": "Adds a product or package to the cart, optionally under one of its plans. Increments\nquantity if the same item and plan already exist in the cart. Requires `type` and `id`;\n`plan_id` is required for packages and optional for products (term plans \u2014 omit it for\na one-time buy-once purchase). The plan must belong to the item. Returns the updated cart.",
                 "summary": "Add an item to the cart",
                 "tags": [
                     "Cart"
