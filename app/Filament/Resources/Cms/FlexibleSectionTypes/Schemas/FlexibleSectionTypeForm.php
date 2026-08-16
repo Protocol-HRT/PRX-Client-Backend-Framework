@@ -106,6 +106,10 @@ class FlexibleSectionTypeForm
                                             ->numeric()
                                             ->visible(fn (callable $get): bool => $get('kind') === FlexibleFieldKind::Number->value)
                                             ->helperText('Minimum value.'),
+                                        Toggle::make('simple')
+                                            ->label('Simple items')
+                                            ->visible(fn (callable $get): bool => $get('kind') === FlexibleFieldKind::Repeater->value)
+                                            ->helperText('Items store the single child field\'s bare value (a flat list) instead of a keyed object. Define exactly one child field.'),
                                         Toggle::make('raw')
                                             ->label('Keep raw in API')
                                             ->visible(fn (callable $get): bool => in_array($get('kind'), [
@@ -133,7 +137,10 @@ class FlexibleSectionTypeForm
                                             ->label('Child fields')
                                             ->reorderable()
                                             ->columnSpanFull()
-                                            ->visible(fn (callable $get): bool => $get('kind') === FlexibleFieldKind::Repeater->value)
+                                            ->visible(fn (callable $get): bool => in_array($get('kind'), [
+                                                FlexibleFieldKind::Repeater->value,
+                                                FlexibleFieldKind::Group->value,
+                                            ], true))
                                             ->itemLabel(fn (array $state): ?string => ($state['label'] ?? null) ?: ($state['key'] ?? null))
                                             ->addActionLabel('Add child field')
                                             ->columns(2)

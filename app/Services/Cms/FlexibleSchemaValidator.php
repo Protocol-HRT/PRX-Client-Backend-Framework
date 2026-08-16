@@ -24,13 +24,13 @@ class FlexibleSchemaValidator
      */
     public static function validate(array $fields): void
     {
-        self::validateLevel($fields, insideRepeater: false, context: '');
+        self::validateLevel($fields, repeaterDepth: 0, insideGroup: false, context: '');
     }
 
     /**
      * @param  list<array<string, mixed>>  $fields
      */
-    private static function validateLevel(array $fields, bool $insideRepeater, string $context): void
+    private static function validateLevel(array $fields, int $repeaterDepth, bool $insideGroup, string $context): void
     {
         $seenKeys = [];
         $ctaSeen = false;
@@ -89,11 +89,19 @@ class FlexibleSchemaValidator
             self::validateVisibleWhen($field, $key, $context);
 
             if ($kind === FlexibleFieldKind::Repeater) {
-                if ($insideRepeater) {
-                    throw new InvalidArgumentException("Repeater field '{$key}'{$context} cannot contain another repeater — only one nesting level is allowed.");
+                if ($repeaterDepth >= 2) {
+                    throw new InvalidArgumentException("Repeater field '{$key}'{$context} nests too deeply — repeaters may nest at most one level.");
                 }
 
-                self::validateRepeaterChildren($field, $key);
+                self::validateRepeaterChildren($field, $key, $repeaterDepth, $insideGroup);
+            }
+
+            if ($kind === FlexibleFieldKind::Group) {
+                if ($repeaterDepth > 0 || $insideGroup) {
+                    throw new InvalidArgumentException("Group field '{$key}'{$context} is only allowed at the top level — groups cannot nest inside repeaters or other groups.");
+                }
+
+                self::validateGroupChildren($field, $key);
             }
         }
 
@@ -167,7 +175,7 @@ class FlexibleSchemaValidator
     /**
      * @param  array<string, mixed>  $field
      */
-    private static function validateRepeaterChildren(array $field, string $key): void
+    private static function validateRepeaterChildren(array $field, string $key, int $repeaterDepth, bool $insideGroup): void
     {
         $children = $field['fields'] ?? null;
 
@@ -175,6 +183,34 @@ class FlexibleSchemaValidator
             throw new InvalidArgumentException("Repeater field '{$key}' must define at least one child field.");
         }
 
-        self::validateLevel($children, insideRepeater: true, context: " inside repeater '{$key}'");
+        if ($field['simple'] ?? false) {
+            if (count($children) !== 1) {
+                throw new InvalidArgumentException("Simple repeater field '{$key}' must define exactly one child field — items store that field's bare value.");
+            }
+
+            $childKind = is_array($children[array_key_first($children)] ?? null)
+                ? FlexibleFieldKind::tryFrom((string) ($children[array_key_first($children)]['kind'] ?? ''))
+                : null;
+
+            if (in_array($childKind, [null, FlexibleFieldKind::Repeater, FlexibleFieldKind::Group, FlexibleFieldKind::Cta], true)) {
+                throw new InvalidArgumentException("Simple repeater field '{$key}' needs a scalar-valued child kind.");
+            }
+        }
+
+        self::validateLevel($children, repeaterDepth: $repeaterDepth + 1, insideGroup: $insideGroup, context: " inside repeater '{$key}'");
+    }
+
+    /**
+     * @param  array<string, mixed>  $field
+     */
+    private static function validateGroupChildren(array $field, string $key): void
+    {
+        $children = $field['fields'] ?? null;
+
+        if (! is_array($children) || $children === []) {
+            throw new InvalidArgumentException("Group field '{$key}' must define at least one child field.");
+        }
+
+        self::validateLevel($children, repeaterDepth: 0, insideGroup: true, context: " inside group '{$key}'");
     }
 }

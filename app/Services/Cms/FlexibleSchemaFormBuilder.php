@@ -9,6 +9,7 @@ use App\Models\Catalog\Category;
 use App\Models\Catalog\Package;
 use App\Models\Catalog\Product;
 use Filament\Forms\Components\ColorPicker;
+use Filament\Forms\Components\Field;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
@@ -84,16 +85,20 @@ class FlexibleSchemaFormBuilder
             'category' => Select::make($key)
                 ->searchable()
                 ->options(fn () => Category::query()->orderBy('name')->pluck('name', 'id')->all()),
+            'categories' => Select::make($key)
+                ->multiple()
+                ->searchable()
+                ->options(fn () => Category::query()->orderBy('name')->pluck('name', 'id')->all())
+                ->maxItems($field['max'] ?? null),
             'cta' => Fieldset::make($label)
                 ->components(CtaFields::components())
                 ->columns(2),
-            'repeater' => Repeater::make($key)
-                ->schema($this->build(array_values($field['fields'] ?? [])))
-                ->minItems($field['min'] ?? null)
-                ->maxItems($field['max'] ?? null)
-                ->reorderable()
+            'group' => Fieldset::make($label)
+                ->statePath($key)
+                ->components($this->build(array_values($field['fields'] ?? [])))
                 ->columnSpanFull()
                 ->columns(2),
+            'repeater' => $this->repeater($key, $field),
             'products' => Select::make($key)
                 ->multiple()
                 ->searchable()
@@ -126,5 +131,33 @@ class FlexibleSchemaFormBuilder
         }
 
         return $component;
+    }
+
+    /**
+     * Simple repeaters mirror Filament's ->simple() storage: items hold the
+     * single child field's bare value instead of a keyed map.
+     *
+     * @param  array<string, mixed>  $field
+     */
+    private function repeater(string $key, array $field): Repeater
+    {
+        $children = array_values($field['fields'] ?? []);
+
+        $repeater = Repeater::make($key)
+            ->minItems($field['min'] ?? null)
+            ->maxItems($field['max'] ?? null)
+            ->reorderable()
+            ->columnSpanFull();
+
+        if (($field['simple'] ?? false) && isset($children[0])) {
+            /** @var Field $child */
+            $child = $this->component($children[0]);
+
+            return $repeater->simple($child);
+        }
+
+        return $repeater
+            ->schema($this->build($children))
+            ->columns(2);
     }
 }

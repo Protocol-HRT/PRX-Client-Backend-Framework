@@ -125,6 +125,25 @@ class SectionTypeInspector
         $out = [];
 
         foreach ($definition->model()->fields() as $field) {
+            // Group children live at dotted state paths ('peptide_card.title')
+            // exactly like code blueprints' dotted field names — flatten them
+            // so both origins inventory identically.
+            if (($field['kind'] ?? null) === 'group') {
+                foreach ($field['fields'] ?? [] as $child) {
+                    $entry = $map($child);
+                    $entry['name'] = ($field['key'] ?? '').'.'.$entry['name'];
+                    $entry['label'] = filled($child['label'] ?? null) ? $child['label'] : Str::headline($child['key'] ?? '');
+
+                    foreach ($child['fields'] ?? [] as $grandchild) {
+                        $entry['children'][] = $map($grandchild);
+                    }
+
+                    $out[] = $entry;
+                }
+
+                continue;
+            }
+
             $entry = $map($field);
 
             foreach ($field['fields'] ?? [] as $child) {

@@ -3,6 +3,7 @@
 namespace App\Services\Cms;
 
 use App\Cms\Support\CtaFields;
+use App\Cms\Support\VisibleWhen;
 use InvalidArgumentException;
 
 /**
@@ -19,6 +20,10 @@ use InvalidArgumentException;
  *   {"op": "inline_product", "input": "product_id", "output": "product"}
  *   {"op": "resolve_cta", "path": "callouts.*"}
  *   {"op": "cast_string", "path": "callouts.*.position"}
+ *
+ * Any op may carry a `when` list (visible_when shape, evaluated against the
+ * payload): while the conditions fail, the op is skipped and its `output`
+ * key (if any) is written as null.
  */
 class SectionResolverOps
 {
@@ -46,6 +51,17 @@ class SectionResolverOps
     {
         foreach ($resolvers as $resolver) {
             if (! is_array($resolver)) {
+                continue;
+            }
+
+            if (! $this->passesWhen($data, $resolver)) {
+                // A gated-off op still owns its output key: write null so the
+                // payload shape matches the blueprint's conditional branches
+                // (e.g. product-callout nulls the non-selected item type).
+                if (is_string($resolver['output'] ?? null)) {
+                    $data[$resolver['output']] = null;
+                }
+
                 continue;
             }
 
@@ -99,7 +115,42 @@ class SectionResolverOps
             if ($op === 'cast_string' && ! is_string($resolver['path'] ?? null)) {
                 throw new InvalidArgumentException("{$position} (cast_string) needs a 'path' to the value to cast.");
             }
+
+            $when = $resolver['when'] ?? null;
+
+            if ($when !== null) {
+                if (! is_array($when)) {
+                    throw new InvalidArgumentException("{$position} ({$op}): 'when' must be a list of conditions.");
+                }
+
+                foreach (array_values($when) as $conditionIndex => $condition) {
+                    if (! is_array($condition)
+                        || ! is_string($condition['field'] ?? null)
+                        || ! is_scalar($condition['value'] ?? null)
+                        || ! in_array($condition['operator'] ?? 'equals', ['equals', 'not_equals'], true)) {
+                        throw new InvalidArgumentException("{$position} ({$op}): 'when' condition #".($conditionIndex + 1).' needs a field, an equals/not_equals operator, and a scalar value.');
+                    }
+                }
+            }
         }
+    }
+
+    /**
+     * Evaluate an op's optional `when` gate — the payload-side counterpart
+     * of a field's visible_when (same shape, same loose comparison).
+     *
+     * @param  array<string, mixed>  $data
+     * @param  array<string, mixed>  $resolver
+     */
+    private function passesWhen(array $data, array $resolver): bool
+    {
+        $conditions = $resolver['when'] ?? null;
+
+        if (! is_array($conditions) || $conditions === []) {
+            return true;
+        }
+
+        return VisibleWhen::passes($conditions, fn (string $field): mixed => $data[$field] ?? null);
     }
 
     /**

@@ -20,7 +20,9 @@ enum FlexibleFieldKind: string
     case Product = 'product';
     case Package = 'package';
     case Category = 'category';
+    case Categories = 'categories';
     case Cta = 'cta';
+    case Group = 'group';
 
     public function label(): string
     {
@@ -41,16 +43,22 @@ enum FlexibleFieldKind: string
             self::Product => 'Product picker (single)',
             self::Package => 'Package picker (single)',
             self::Category => 'Category picker (single)',
+            self::Categories => 'Category picker (multiple)',
             self::Cta => 'Call to action (link or add-to-cart)',
+            self::Group => 'Field group (nested map)',
         };
     }
 
-    /** Kinds allowed inside a repeater (no nested repeaters). */
+    /**
+     * Kinds authorable inside a repeater in the admin UI. The validator
+     * additionally allows one level of repeater-in-repeater for seeded
+     * schemas; groups never nest.
+     */
     public static function repeaterChildKinds(): array
     {
         return array_values(array_filter(
             self::cases(),
-            fn (self $kind): bool => $kind !== self::Repeater,
+            fn (self $kind): bool => $kind !== self::Repeater && $kind !== self::Group,
         ));
     }
 

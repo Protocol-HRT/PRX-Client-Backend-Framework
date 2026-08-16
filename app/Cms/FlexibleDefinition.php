@@ -73,26 +73,58 @@ class FlexibleDefinition implements SectionDefinition
         );
 
         $kinds = [];
+        $this->collectFieldKinds($this->model->fields(), '', $inline, $kinds);
 
-        foreach ($this->model->fields() as $field) {
+        return $kinds;
+    }
+
+    /**
+     * Walk the schema tree collecting dot paths for inline-resolved kinds:
+     * repeaters fan out with `.*` (simple repeaters resolve the bare item),
+     * groups prefix their key like Filament statePath does.
+     *
+     * @param  list<array<string, mixed>>  $fields
+     * @param  list<string>  $inline
+     * @param  array<string, string>  $kinds
+     */
+    private function collectFieldKinds(array $fields, string $prefix, array $inline, array &$kinds): void
+    {
+        foreach ($fields as $field) {
+            $key = $field['key'] ?? null;
             $kind = $field['kind'] ?? 'text';
 
+            if ($key === null) {
+                continue;
+            }
+
+            $path = $prefix.$key;
+
             if (in_array($kind, $inline, true) && ! ($field['raw'] ?? false)) {
-                $kinds[$field['key']] = $kind;
+                $kinds[$path] = $kind;
+
+                continue;
             }
 
             if ($kind === 'repeater') {
-                foreach ($field['fields'] ?? [] as $child) {
-                    $childKind = $child['kind'] ?? 'text';
+                $children = array_values($field['fields'] ?? []);
 
-                    if (in_array($childKind, $inline, true) && ! ($child['raw'] ?? false)) {
-                        $kinds[$field['key'].'.*.'.$child['key']] = $childKind;
+                if (($field['simple'] ?? false) && isset($children[0])) {
+                    $childKind = $children[0]['kind'] ?? 'text';
+
+                    if (in_array($childKind, $inline, true) && ! ($children[0]['raw'] ?? false)) {
+                        $kinds[$path.'.*'] = $childKind;
                     }
+
+                    continue;
                 }
+
+                $this->collectFieldKinds($children, $path.'.*.', $inline, $kinds);
+            }
+
+            if ($kind === 'group') {
+                $this->collectFieldKinds(array_values($field['fields'] ?? []), $path.'.', $inline, $kinds);
             }
         }
-
-        return $kinds;
     }
 
     /**
@@ -131,20 +163,6 @@ class FlexibleDefinition implements SectionDefinition
         $map = [];
 
         foreach ($this->model->fields() as $field) {
-            $kind = $field['kind'] ?? 'text';
-
-            if ($kind === 'repeater') {
-                $children = [];
-
-                foreach ($field['fields'] ?? [] as $child) {
-                    $children[$child['key']] = $this->mapEntry($child);
-                }
-
-                $map[$field['key']] = ['kind' => 'repeater', 'fields' => $children];
-
-                continue;
-            }
-
             $map[$field['key']] = $this->mapEntry($field);
         }
 
@@ -157,10 +175,25 @@ class FlexibleDefinition implements SectionDefinition
      */
     private function mapEntry(array $field): array
     {
-        $entry = ['kind' => $field['kind'] ?? 'text'];
+        $kind = $field['kind'] ?? 'text';
+        $entry = ['kind' => $kind];
 
         if ($field['raw'] ?? false) {
             $entry['raw'] = true;
+        }
+
+        if ($kind === 'repeater' || $kind === 'group') {
+            $children = [];
+
+            foreach ($field['fields'] ?? [] as $child) {
+                $children[$child['key']] = $this->mapEntry($child);
+            }
+
+            $entry['fields'] = $children;
+
+            if ($field['simple'] ?? false) {
+                $entry['simple'] = true;
+            }
         }
 
         return $entry;
@@ -197,6 +230,10 @@ class FlexibleDefinition implements SectionDefinition
                         $data[$key][$index] = $this->applySchemaBehaviors($item, array_values($field['fields'] ?? []));
                     }
                 }
+            }
+
+            if ($kind === 'group' && isset($data[$key]) && is_array($data[$key])) {
+                $data[$key] = $this->applySchemaBehaviors($data[$key], array_values($field['fields'] ?? []));
             }
         }
 

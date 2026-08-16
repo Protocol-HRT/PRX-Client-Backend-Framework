@@ -5,6 +5,7 @@ namespace Tests\Feature\Cms;
 use App\Actions\Cms\UpdateFlexibleSectionTypeAction;
 use App\Cms\Support\VisibleWhen;
 use App\Data\Cms\FlexibleSectionTypeData;
+use App\Models\Catalog\Category;
 use App\Models\Catalog\Package;
 use App\Models\Catalog\Product;
 use App\Models\Cms\FlexibleSectionType;
@@ -323,6 +324,208 @@ class SectionPlatformVocabularyTest extends TestCase
                 ]],
             ]),
         );
+    }
+
+    // ─── Nested repeaters / simple repeaters / groups / categories ────
+
+    public function test_nested_repeater_passes_items_through_and_resolves_child_selects(): void
+    {
+        $this->makeType([
+            ['key' => 'steps', 'kind' => 'repeater', 'fields' => [
+                ['key' => 'title', 'kind' => 'text'],
+                ['key' => 'bullets', 'kind' => 'repeater', 'fields' => [
+                    ['key' => 'text', 'kind' => 'text'],
+                    ['key' => 'tone', 'kind' => 'select', 'options' => [['value' => '0', 'label' => 'Muted']]],
+                ]],
+            ]],
+        ]);
+
+        $data = $this->sectionPayload([
+            'steps' => [
+                ['title' => 'One', 'bullets' => [['text' => 'a', 'tone' => 0]]],
+            ],
+        ])['data'];
+
+        $this->assertSame('a', $data['steps'][0]['bullets'][0]['text']);
+        $this->assertSame('0', $data['steps'][0]['bullets'][0]['tone']);
+    }
+
+    public function test_triple_nested_repeater_is_rejected(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('nests too deeply');
+
+        app(UpdateFlexibleSectionTypeAction::class)->execute(
+            $this->makeType([['key' => 'heading', 'kind' => 'text']]),
+            FlexibleSectionTypeData::validateAndCreate([
+                'name' => 'Vocab Demo',
+                'slug' => 'vocab-demo',
+                'schema' => ['fields' => [
+                    ['key' => 'a', 'kind' => 'repeater', 'fields' => [
+                        ['key' => 'b', 'kind' => 'repeater', 'fields' => [
+                            ['key' => 'c', 'kind' => 'repeater', 'fields' => [
+                                ['key' => 'd', 'kind' => 'text'],
+                            ]],
+                        ]],
+                    ]],
+                ]],
+            ]),
+        );
+    }
+
+    public function test_simple_repeater_ships_flat_scalar_items(): void
+    {
+        $this->makeType([
+            ['key' => 'cards', 'kind' => 'repeater', 'fields' => [
+                ['key' => 'name', 'kind' => 'text'],
+                ['key' => 'badges', 'kind' => 'repeater', 'simple' => true, 'fields' => [
+                    ['key' => 'badge', 'kind' => 'text'],
+                ]],
+            ]],
+        ]);
+
+        $data = $this->sectionPayload([
+            'cards' => [['name' => 'Dr. A', 'badges' => ['Board-Certified', '20+ Years']]],
+        ])['data'];
+
+        $this->assertSame(['Board-Certified', '20+ Years'], $data['cards'][0]['badges']);
+    }
+
+    public function test_simple_repeater_with_multiple_children_is_rejected(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('exactly one child');
+
+        app(UpdateFlexibleSectionTypeAction::class)->execute(
+            $this->makeType([['key' => 'heading', 'kind' => 'text']]),
+            FlexibleSectionTypeData::validateAndCreate([
+                'name' => 'Vocab Demo',
+                'slug' => 'vocab-demo',
+                'schema' => ['fields' => [
+                    ['key' => 'features', 'kind' => 'repeater', 'simple' => true, 'fields' => [
+                        ['key' => 'a', 'kind' => 'text'],
+                        ['key' => 'b', 'kind' => 'text'],
+                    ]],
+                ]],
+            ]),
+        );
+    }
+
+    public function test_group_kind_carries_nested_map_and_casts_child_selects(): void
+    {
+        $this->makeType([
+            ['key' => 'eyebrow', 'kind' => 'text'],
+            ['key' => 'panel', 'kind' => 'group', 'default' => ['enabled' => false], 'fields' => [
+                ['key' => 'enabled', 'kind' => 'select', 'options' => [
+                    ['value' => '1', 'label' => 'Show'],
+                    ['value' => '0', 'label' => 'Hide'],
+                ]],
+                ['key' => 'title', 'kind' => 'text'],
+                ['key' => 'tiers', 'kind' => 'repeater', 'fields' => [
+                    ['key' => 'label', 'kind' => 'text'],
+                ]],
+            ]],
+        ]);
+
+        $section = $this->sectionPayload([
+            'eyebrow' => 'Plans',
+            'panel' => ['enabled' => 1, 'title' => 'Peptides', 'tiers' => [['label' => 'One']]],
+        ]);
+
+        $this->assertSame('1', $section['data']['panel']['enabled']);
+        $this->assertSame('One', $section['data']['panel']['tiers'][0]['label']);
+        $this->assertSame('group', $section['schema']['panel']['kind']);
+    }
+
+    public function test_group_inside_repeater_is_rejected(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('only allowed at the top level');
+
+        app(UpdateFlexibleSectionTypeAction::class)->execute(
+            $this->makeType([['key' => 'heading', 'kind' => 'text']]),
+            FlexibleSectionTypeData::validateAndCreate([
+                'name' => 'Vocab Demo',
+                'slug' => 'vocab-demo',
+                'schema' => ['fields' => [
+                    ['key' => 'items', 'kind' => 'repeater', 'fields' => [
+                        ['key' => 'panel', 'kind' => 'group', 'fields' => [
+                            ['key' => 'title', 'kind' => 'text'],
+                        ]],
+                    ]],
+                ]],
+            ]),
+        );
+    }
+
+    public function test_categories_kind_ships_raw_ids_for_the_categories_op(): void
+    {
+        $categories = Category::factory()->count(2)->create();
+        $ids = $categories->pluck('id')->all();
+
+        $this->makeType(
+            [
+                ['key' => 'mode', 'kind' => 'select', 'default' => 'manual', 'options' => [
+                    ['value' => 'all', 'label' => 'All'],
+                    ['value' => 'manual', 'label' => 'Manual'],
+                ]],
+                ['key' => 'category_ids', 'kind' => 'categories'],
+            ],
+            [['op' => 'categories', 'output' => 'categories']],
+        );
+
+        $data = $this->sectionPayload(['mode' => 'manual', 'category_ids' => $ids])['data'];
+
+        $this->assertSame($ids, $data['category_ids']);
+        $this->assertCount(2, $data['categories']);
+        $this->assertSame($categories->first()->name, $data['categories'][0]['name']);
+    }
+
+    // ─── Resolver `when` gate ─────────────────────────────────────────
+
+    public function test_resolver_when_gate_runs_op_only_while_conditions_pass(): void
+    {
+        $product = Product::factory()->create();
+        $package = Package::factory()->create();
+        $ops = app(SectionResolverOps::class);
+
+        $resolvers = [
+            ['op' => 'inline_product', 'input' => 'product_id', 'output' => 'product', 'when' => [
+                ['field' => 'item_type', 'operator' => 'equals', 'value' => 'product'],
+            ]],
+            ['op' => 'inline_package', 'input' => 'package_id', 'output' => 'package', 'when' => [
+                ['field' => 'item_type', 'operator' => 'equals', 'value' => 'package'],
+            ]],
+        ];
+
+        // Stale ids on the non-selected branch must null out, mirroring the
+        // conditional inlining code blueprints do.
+        $asProduct = $ops->apply(
+            ['item_type' => 'product', 'product_id' => $product->id, 'package_id' => $package->id],
+            $resolvers,
+        );
+
+        $this->assertSame($product->name, $asProduct['product']['name']);
+        $this->assertNull($asProduct['package']);
+
+        $asPackage = $ops->apply(
+            ['item_type' => 'package', 'product_id' => $product->id, 'package_id' => $package->id],
+            $resolvers,
+        );
+
+        $this->assertNull($asPackage['product']);
+        $this->assertSame($package->name, $asPackage['package']['name']);
+    }
+
+    public function test_resolver_when_with_malformed_condition_is_rejected(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        SectionResolverOps::validate([
+            ['op' => 'inline_product', 'input' => 'product_id', 'output' => 'product', 'when' => [
+                ['field' => 'item_type', 'operator' => 'matches', 'value' => 'product'],
+            ]],
+        ]);
     }
 
     public function test_sibling_key_colliding_with_cta_group_is_rejected(): void
