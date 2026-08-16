@@ -5,6 +5,7 @@ namespace App\Cms\Sections;
 use App\Enums\SectionType;
 use App\Filament\Support\SectionImagePicker;
 use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
@@ -34,6 +35,7 @@ class PhysiciansSection extends SectionBlueprint
     public function defaults(): array
     {
         return [
+            'theme' => 'light',
             'eyebrow' => null,
             'heading' => null,
             'heading_emphasis' => null,
@@ -46,6 +48,11 @@ class PhysiciansSection extends SectionBlueprint
     public function formSchema(): array
     {
         return [
+            Select::make('theme')
+                ->options(['light' => 'Light', 'dark' => 'Dark'])
+                ->default('light')
+                ->native(false)
+                ->helperText('Dark renders the spotlight card on a near-black panel with light text and translucent badge pills.'),
             Section::make('Section header (optional)')
                 ->description('Leave empty to render the spotlight cards alone.')
                 ->collapsed()

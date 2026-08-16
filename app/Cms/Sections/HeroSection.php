@@ -29,12 +29,13 @@ class HeroSection extends SectionBlueprint
 
     public function description(): ?string
     {
-        return 'Full-width hero slideshow: one or more slides (background image + heading + description + CTA each), with an optional floating highlight card. With no slides, the static headline fields render over the background image or video.';
+        return 'Full-width hero slideshow: one or more slides (background image + heading + description + CTA each), with an optional floating highlight card. With no slides, the static headline fields render over the background image or video. The banner layout instead renders the static fields as a centered rounded banner (eyebrow, headline, subtext, CTA).';
     }
 
     public function defaults(): array
     {
         return [
+            'layout' => 'slider',
             'slides' => [],
             'highlight_title' => null,
             'highlight_subtitle' => null,
@@ -57,6 +58,14 @@ class HeroSection extends SectionBlueprint
     public function formSchema(): array
     {
         return [
+            Select::make('layout')
+                ->options([
+                    'slider' => 'Slideshow (slides below)',
+                    'banner' => 'Centered banner (static fields below)',
+                ])
+                ->default('slider')
+                ->native(false)
+                ->helperText('Centered banner ignores the slides and renders the static hero fields centered over the background image in a rounded frame.'),
             Repeater::make('slides')
                 ->label('Slides')
                 ->schema([
