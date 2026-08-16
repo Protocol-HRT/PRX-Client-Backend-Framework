@@ -3,6 +3,7 @@
 namespace App\Services\Cms;
 
 use App\Cms\FlexibleDefinition;
+use App\Models\Catalog\CatalogItemSection;
 use App\Models\Cms\GlobalSection;
 use App\Models\PageSection;
 use Illuminate\Support\Collection;
@@ -28,7 +29,11 @@ class SectionDataTransformer
     ) {}
 
     /**
-     * @param  Collection<int, PageSection>  $sections
+     * Accepts page sections and catalog item sections — the two models share
+     * the attribute surface this transformer reads (type, data, enabled,
+     * anchor_id, globalSection).
+     *
+     * @param  Collection<int, PageSection|CatalogItemSection>  $sections
      * @return list<array<string, mixed>>
      */
     public function transform(Collection $sections): array

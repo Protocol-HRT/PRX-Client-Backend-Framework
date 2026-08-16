@@ -11,6 +11,7 @@ use App\Filament\Resources\Catalog\Products\RelationManagers\CoasRelationManager
 use App\Filament\Resources\Catalog\Products\RelationManagers\FaqsRelationManager;
 use App\Filament\Resources\Catalog\Products\RelationManagers\IngredientsRelationManager;
 use App\Filament\Resources\Catalog\Products\RelationManagers\ReviewsRelationManager;
+use App\Filament\Resources\Catalog\Products\RelationManagers\SectionsRelationManager;
 use App\Filament\Resources\Catalog\Products\Schemas\ProductForm;
 use App\Filament\Resources\Catalog\Products\Tables\ProductsTable;
 use App\Models\Catalog\Product;
@@ -54,6 +55,7 @@ class ProductResource extends Resource
             CatalogRelationsRelationManager::class,
             FaqsRelationManager::class,
             ReviewsRelationManager::class,
+            SectionsRelationManager::class,
         ];
     }
 

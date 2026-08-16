@@ -149,6 +149,25 @@ render on that item's storefront detail page, in the order you drag them into.
 
 ---
 
+## Per-product page building
+
+Two tools control how much extra content a product or stack page carries —
+use as much or as little per record as you want:
+
+- **Page Sections tab** — inject full content sections below the product
+  info: video embeds, image/text bands, testimonials, or any section type
+  available to the page builder (including admin-defined flexible types).
+  Drag to reorder. "Reuse a global block" attaches shared content that is
+  edited once and updates everywhere it's used. Disabled sections stay
+  saved but don't render.
+- **Detail page layout** (on the record form) — presentation knobs: page
+  template (Classic vs Conversion), accordion placement (side column vs
+  full-width below), Pair With slider sizing, and which recommendation
+  rails show at the bottom. Blank fields fall back to the deployment
+  default.
+
+---
+
 ## Product & stack reviews
 
 Every product and package edit page has a **Reviews** tab for curating

@@ -163,6 +163,36 @@ inverse `products()`/`packages()` on `FaqItem`).
   (multi-select) or author a new one in place ("New FAQ" creates the
   FaqItem and attaches it).
 
+### Injectable sections + detail_layout (per-record page building)
+
+Products and packages expose on their **show** endpoints:
+
+- `sections` — ordered list of CMS **section envelopes**
+  (`{type, origin, anchor, global, data, schema?}`), the exact contract
+  `/api/v1/pages` uses, so the frontend `SectionRenderer` consumes them
+  unchanged. Backing: `catalog_item_sections` morph table
+  (`App\Models\Catalog\CatalogItemSection` — PageSection's morph-attached
+  sibling; `HasItemSections::sections()` on Product/Package). Serialized by
+  the same `SectionDataTransformer` (media resolution, catalog inlining,
+  SVG sanitizing, global-block indirection all apply). Every registered
+  section type — code blueprints (video-embed, image-text-split, …) AND
+  admin-defined flexible types — is available per record. Global blocks
+  compose identically to pages: attach one block to many records, edit
+  once. Disabled sections and unresolvable types are skipped.
+- `detail_layout` — nullable per-record presentation JSON, passed through
+  verbatim to the frontend's `normalizePresentation`:
+  `{template: classic|conversion, accordions: {placement: side|below},
+  pair_with: {desktop: 1–4, mobile: 1–2}, rails: [related|stacks|associated]}`.
+  Every key optional; missing = deployment default. Never invent keys
+  backend-side — the frontend normalizer owns defaults.
+
+Admin: shared `SectionsRelationManager` ("Page Sections" tab, drag-ordered,
+same form builder as the page builder — the statePath/`$get('type')`
+gotchas from feedback-filament-group-get-paths apply) plus a "Detail page
+layout" section on the record form (dotted `detail_layout.*` field names,
+no statePath). Catalog show endpoints are not CmsCache-cached, so no
+observer wiring is needed.
+
 ### Reviews (base module)
 
 Products and packages expose on their **show** endpoints only:

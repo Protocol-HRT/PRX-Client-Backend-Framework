@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\Api\V1\Catalog;
 
+use App\Services\Cms\SectionDataTransformer;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Storage;
@@ -44,6 +45,14 @@ class PackageResource extends JsonResource
             'detail_sections' => $this->when(
                 $request->routeIs('api.v1.catalog.packages.show'),
                 fn () => $this->normalizeDetailSections($this->detail_sections)
+            ),
+            'detail_layout' => $this->when(
+                $request->routeIs('api.v1.catalog.packages.show'),
+                $this->detail_layout
+            ),
+            'sections' => $this->whenLoaded(
+                'sections',
+                fn () => app(SectionDataTransformer::class)->transform($this->sections)
             ),
             'seo' => $this->when($request->routeIs('api.v1.catalog.packages.show'), [
                 'meta_title' => $this->meta_title,

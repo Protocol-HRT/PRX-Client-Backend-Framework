@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\Api\V1\Catalog;
 
+use App\Services\Cms\SectionDataTransformer;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -60,6 +61,14 @@ class ProductResource extends JsonResource
             'detail_sections' => $this->when(
                 $request->routeIs('api.v1.catalog.products.show'),
                 fn () => $this->normalizeDetailSections($this->detail_sections)
+            ),
+            'detail_layout' => $this->when(
+                $request->routeIs('api.v1.catalog.products.show'),
+                $this->detail_layout
+            ),
+            'sections' => $this->whenLoaded(
+                'sections',
+                fn () => app(SectionDataTransformer::class)->transform($this->sections)
             ),
             'coas' => $this->whenLoaded('coas', fn () => $this->coas
                 ->where('is_visible', true)

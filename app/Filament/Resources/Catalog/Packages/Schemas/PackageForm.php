@@ -6,6 +6,7 @@ use App\Enums\CatalogStatus;
 use App\Models\Catalog\Category;
 use App\Models\Catalog\Product;
 use App\Models\Catalog\Tag;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -168,6 +169,47 @@ class PackageForm
                                 ->itemLabel(fn (array $state): ?string => $state['title'] ?? null)
                                 ->defaultItems(0)
                                 ->addActionLabel('Add content block'),
+                        ]),
+                    Section::make('Detail page layout')
+                        ->columnSpanFull()
+                        ->description('Per-package presentation knobs for the storefront detail page. Every field is optional — blank means the deployment default. Injectable sections (video, content bands, …) live on the "Page Sections" tab after the record is saved.')
+                        ->columns(2)
+                        ->components([
+                            Select::make('detail_layout.template')
+                                ->label('Page template')
+                                ->options([
+                                    'classic' => 'Classic',
+                                    'conversion' => 'Conversion (mobile-first)',
+                                ])
+                                ->native(false)
+                                ->placeholder('Deployment default'),
+                            Select::make('detail_layout.accordions.placement')
+                                ->label('Accordion placement')
+                                ->options([
+                                    'side' => 'Info column (side)',
+                                    'below' => 'Full-width below product info',
+                                ])
+                                ->native(false)
+                                ->placeholder('Deployment default'),
+                            Select::make('detail_layout.pair_with.desktop')
+                                ->label('Pair With per view (desktop)')
+                                ->options([1 => '1', 2 => '2', 3 => '3', 4 => '4'])
+                                ->native(false)
+                                ->placeholder('Automatic'),
+                            Select::make('detail_layout.pair_with.mobile')
+                                ->label('Pair With per view (mobile)')
+                                ->options([1 => '1', 2 => '2'])
+                                ->native(false)
+                                ->placeholder('Automatic'),
+                            CheckboxList::make('detail_layout.rails')
+                                ->label('Bottom rails')
+                                ->options([
+                                    'related' => 'People Also Bought (related items)',
+                                    'stacks' => 'Stacks rail',
+                                    'associated' => 'Associated products',
+                                ])
+                                ->columns(3)
+                                ->columnSpanFull(),
                         ]),
                     Section::make('Provider mapping')
                         ->columnSpanFull()

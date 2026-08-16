@@ -8,6 +8,7 @@ use App\Models\Concerns\HasCatalogRelations;
 use App\Models\Concerns\HasCategories;
 use App\Models\Concerns\HasFaqs;
 use App\Models\Concerns\HasFulfillmentCenter;
+use App\Models\Concerns\HasItemSections;
 use App\Models\Concerns\HasReviews;
 use App\Models\Concerns\HasTags;
 use App\Models\User;
@@ -26,7 +27,7 @@ use Spatie\Sluggable\SlugOptions;
 
 class Product extends Model implements Sortable
 {
-    use HasCatalogRelations, HasCategories, HasFactory, HasFaqs, HasFulfillmentCenter, HasReviews, HasSlug, HasTags, SoftDeletes, SortableTrait;
+    use HasCatalogRelations, HasCategories, HasFactory, HasFaqs, HasFulfillmentCenter, HasItemSections, HasReviews, HasSlug, HasTags, SoftDeletes, SortableTrait;
 
     public function getSlugOptions(): SlugOptions
     {
@@ -65,6 +66,7 @@ class Product extends Model implements Sortable
         'badge_text',
         'highlights',
         'detail_sections',
+        'detail_layout',
         'is_featured',
         'is_in_stock',
         'requires_lab',
@@ -101,6 +103,7 @@ class Product extends Model implements Sortable
             'requires_lab' => 'boolean',
             'highlights' => 'array',
             'detail_sections' => 'array',
+            'detail_layout' => 'array',
             'last_synced_at' => 'datetime',
         ];
     }

@@ -2135,6 +2135,26 @@
                                                         }
                                                     ]
                                                 },
+                                                "detail_layout": {
+                                                    "anyOf": [
+                                                        {
+                                                            "type": "string"
+                                                        },
+                                                        {
+                                                            "type": "object"
+                                                        }
+                                                    ]
+                                                },
+                                                "sections": {
+                                                    "anyOf": [
+                                                        {
+                                                            "type": "string"
+                                                        },
+                                                        {
+                                                            "type": "object"
+                                                        }
+                                                    ]
+                                                },
                                                 "coas": {
                                                     "anyOf": [
                                                         {
@@ -2338,6 +2358,8 @@
                                                 "volume",
                                                 "ingredients",
                                                 "detail_sections",
+                                                "detail_layout",
+                                                "sections",
                                                 "coas",
                                                 "related",
                                                 "pairs_with",
@@ -2757,6 +2779,26 @@
                                                         }
                                                     ]
                                                 },
+                                                "detail_layout": {
+                                                    "anyOf": [
+                                                        {
+                                                            "type": "string"
+                                                        },
+                                                        {
+                                                            "type": "object"
+                                                        }
+                                                    ]
+                                                },
+                                                "sections": {
+                                                    "anyOf": [
+                                                        {
+                                                            "type": "string"
+                                                        },
+                                                        {
+                                                            "type": "object"
+                                                        }
+                                                    ]
+                                                },
                                                 "seo": {
                                                     "anyOf": [
                                                         {
@@ -2918,6 +2960,8 @@
                                                 "sort_order",
                                                 "price_range",
                                                 "detail_sections",
+                                                "detail_layout",
+                                                "sections",
                                                 "seo",
                                                 "provider",
                                                 "products",
@@ -6080,6 +6124,12 @@
                             ]
                         }
                     },
+                    "detail_layout": {
+                        "type": "string"
+                    },
+                    "sections": {
+                        "type": "string"
+                    },
                     "seo": {
                         "type": "object",
                         "properties": {
@@ -6627,6 +6677,12 @@
                                 "content"
                             ]
                         }
+                    },
+                    "detail_layout": {
+                        "type": "string"
+                    },
+                    "sections": {
+                        "type": "string"
                     },
                     "coas": {
                         "type": "string"
