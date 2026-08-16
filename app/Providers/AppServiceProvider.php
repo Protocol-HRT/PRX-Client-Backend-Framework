@@ -32,7 +32,6 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use League\Flysystem\Filesystem;
 use League\Flysystem\Local\LocalFilesystemAdapter;
-use League\Flysystem\UnixVisibility\PortableVisibilityConverter;
 use League\Flysystem\Visibility;
 
 class AppServiceProvider extends ServiceProvider
@@ -59,32 +58,30 @@ class AppServiceProvider extends ServiceProvider
      * Flysystem's local adapter creates intermediate cache directories with
      * PRIVATE (700) visibility, so whichever user transforms an image first
      * locks the other out and every later thumbnail 500s with "Could not
-     * write the image". Give Glide a dedicated cache filesystem whose
-     * visibility keeps directories group/world-writable instead.
+     * write the image".
      *
-     * The permissive modes are LOCAL-ONLY: the dual-writer situation exists
-     * only in dev (nginx vhost + artisan serve side by side). Production
-     * runs a single server user, where Flysystem's restrictive defaults are
-     * correct — world-writable cache dirs there would let any local user
-     * poison served thumbnails.
+     * Loosening permissions can't fix this reliably — Flysystem creates
+     * intermediate dirs via mkdir(), whose mode is masked by the process
+     * umask regardless of any visibility converter. Instead, LOCAL gets a
+     * per-process-user cache subtree (shell user and web-server user each
+     * own their whole tree; a few duplicate cached thumbnails are the only
+     * cost). Production runs a single server user and uses the shared root
+     * with Flysystem's restrictive defaults.
      */
     private function configureGlideCache(): void
     {
-        $devSharedVisibility = app()->environment('local')
-            ? PortableVisibilityConverter::fromArray([
-                'file' => ['public' => 0666, 'private' => 0666],
-                'dir' => ['public' => 0777, 'private' => 0777],
-            ], Visibility::PUBLIC)
-            : null;
+        $cachePath = storage_path('app/glide-cache');
+
+        if (app()->environment('local') && function_exists('posix_geteuid')) {
+            $user = posix_getpwuid(posix_geteuid())['name'] ?? 'shared';
+            $cachePath .= '/'.$user;
+        }
 
         app(GlideManager::class)->serverConfig([
             'response' => new SymfonyResponseFactory(app('request')),
             'source' => storage_path('app'),
             'source_path_prefix' => 'public',
-            'cache' => new Filesystem(new LocalFilesystemAdapter(
-                storage_path('app/glide-cache'),
-                $devSharedVisibility,
-            )),
+            'cache' => new Filesystem(new LocalFilesystemAdapter($cachePath)),
             'max_image_size' => 2000 * 2000,
             'base_url' => 'curator',
         ]);
