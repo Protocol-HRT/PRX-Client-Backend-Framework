@@ -24,6 +24,7 @@ use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -48,6 +49,10 @@ class SectionsRelationManager extends RelationManager
             : $get('source') !== 'global';
 
         return $schema
+            // Stack the meta card and the type's content groups full-width —
+            // the default two-column root halves the modal and quarters every
+            // field inside the blueprints' own grids.
+            ->columns(1)
             ->components([
                 Section::make('Section')
                     ->columns(2)
@@ -133,6 +138,7 @@ class SectionsRelationManager extends RelationManager
             ])
             ->headerActions([
                 CreateAction::make()
+                    ->modalWidth(Width::Screen)
                     ->mutateDataUsing(function (array $data) use ($registry): array {
                         if (! empty($data['global_section_id'])) {
                             // Global-backed section: mirror the block's type and
@@ -153,7 +159,8 @@ class SectionsRelationManager extends RelationManager
                     }),
             ])
             ->recordActions([
-                EditAction::make(),
+                EditAction::make()
+                    ->modalWidth(Width::Screen),
                 Action::make('detach')
                     ->label('Detach copy')
                     ->icon('heroicon-o-scissors')

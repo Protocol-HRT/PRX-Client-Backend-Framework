@@ -24,6 +24,9 @@ use Awcodes\Curator\Config\GlideManager;
 use Awcodes\Curator\Glide\SymfonyResponseFactory;
 use Dedoc\Scramble\Scramble;
 use Dedoc\Scramble\Support\RouteInfo;
+use Filament\Actions\CreateAction;
+use Filament\Actions\EditAction;
+use Filament\Support\Enums\Width;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Request;
@@ -50,6 +53,19 @@ class AppServiceProvider extends ServiceProvider
         $this->configureCmsObservers();
         $this->configureBrandMailFrom();
         $this->configureGlideCache();
+        $this->configureFilamentModalDefaults();
+    }
+
+    /**
+     * Filament's default create/edit modal is too narrow for real content
+     * forms — fields quarter down and wrap. Default every Create/Edit modal
+     * to 7xl; individual actions can still override (the section relation
+     * managers go full-screen). Pages (non-modal) ignore the width entirely.
+     */
+    private function configureFilamentModalDefaults(): void
+    {
+        CreateAction::configureUsing(fn (CreateAction $action) => $action->modalWidth(Width::SevenExtraLarge));
+        EditAction::configureUsing(fn (EditAction $action) => $action->modalWidth(Width::SevenExtraLarge));
     }
 
     /**
