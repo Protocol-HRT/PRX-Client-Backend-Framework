@@ -33,6 +33,7 @@ class UpdatePackageAction
                 'provider_encounter_type_id' => $data->provider_encounter_type_id,
                 'badge_text' => $data->badge_text,
                 'highlights' => $data->highlights,
+                'detail_sections' => $data->detail_sections,
                 'is_featured' => $data->is_featured,
                 'is_in_stock' => $data->is_in_stock,
                 'requires_lab' => $data->requires_lab,

@@ -60,6 +60,7 @@ class ProductData extends Data
         #[Max(32)]
         public ?string $badge_text = null,
         public array $highlights = [],
+        public array $detail_sections = [],
         public bool $is_featured = false,
         public bool $is_in_stock = true,
         public bool $requires_lab = false,

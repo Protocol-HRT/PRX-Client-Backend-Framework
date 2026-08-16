@@ -155,6 +155,39 @@ class ProductForm
                                 ->reorderable()
                                 ->addActionLabel('Add highlight'),
                         ]),
+                    Section::make('Detail page content')
+                        ->columnSpanFull()
+                        ->description('Structured content blocks for the product detail page. The frontend decides how each placement renders (sidebar accordions vs. description tabs).')
+                        ->components([
+                            Repeater::make('detail_sections')
+                                ->hiddenLabel()
+                                ->schema([
+                                    TextInput::make('title')
+                                        ->required()
+                                        ->maxLength(255)
+                                        ->hintIcon(Heroicon::InformationCircle, 'Heading shown on the accordion or tab, e.g. "How To Use".'),
+                                    Select::make('placement')
+                                        ->options([
+                                            'accordion' => 'Sidebar accordion',
+                                            'tab' => 'Description tab',
+                                        ])
+                                        ->default('accordion')
+                                        ->required()
+                                        ->native(false)
+                                        ->hintIcon(Heroicon::InformationCircle, 'Where the frontend places this block on the detail page.'),
+                                    Textarea::make('content')
+                                        ->required()
+                                        ->rows(5)
+                                        ->columnSpanFull()
+                                        ->hintIcon(Heroicon::InformationCircle, 'Block copy. Plain text / simple HTML.'),
+                                ])
+                                ->columns(2)
+                                ->reorderable()
+                                ->collapsible()
+                                ->itemLabel(fn (array $state): ?string => $state['title'] ?? null)
+                                ->defaultItems(0)
+                                ->addActionLabel('Add content block'),
+                        ]),
                     Section::make('Provider mapping')
                         ->columnSpanFull()
                         ->description('Map this product to the matching record in the configured provider (e.g. PrescribeRx). Leave blank if not yet mapped.')

@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Storage;
 
 class ProductResource extends JsonResource
 {
+    use Concerns\NormalizesDetailSections;
+
     /**
      * @return array<string, mixed>
      */
@@ -54,6 +56,10 @@ class ProductResource extends JsonResource
                 'per_volume' => $ingredient->pivot->per_volume !== null ? (float) $ingredient->pivot->per_volume : null,
                 'label' => $ingredient->pivot->potencyLabel(),
             ])->values()->all()),
+            'detail_sections' => $this->when(
+                $request->routeIs('api.v1.catalog.products.show'),
+                fn () => $this->normalizeDetailSections($this->detail_sections)
+            ),
             'coas' => $this->whenLoaded('coas', fn () => $this->coas
                 ->where('is_visible', true)
                 ->map(fn ($coa) => [

@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Storage;
 
 class PackageResource extends JsonResource
 {
+    use Concerns\NormalizesDetailSections;
+
     /**
      * @return array<string, mixed>
      */
@@ -37,6 +39,10 @@ class PackageResource extends JsonResource
             'price_range' => $this->when(
                 $this->relationLoaded('plans') && $this->plans->isNotEmpty(),
                 fn () => $this->buildPriceRange()
+            ),
+            'detail_sections' => $this->when(
+                $request->routeIs('api.v1.catalog.packages.show'),
+                fn () => $this->normalizeDetailSections($this->detail_sections)
             ),
             'seo' => $this->when($request->routeIs('api.v1.catalog.packages.show'), [
                 'meta_title' => $this->meta_title,

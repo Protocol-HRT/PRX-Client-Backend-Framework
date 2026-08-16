@@ -29,6 +29,48 @@ A **Product** is a single item that can be added to a cart independently (e.g., 
 | Provider product ID | The matching product UUID in PrescribeRx (or other configured provider). Required for checkout. |
 | Provider SKU | Human-friendly product code from the provider. |
 | Provider encounter type ID | Overrides the category-level encounter type for this specific product's intake form. Leave blank to inherit from category. |
+| Classification | Product class (Peptides, HRT…), type, physical form (vial, troche…), and administration method (oral, sub-q injection…). Options are managed under Shop → Product Classes / Types / Forms / Administration Methods. |
+| Volume + unit | Container size, e.g. `10 mg` for a lyophilized vial or `3 ml` for a liquid. |
+| Inventory status | In Stock / Back Ordered / Out of Stock / Discontinued. When set, the In-stock flag is derived automatically (In Stock and Back Ordered count as purchasable). Leave empty to manage the flag by hand. |
+| Prescription required | Mirrors the provider's Rx flag; kept current by sync. |
+| Controlled substance | Compliance flag for reporting. |
+| Cost | What the company pays — used for internal reporting/P&L only. **Never shown on the storefront or the public API.** |
+| Detail page content | Reorderable content blocks for the detail page. Each block has a title, copy, and a placement: "Sidebar accordion" (e.g. How To Use) or "Description tab". |
+
+**Related tabs on the product edit page:**
+
+- **Ingredients** — attach ingredients with potency: concentration + unit
+  (e.g. `50 mg`), and for liquids an optional per-volume denominator
+  (`10 mg / 3 ml`). Leave per-volume blank for lyophilized/dry products.
+  Ingredient rows themselves are managed under Shop → Ingredients.
+- **Certificates of Analysis** — upload a COA per manufacturing batch
+  (PDF or image, max 10 MB) with the batch number and issue date. Visible
+  COAs are listed on the public product detail API.
+- **Related & Pairs With** — link other products *or* stacks. "Related" =
+  similar items; "Pairs With" = suggested companions for building a custom
+  stack. Both power the corresponding sections on detail pages.
+
+### Vocabulary lookups (Shop menu)
+
+Product Classes, Product Types, Ingredients, Administration Methods, Product
+Forms, and Measurement Units are all editable lists — rename, reorder,
+deactivate, or add rows freely. A fresh install seeds standard clinical
+vocabulary (16 administration methods, 25 forms, 10 units) matching PrescribeRx
+terminology. The "Provider mapping" fields on each row tie it to the PRX
+equivalent so synced products reuse your rows instead of creating duplicates —
+leave them blank for vocabulary you add for other fulfillment sources.
+
+### PRX matching & mapping
+
+- **Shop → PRX Catalog** — browse the live PRX inventory. Unmapped rows can be
+  **Imported** (creates a local Pending item linked to the PRX row) or
+  **Mapped to an existing** local item. Mapped rows link straight to the local
+  edit page. "Run full sync" imports everything and refreshes pricing/clinical
+  data on all mapped rows (your curated names, descriptions, and images are
+  never overwritten once an item leaves Pending).
+- **Products / Packages lists** — the **Unmapped** tab shows local items not
+  yet linked to PRX. Use **Match to PRX** on a row for ranked suggestions
+  (best SKU/name matches are starred); **Clear PRX mapping** unlinks a row.
 
 ---
 

@@ -52,6 +52,7 @@ class Package extends Model implements Sortable
         'provider_encounter_type_id',
         'badge_text',
         'highlights',
+        'detail_sections',
         'banner_image_path',
         'is_featured',
         'is_in_stock',
@@ -84,6 +85,7 @@ class Package extends Model implements Sortable
             'is_in_stock' => 'boolean',
             'requires_lab' => 'boolean',
             'highlights' => 'array',
+            'detail_sections' => 'array',
             'last_synced_at' => 'datetime',
         ];
     }
