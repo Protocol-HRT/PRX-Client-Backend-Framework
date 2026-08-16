@@ -66,10 +66,10 @@ class IngredientsRelationManager extends RelationManager
     {
         return $table
             ->recordTitleAttribute('name')
-            ->reorderable('position')
-            ->defaultSort('position')
+            ->reorderable('ingredient_product.position')
+            ->defaultSort('ingredient_product.position')
             ->columns([
-                TextColumn::make('position')->label('#')->sortable(),
+                TextColumn::make('pivot.position')->label('#'),
                 TextColumn::make('name')->searchable(),
                 TextColumn::make('potency')
                     ->label('Potency')

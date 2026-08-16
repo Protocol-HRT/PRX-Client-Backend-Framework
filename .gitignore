@@ -32,3 +32,4 @@ Homestead.yaml
 Thumbs.db
 # Windows WSL alternate data stream metadata
 *:Zone.Identifier
+.playwright-mcp/
