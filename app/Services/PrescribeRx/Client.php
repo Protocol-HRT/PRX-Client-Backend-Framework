@@ -391,6 +391,9 @@ class Client
     /**
      * `GET /products` — fetch ALL pages and return flat list.
      *
+     * Requests `include=productClass,productType` so each item carries its
+     * embedded classification objects for the local lookup sync.
+     *
      * @return array<int, array<string, mixed>>
      */
     public function listAllPrxProducts(): array
@@ -403,7 +406,11 @@ class Client
         $page = 1;
 
         do {
-            $response = $this->request()->get('/products', ['page' => $page, 'per_page' => 50]);
+            $response = $this->request()->get('/products', [
+                'page' => $page,
+                'per_page' => 50,
+                'include' => 'productClass,productType',
+            ]);
             $body = $response->json();
             $items = $body['data'] ?? [];
             $all = array_merge($all, $items);
@@ -412,6 +419,24 @@ class Client
         } while ($page <= $lastPage);
 
         return $all;
+    }
+
+    /**
+     * `GET /products/{id}` — single product detail.
+     *
+     * The detail payload adds fields the list omits, notably
+     * ingredients[{id, name, quantity}] used to sync ingredient rows and
+     * potency pivots locally.
+     *
+     * @return array<string, mixed>
+     */
+    public function getPrxProduct(string $productId): array
+    {
+        if (config('prescribe-rx.stub')) {
+            return [];
+        }
+
+        return $this->extractData($this->request()->get("/products/{$productId}"));
     }
 
     /**

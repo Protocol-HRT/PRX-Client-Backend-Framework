@@ -2,16 +2,22 @@
 
 namespace App\Actions\Catalog;
 
+use App\Enums\BillingMode;
 use App\Enums\BillingPeriod;
 use App\Enums\CatalogStatus;
 use App\Enums\FulfillmentCenterType;
+use App\Models\Catalog\Ingredient;
+use App\Models\Catalog\MeasurementUnit;
 use App\Models\Catalog\Package;
 use App\Models\Catalog\Plan;
 use App\Models\Catalog\Product;
+use App\Models\Catalog\ProductClass;
+use App\Models\Catalog\ProductType;
 use App\Models\Commerce\FulfillmentCenter;
 use App\Services\PrescribeRx\Client;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Pulls products and packages from the PRX sales-org catalog and upserts
@@ -20,52 +26,165 @@ use Illuminate\Support\Facades\Log;
  * Re-sync rules:
  *   - Pending items  → all fields updated (name, description, pricing, SKU)
  *   - Published/Draft/Archived → pricing updated only; admin-curated content preserved
+ *   - Provider-truth fields (classification mapping, rx_required, cost,
+ *     ingredients) are updated on EVERY sync regardless of status — they are
+ *     clinical/mapping data, not curated marketing content.
+ *
+ * Classification: product classes/types are upserted into the local lookup
+ * tables keyed by provider UUID (from /product-classes + /product-types when
+ * available, else from the objects embedded on each product). Ingredients are
+ * upserted from the product detail payload; quantity strings like "50mg" or
+ * "10 mg / 3 ml" are parsed into concentration/per-volume pivots, with the
+ * raw string preserved as provider_quantity_label.
  *
  * Images are intentionally NOT imported — PRX image URLs are presigned S3
  * URLs with short TTLs. Admins upload brand-appropriate images locally.
  */
 class SyncPrescribeRxCatalogAction
 {
+    /** @var array<string, int>|null provider uuid → local product_classes.id */
+    private ?array $classMap = null;
+
+    /** @var array<string, int>|null provider uuid → local product_types.id */
+    private ?array $typeMap = null;
+
+    /** @var array<string, int>|null lowercase abbreviation → measurement_units.id */
+    private ?array $unitMap = null;
+
     public function __construct(private readonly Client $prx) {}
 
     /**
-     * @return array{products: array{new: int, updated: int}, packages: array{new: int, updated: int}, plans: array{new: int, updated: int}}
+     * @return array{products: array{new: int, updated: int}, packages: array{new: int, updated: int}, plans: array{new: int, updated: int}, ingredients: array{synced: int}}
      */
     public function execute(): array
     {
         $fc = $this->resolveFulfillmentCenter();
 
+        $this->syncClassificationLookups();
+
         $productStats = $this->syncProducts($fc);
         $packageStats = $this->syncPackages($fc);
 
         return [
-            'products' => $productStats,
+            'products' => ['new' => $productStats['new'], 'updated' => $productStats['updated']],
             'packages' => $packageStats['packages'],
             'plans' => $packageStats['plans'],
+            'ingredients' => ['synced' => $productStats['ingredients']],
         ];
+    }
+
+    // ─── Classification lookups ───────────────────────────────────────────────
+
+    /**
+     * Upserts local ProductClass/ProductType rows from the PRX list
+     * endpoints. Tolerates the endpoints being unavailable (older PRX
+     * deployments) — per-product embedded objects cover the gap.
+     */
+    private function syncClassificationLookups(): void
+    {
+        try {
+            foreach ($this->prx->listPrxProductClasses() as $raw) {
+                if (! empty($raw['id'])) {
+                    $this->resolveClassId($raw);
+                }
+            }
+        } catch (Throwable $e) {
+            Log::info('Catalog sync: /product-classes unavailable, relying on embedded objects', ['error' => $e->getMessage()]);
+        }
+
+        try {
+            foreach ($this->prx->listPrxProductTypes() as $raw) {
+                if (! empty($raw['id'])) {
+                    $this->resolveTypeId($raw);
+                }
+            }
+        } catch (Throwable $e) {
+            Log::info('Catalog sync: /product-types unavailable, relying on embedded objects', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /** @param  array<string, mixed>  $raw  provider payload with id + name (+ product_class_id for types) */
+    private function resolveClassId(array $raw): ?int
+    {
+        if (empty($raw['id'])) {
+            return null;
+        }
+
+        $this->classMap ??= ProductClass::withTrashed()
+            ->whereNotNull('provider_product_class_id')
+            ->pluck('id', 'provider_product_class_id')
+            ->all();
+
+        if (isset($this->classMap[$raw['id']])) {
+            return $this->classMap[$raw['id']];
+        }
+
+        $class = ProductClass::withTrashed()->firstOrCreate(
+            ['provider_product_class_id' => $raw['id']],
+            ['name' => $raw['name'] ?? 'Unnamed class', 'description' => $raw['description'] ?? null],
+        );
+
+        return $this->classMap[$raw['id']] = $class->id;
+    }
+
+    /** @param  array<string, mixed>  $raw */
+    private function resolveTypeId(array $raw): ?int
+    {
+        if (empty($raw['id'])) {
+            return null;
+        }
+
+        $this->typeMap ??= ProductType::withTrashed()
+            ->whereNotNull('provider_product_type_id')
+            ->pluck('id', 'provider_product_type_id')
+            ->all();
+
+        if (isset($this->typeMap[$raw['id']])) {
+            return $this->typeMap[$raw['id']];
+        }
+
+        $type = ProductType::withTrashed()->firstOrCreate(
+            ['provider_product_type_id' => $raw['id']],
+            [
+                'name' => $raw['name'] ?? 'Unnamed type',
+                'description' => $raw['description'] ?? null,
+                'product_class_id' => isset($raw['product_class_id'])
+                    ? $this->resolveClassId(['id' => $raw['product_class_id']])
+                    : null,
+            ],
+        );
+
+        return $this->typeMap[$raw['id']] = $type->id;
     }
 
     // ─── Products ─────────────────────────────────────────────────────────────
 
+    /** @return array{new: int, updated: int, ingredients: int} */
     private function syncProducts(FulfillmentCenter $fc): array
     {
         $prxProducts = $this->prx->listAllPrxProducts();
-        $stats = ['new' => 0, 'updated' => 0];
+        $stats = ['new' => 0, 'updated' => 0, 'ingredients' => 0];
 
         foreach ($prxProducts as $raw) {
             if (empty($raw['id'])) {
                 continue;
             }
 
-            DB::transaction(function () use ($raw, $fc, &$stats): void {
+            $ingredients = $this->fetchIngredients($raw);
+
+            DB::transaction(function () use ($raw, $ingredients, $fc, &$stats): void {
                 $existing = Product::where('provider_product_id', $raw['id'])->first();
 
                 if ($existing) {
                     $this->updateProduct($existing, $raw, $fc);
                     $stats['updated']++;
                 } else {
-                    $this->createProduct($raw, $fc);
+                    $existing = $this->createProduct($raw, $fc);
                     $stats['new']++;
+                }
+
+                if ($ingredients !== null) {
+                    $stats['ingredients'] += $this->syncProductIngredients($existing, $ingredients);
                 }
             });
         }
@@ -87,6 +206,7 @@ class SyncPrescribeRxCatalogAction
             'requires_lab' => $raw['rx_required'] ?? false,
             'default_fulfillment_center_id' => $fc->id,
             'last_synced_at' => now(),
+            ...$this->providerTruthAttributes($raw),
         ]);
     }
 
@@ -100,6 +220,7 @@ class SyncPrescribeRxCatalogAction
             'provider_product_sku' => $raw['sku'] ?? $product->provider_product_sku,
             'default_fulfillment_center_id' => $fc->id,
             'last_synced_at' => now(),
+            ...$this->providerTruthAttributes($raw),
         ];
 
         if ($isPending) {
@@ -110,6 +231,170 @@ class SyncPrescribeRxCatalogAction
         }
 
         $product->update($updates);
+    }
+
+    /**
+     * Fields owned by the provider — mapping, clinical flags, internal cost —
+     * applied on every sync regardless of curation status. Keys are omitted
+     * (not nulled) when the payload doesn't carry the value.
+     *
+     * @return array<string, mixed>
+     */
+    private function providerTruthAttributes(array $raw): array
+    {
+        $attributes = [];
+
+        $classId = $this->resolveClassId($raw['product_class'] ?? ['id' => $raw['product_class_id'] ?? null]);
+        if ($classId !== null) {
+            $attributes['product_class_id'] = $classId;
+        }
+
+        $typeId = $this->resolveTypeId($raw['product_type'] ?? ['id' => $raw['product_type_id'] ?? null]);
+        if ($typeId !== null) {
+            $attributes['product_type_id'] = $typeId;
+        }
+
+        if (array_key_exists('rx_required', $raw)) {
+            $attributes['rx_required'] = (bool) $raw['rx_required'];
+        }
+
+        if (isset($raw['pricing']['cost'])) {
+            $attributes['cost'] = $raw['pricing']['cost'];
+        }
+
+        return $attributes;
+    }
+
+    // ─── Ingredients ──────────────────────────────────────────────────────────
+
+    /**
+     * The `/products` list payload omits ingredients; the detail endpoint
+     * carries them. Returns null when ingredients cannot be determined (so
+     * existing pivots are left untouched), or the raw ingredient list.
+     *
+     * @return array<int, array<string, mixed>>|null
+     */
+    private function fetchIngredients(array $raw): ?array
+    {
+        if (array_key_exists('ingredients', $raw)) {
+            return $raw['ingredients'] ?? [];
+        }
+
+        try {
+            $detail = $this->prx->getPrxProduct($raw['id']);
+
+            return $detail['ingredients'] ?? [];
+        } catch (Throwable $e) {
+            Log::info('Catalog sync: product detail unavailable, skipping ingredient sync', [
+                'product' => $raw['id'],
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+    }
+
+    /**
+     * Upserts Ingredient lookups (keyed by provider uuid, falling back to a
+     * case-insensitive name match for admin-created rows) and syncs the
+     * potency pivot from the provider quantity string.
+     *
+     * @param  array<int, array<string, mixed>>  $prxIngredients
+     * @return int number of pivot rows written
+     */
+    private function syncProductIngredients(Product $product, array $prxIngredients): int
+    {
+        $pivotData = [];
+
+        foreach (array_values($prxIngredients) as $position => $raw) {
+            if (empty($raw['id']) && empty($raw['name'])) {
+                continue;
+            }
+
+            $ingredient = $this->resolveIngredient($raw);
+
+            $pivotData[$ingredient->id] = [
+                ...$this->parseQuantity($raw['quantity'] ?? null),
+                'provider_quantity_label' => $raw['quantity'] ?? null,
+                'position' => $position,
+            ];
+        }
+
+        $product->ingredients()->sync($pivotData);
+
+        return count($pivotData);
+    }
+
+    private function resolveIngredient(array $raw): Ingredient
+    {
+        if (! empty($raw['id'])) {
+            $existing = Ingredient::withTrashed()->where('provider_ingredient_id', $raw['id'])->first();
+            if ($existing) {
+                return $existing;
+            }
+        }
+
+        if (! empty($raw['name'])) {
+            $byName = Ingredient::withTrashed()
+                ->whereNull('provider_ingredient_id')
+                ->whereRaw('LOWER(name) = ?', [mb_strtolower($raw['name'])])
+                ->first();
+
+            if ($byName) {
+                $byName->update(['provider_ingredient_id' => $raw['id'] ?? null]);
+
+                return $byName;
+            }
+        }
+
+        return Ingredient::create([
+            'name' => $raw['name'] ?? 'Unnamed ingredient',
+            'provider_ingredient_id' => $raw['id'] ?? null,
+        ]);
+    }
+
+    /**
+     * Parses provider quantity strings — "50mg", "50 mg", "10 mg / 3 ml",
+     * "10mg/3ml" — into pivot columns. Unparseable strings yield nulls; the
+     * raw label is always preserved alongside.
+     *
+     * @return array{concentration: float|null, concentration_unit_id: int|null, per_volume: float|null, per_volume_unit_id: int|null}
+     */
+    private function parseQuantity(?string $quantity): array
+    {
+        $empty = [
+            'concentration' => null,
+            'concentration_unit_id' => null,
+            'per_volume' => null,
+            'per_volume_unit_id' => null,
+        ];
+
+        if (blank($quantity)) {
+            return $empty;
+        }
+
+        $pattern = '/^\s*(\d+(?:\.\d+)?)\s*([a-z%\/]+?)\s*(?:\/\s*(\d+(?:\.\d+)?)\s*([a-z%]+))?\s*$/i';
+
+        if (! preg_match($pattern, trim($quantity), $m)) {
+            return $empty;
+        }
+
+        return [
+            'concentration' => (float) $m[1],
+            'concentration_unit_id' => $this->resolveUnitId($m[2]),
+            'per_volume' => isset($m[3]) && $m[3] !== '' ? (float) $m[3] : null,
+            'per_volume_unit_id' => isset($m[4]) ? $this->resolveUnitId($m[4]) : null,
+        ];
+    }
+
+    private function resolveUnitId(string $abbreviation): ?int
+    {
+        $this->unitMap ??= MeasurementUnit::withTrashed()
+            ->pluck('id', 'abbreviation')
+            ->mapWithKeys(fn ($id, $abbr) => [mb_strtolower($abbr) => $id])
+            ->all();
+
+        return $this->unitMap[mb_strtolower(trim($abbreviation))] ?? null;
     }
 
     // ─── Packages & Plans ──────────────────────────────────────────────────────
@@ -153,6 +438,7 @@ class SyncPrescribeRxCatalogAction
             'status' => CatalogStatus::Pending,
             'retail_price' => $raw['pricing']['retail_price'] ?? 0,
             'sale_price' => $raw['pricing']['consumer_price'] ?? null,
+            'cost' => $raw['pricing']['cost'] ?? null,
             'provider_package_id' => $raw['id'],
             'provider_package_sku' => $raw['package_number'] ?? null,
             'default_fulfillment_center_id' => $fc->id,
@@ -171,6 +457,10 @@ class SyncPrescribeRxCatalogAction
             'default_fulfillment_center_id' => $fc->id,
             'last_synced_at' => now(),
         ];
+
+        if (isset($raw['pricing']['cost'])) {
+            $updates['cost'] = $raw['pricing']['cost'];
+        }
 
         if ($isPending) {
             $updates['name'] = $raw['name'];
@@ -254,6 +544,7 @@ class SyncPrescribeRxCatalogAction
             'status' => CatalogStatus::Pending,
             'retail_price' => $raw['price'] ?? 0,
             'billing_period' => $this->inferBillingPeriod($termMonths, $raw),
+            'billing_mode' => $this->inferBillingMode($raw),
             'term_months' => $termMonths,
             'is_recurring' => ! empty($raw['subscription_interval_days']),
             'is_default' => $raw['is_default'] ?? false,
@@ -273,6 +564,11 @@ class SyncPrescribeRxCatalogAction
             'default_fulfillment_center_id' => $fc->id,
             'last_synced_at' => now(),
         ];
+
+        $billingMode = $this->inferBillingMode($raw);
+        if ($billingMode !== null) {
+            $updates['billing_mode'] = $billingMode;
+        }
 
         if ($isPending) {
             $updates['name'] = $raw['name'];
@@ -313,5 +609,23 @@ class SyncPrescribeRxCatalogAction
             12 => BillingPeriod::Annual,
             default => BillingPeriod::OneTime,
         };
+    }
+
+    /**
+     * PRX exposes billing_mode as its integer enum when present; otherwise
+     * infer recurring from subscription_interval_days and leave the rest null
+     * for the admin to classify.
+     */
+    private function inferBillingMode(array $raw): ?BillingMode
+    {
+        if (isset($raw['billing_mode'])) {
+            return BillingMode::fromProviderValue((int) $raw['billing_mode']);
+        }
+
+        if (! empty($raw['subscription_interval_days'])) {
+            return BillingMode::Recurring;
+        }
+
+        return null;
     }
 }
