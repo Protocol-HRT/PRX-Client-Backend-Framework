@@ -7,8 +7,10 @@ use App\Cms\FlexibleDefinition;
 use App\Enums\Cms\SectionTypeMode;
 use App\Models\Catalog\Product;
 use App\Models\Cms\FlexibleSectionType;
+use App\Services\Cms\FlexibleSchemaValidator;
 use App\Services\Cms\SectionDataTransformer;
 use App\Services\Cms\SectionRegistry;
+use App\Services\Cms\SectionResolverOps;
 use App\Services\Cms\SectionTypeInspector;
 use Awcodes\Curator\Models\Media;
 use Database\Seeders\SectionTypeSeeder;
@@ -152,6 +154,338 @@ class SectionTypeSeedParityTest extends TestCase
         ]);
 
         $this->assertCount(2, $envelope['data']['products']);
+    }
+
+    public function test_final_cta_seed_matches_blueprint(): void
+    {
+        $this->assertSeedParity('final-cta', [
+            'eyebrow' => 'One last thing',
+            'heading' => 'Start today',
+            'emphasis' => 'on your terms',
+            'lead' => 'Physician review within 24 hours.',
+            'primary_cta_label' => 'Get started',
+            'primary_cta_url' => '/consultation',
+            'secondary_cta_label' => 'Browse protocols',
+            'secondary_cta_url' => '/products',
+        ]);
+    }
+
+    public function test_stats_marquee_seed_matches_blueprint(): void
+    {
+        $this->assertSeedParity('stats-marquee', [
+            'items' => [
+                ['value' => '12,400+', 'label' => 'Patients treated'],
+                ['value' => '97%', 'label' => 'Satisfaction'],
+            ],
+        ]);
+    }
+
+    public function test_results_stats_seed_matches_blueprint(): void
+    {
+        $this->assertSeedParity('results-stats', [
+            'eyebrow' => 'Results',
+            'heading' => 'By the numbers',
+            'emphasis' => 'that matter',
+            'stats' => [
+                ['value' => '12,400+', 'label' => 'Patients', 'sublabel' => 'and counting', 'icon' => 'patients'],
+                ['value' => '50', 'label' => 'States', 'sublabel' => null, 'icon' => 'states'],
+            ],
+            'footer_note' => 'Data audited quarterly.',
+        ]);
+    }
+
+    public function test_story_seed_matches_blueprint(): void
+    {
+        $media = $this->media('sections/founder.jpg');
+
+        $this->assertSeedParity('story', [
+            'eyebrow' => 'Our story',
+            'heading' => 'Founded by physicians',
+            'emphasis' => 'for patients',
+            'lead' => 'Two doctors, one mission.',
+            'physicians' => [
+                ['name' => 'Dr. Jane Doe', 'title' => 'Co-founder', 'badge' => 'Author: The Protocol', 'image' => $media->id, 'image_alt' => 'Dr. Doe', 'body' => 'Twenty years of practice.'],
+            ],
+            'pull_quote' => 'Medicine should meet you where you are.',
+            'pull_quote_attribution' => 'Dr. Jane Doe',
+        ]);
+    }
+
+    public function test_how_it_works_seed_matches_blueprint(): void
+    {
+        $this->assertSeedParity('how-it-works', [
+            'eyebrow' => 'Process',
+            'heading' => 'How it works',
+            'emphasis' => 'in three steps',
+            'lead' => 'From intake to doorstep.',
+            'cta_label' => 'Begin intake',
+            'cta_url' => '/consultation',
+            'steps' => [
+                ['number' => '01', 'title' => 'Intake', 'meta' => 'Takes about 5 minutes', 'body' => 'Tell us about your goals.'],
+                ['number' => '02', 'title' => 'Review', 'meta' => null, 'body' => 'A physician reviews your case.'],
+            ],
+        ]);
+    }
+
+    public function test_testimonials_seed_matches_blueprint(): void
+    {
+        $media = $this->media('sections/headshot.jpg');
+
+        $this->assertSeedParity('testimonials', [
+            'eyebrow' => 'Reviews',
+            'heading' => 'What patients say',
+            'emphasis' => 'in their words',
+            'rating_stats' => [
+                ['value' => '4.9/5', 'label' => 'Average rating'],
+            ],
+            'quotes' => [
+                ['protocol' => 'HORMONE OPTIMIZATION', 'stars' => 5, 'name' => 'Alex R.', 'title' => 'Member since 2025', 'image' => $media->id, 'initials' => 'AR', 'quote' => 'Life-changing care.'],
+                ['protocol' => null, 'stars' => 4, 'name' => 'Sam K.', 'title' => null, 'image' => null, 'initials' => 'SK', 'quote' => 'Fast and thorough.'],
+            ],
+        ]);
+    }
+
+    public function test_timeline_seed_matches_blueprint(): void
+    {
+        $media = $this->media('sections/emblem.png');
+
+        $this->assertSeedParity('timeline', [
+            'heading' => 'Your first 90 days',
+            'mark_image' => $media->id,
+            'lead' => 'What to expect, week by week.',
+            'steps' => [
+                [
+                    'title' => 'Baseline labs',
+                    'meta' => 'Week 1',
+                    'body' => 'Comprehensive panel drawn locally.',
+                    'bullets' => [['text' => '50+ biomarkers'], ['text' => 'At-home option']],
+                ],
+                [
+                    'title' => 'Protocol start',
+                    'meta' => 'Week 2',
+                    'body' => 'Medication ships to your door.',
+                    'bullets' => [],
+                ],
+            ],
+        ]);
+    }
+
+    public function test_image_text_split_seed_matches_blueprint(): void
+    {
+        $image = $this->media('sections/science.jpg');
+        $icon = $this->media('sections/mark.png');
+
+        $this->assertSeedParity('image-text-split', [
+            'eyebrow' => 'The science',
+            'heading' => 'Evidence first',
+            'lead' => 'Every protocol is peer-reviewed.',
+            'body' => '<p>Long-form prose about the clinical approach.</p>',
+            'image' => $image->id,
+            'image_alt' => 'Lab work',
+            'cta_label' => 'Read the research',
+            'cta_url' => '/science',
+            'image_right' => true,
+            'theme' => 'light',
+            'float_cards' => [
+                ['position' => 'bottom-left', 'icon' => $icon->id, 'value' => '15+', 'text' => 'Years of practice', 'rating_value' => null, 'rating_text' => null],
+                ['position' => 'top-right', 'icon' => null, 'value' => null, 'text' => 'Rated excellent', 'rating_value' => 4.9, 'rating_text' => '4.9/5 · 200+ reviews'],
+            ],
+        ]);
+    }
+
+    public function test_physicians_seed_matches_blueprint(): void
+    {
+        $media = $this->media('sections/portrait.jpg');
+
+        $this->assertSeedParity('physicians', [
+            'theme' => 'dark',
+            'eyebrow' => 'Your care team',
+            'heading' => 'Meet the physicians',
+            'heading_emphasis' => 'behind the protocols',
+            'lead' => 'Licensed in all 50 states.',
+            'physicians' => [
+                [
+                    'name' => 'Dr. Jane Smith, MD',
+                    'title' => 'Medical Director',
+                    'specialty' => 'Board-Certified · 20+ Years Clinical Experience',
+                    'image' => $media->id,
+                    'image_alt' => 'Dr. Smith',
+                    'bio' => 'Dedicated to preventive medicine.',
+                    'badges' => ['Board-Certified', 'ABIM Fellow'],
+                ],
+            ],
+            'trust_badges' => [
+                ['icon' => '✓', 'label' => 'HIPAA compliant'],
+            ],
+        ]);
+    }
+
+    public function test_benefits_him_seed_matches_blueprint(): void
+    {
+        $this->assertBenefitsPitchParity('benefits-him');
+    }
+
+    public function test_benefits_her_seed_matches_blueprint(): void
+    {
+        $this->assertBenefitsPitchParity('benefits-her');
+    }
+
+    public function test_transformed_seed_matches_blueprint(): void
+    {
+        $media = $this->media('sections/ambassador.jpg');
+
+        $this->assertSeedParity('transformed', [
+            'eyebrow' => 'Transformed',
+            'heading' => 'Featured members',
+            'emphasis' => 'real results',
+            'lead' => 'Ambassadors who live the protocols.',
+            'quotes' => [
+                ['name' => 'Jordan P.', 'title' => 'Ambassador', 'protocol' => 'Performance & Hormone Optimization', 'image' => $media->id, 'image_alt' => 'Jordan', 'quote' => 'I feel ten years younger.'],
+            ],
+        ]);
+    }
+
+    public function test_pricing_tiers_seed_matches_blueprint(): void
+    {
+        $this->assertSeedParity('pricing-tiers', [
+            'eyebrow' => 'Membership',
+            'main_tiers' => [
+                [
+                    'pill' => 'Most popular',
+                    'pill_emoji' => '⭐',
+                    'accent' => 'gold',
+                    'title' => 'TRT Complete',
+                    'subtitle' => 'Everything included',
+                    'price' => '$199',
+                    'price_suffix' => '/month',
+                    'price_note_micro' => 'Billed monthly',
+                    'lto_banner' => 'Founding-member pricing ends soon.',
+                    'callout_heading' => 'Why members choose this',
+                    'callout_body' => 'Labs, visits, and medication in one plan.',
+                    'features' => ['Quarterly labs', 'Unlimited messaging'],
+                    'cta_label' => 'Join now',
+                    'cta_url' => '/checkout',
+                    'cta_micro' => 'Cancel anytime',
+                    'secondary_label' => 'Compare plans',
+                    'secondary_url' => '/pricing',
+                    'route' => 'Intake → labs → protocol.',
+                    'guarantees' => ['30-day guarantee'],
+                ],
+            ],
+            'peptide_card' => [
+                'enabled' => '1',
+                'eyebrow_main' => 'Peptide therapy',
+                'eyebrow_secondary' => 'Waitlist open',
+                'title' => 'Peptide protocols',
+                'subtitle' => 'Targeted recovery and longevity support.',
+                'mini_tiers' => [
+                    ['label' => '1 peptide', 'price' => '$89', 'note' => 'per month'],
+                    ['label' => '2 peptides', 'price' => '$159', 'note' => 'per month'],
+                ],
+                'features' => ['Physician-monitored'],
+                'waitlist_heading' => 'Join the waitlist',
+                'waitlist_body' => 'We onboard new peptide patients monthly.',
+                'waitlist_placeholder' => 'you@example.com',
+                'waitlist_cta_label' => 'Notify me',
+                'success_heading' => 'You are on the list',
+                'success_body' => 'We will email you when a spot opens.',
+                'fallback_cta_label' => 'Explore other protocols',
+                'fallback_cta_url' => '/products',
+                'fallback_note' => 'No spam, ever.',
+            ],
+        ]);
+    }
+
+    public function test_faq_seed_matches_blueprint(): void
+    {
+        $media = $this->media('sections/faq-intro.jpg');
+
+        $this->assertSeedParity('faq', [
+            'eyebrow' => 'FAQ',
+            'heading' => 'Common questions',
+            'emphasis' => 'answered',
+            'description' => 'Everything about the process.',
+            'cta_label' => 'Contact us',
+            'cta_url' => '/contact',
+            'image' => $media->id,
+            'image_alt' => 'Support team',
+            'faqs' => [
+                ['q' => 'Is this legal?', 'a' => 'Yes — physician-prescribed in all 50 states.'],
+                ['q' => 'How fast is shipping?', 'a' => 'Two to four business days.'],
+            ],
+        ]);
+    }
+
+    public function test_hero_seed_matches_blueprint(): void
+    {
+        $slide = $this->media('sections/hero-slide.jpg');
+        $highlight = $this->media('sections/highlight.png');
+        $background = $this->media('sections/hero-bg.jpg');
+
+        $this->assertSeedParity('hero', [
+            'layout' => 'slider',
+            'slides' => [
+                [
+                    'image' => $slide->id,
+                    'image_alt' => 'Sunrise run',
+                    'heading' => 'Own your health',
+                    'heading_emphasis' => 'for good',
+                    'description' => '<p>Physician-led protocols, delivered.</p>',
+                    'cta_label' => 'Start now',
+                    'cta_url' => '/consultation',
+                    'text_theme' => 'dark',
+                ],
+            ],
+            'highlight_title' => 'Member favorite',
+            'highlight_subtitle' => 'NAD+ protocol',
+            'highlight_quote' => 'The energy difference is real.',
+            'highlight_image' => $highlight->id,
+            'eyebrow' => 'Telemedicine',
+            'headline' => 'Modern care',
+            'headline_emphasis' => 'without the wait',
+            'subhead' => 'Board-certified physicians, online.',
+            'primary_cta_label' => 'Get started',
+            'primary_cta_url' => '/consultation',
+            'secondary_cta_label' => 'Learn more',
+            'secondary_cta_url' => '/about',
+            'trust_microcopy' => 'HIPAA-compliant · Licensed in 50 states',
+            'background_image' => $background->id,
+            'background_video_url' => null,
+        ]);
+    }
+
+    public function test_every_seeded_schema_passes_validation(): void
+    {
+        foreach (FlexibleSectionType::query()->get() as $row) {
+            FlexibleSchemaValidator::validate($row->fields());
+            SectionResolverOps::validate(array_values($row->schema['resolvers'] ?? []));
+        }
+
+        $this->assertTrue(true);
+    }
+
+    /**
+     * Benefits-Him / Benefits-Her share a field surface — one fixture,
+     * asserted per slug.
+     */
+    private function assertBenefitsPitchParity(string $slug): void
+    {
+        $media = $this->media('sections/lifestyle.jpg');
+
+        $this->assertSeedParity($slug, [
+            'eyebrow' => 'Protocols',
+            'heading' => 'Optimized for you',
+            'emphasis' => 'at every age',
+            'lead' => 'Four pillars of performance.',
+            'cta_label' => 'Explore protocols',
+            'cta_url' => '/products',
+            'image' => $media->id,
+            'image_alt' => 'Lifestyle',
+            'benefits' => [
+                ['category' => 'HORMONES', 'pill' => 'Popular', 'title' => 'Hormone optimization', 'body' => 'Restore healthy levels.'],
+                ['category' => 'RECOVERY', 'pill' => null, 'title' => 'Recovery support', 'body' => 'Sleep and repair.'],
+            ],
+        ]);
     }
 
     /**
