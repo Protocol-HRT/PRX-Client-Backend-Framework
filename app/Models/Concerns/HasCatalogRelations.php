@@ -3,9 +3,12 @@
 namespace App\Models\Concerns;
 
 use App\Enums\CatalogRelationType;
+use App\Enums\CatalogStatus;
 use App\Models\Catalog\CatalogRelation;
+use App\Models\Catalog\Package;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Support\Collection;
 
 /**
@@ -36,7 +39,9 @@ trait HasCatalogRelations
     {
         return $this->catalogRelations()
             ->where('relation_type', $type->value)
-            ->with('related')
+            ->with(['related' => fn (MorphTo $morphTo) => $morphTo->morphWith([
+                Package::class => ['plans' => fn ($q) => $q->where('status', CatalogStatus::Published)->orderBy('position')],
+            ])])
             ->get()
             ->pluck('related')
             ->filter(fn ($item) => $item !== null && $item->isPublished())

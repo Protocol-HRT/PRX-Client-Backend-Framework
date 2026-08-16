@@ -9,6 +9,7 @@ use App\Models\Catalog\AdministrationMethod;
 use App\Models\Catalog\Ingredient;
 use App\Models\Catalog\MeasurementUnit;
 use App\Models\Catalog\Package;
+use App\Models\Catalog\Plan;
 use App\Models\Catalog\Product;
 use App\Models\Catalog\ProductClass;
 use App\Models\Catalog\ProductCoa;
@@ -146,6 +147,57 @@ class ProductClassificationTest extends TestCase
             ->assertJsonCount(1, 'data.pairs_with')
             ->assertJsonPath('data.pairs_with.0.name', 'Paired Stack')
             ->assertJsonPath('data.pairs_with.0.type', 'package');
+    }
+
+    public function test_relation_light_cards_price_packages_from_default_plan_and_null_when_unpriced(): void
+    {
+        $product = Product::factory()->create(['status' => CatalogStatus::Published]);
+        $pricedPackage = Package::factory()->create(['status' => CatalogStatus::Published, 'name' => 'Priced Stack']);
+        $unpricedPackage = Package::factory()->create([
+            'status' => CatalogStatus::Published,
+            'name' => 'Unpriced Stack',
+            'retail_price' => null,
+            'sale_price' => null,
+            'price_suffix' => null,
+        ]);
+
+        Plan::factory()->for($pricedPackage)->create([
+            'retail_price' => 249.00,
+            'price_suffix' => '/mo',
+            'is_default' => false,
+            'position' => 0,
+        ]);
+        Plan::factory()->for($pricedPackage)->default()->create([
+            'retail_price' => 199.00,
+            'sale_price' => 149.00,
+            'price_suffix' => '/mo',
+            'position' => 1,
+        ]);
+
+        $product->catalogRelations()->createMany([
+            [
+                'related_type' => Package::class,
+                'related_id' => $pricedPackage->id,
+                'relation_type' => CatalogRelationType::PairsWith,
+            ],
+            [
+                'related_type' => Package::class,
+                'related_id' => $unpricedPackage->id,
+                'relation_type' => CatalogRelationType::PairsWith,
+            ],
+        ]);
+
+        $this->getJson("/api/v1/catalog/products/{$product->slug}")
+            ->assertOk()
+            ->assertJsonPath('data.pairs_with.0.name', 'Priced Stack')
+            ->assertJsonPath('data.pairs_with.0.price.retail', 199)
+            ->assertJsonPath('data.pairs_with.0.price.sale', 149)
+            ->assertJsonPath('data.pairs_with.0.price.effective', 149)
+            ->assertJsonPath('data.pairs_with.0.price.suffix', '/mo')
+            ->assertJsonPath('data.pairs_with.1.name', 'Unpriced Stack')
+            ->assertJsonPath('data.pairs_with.1.price.retail', null)
+            ->assertJsonPath('data.pairs_with.1.price.sale', null)
+            ->assertJsonPath('data.pairs_with.1.price.effective', null);
     }
 
     public function test_inventory_status_drives_is_in_stock(): void
