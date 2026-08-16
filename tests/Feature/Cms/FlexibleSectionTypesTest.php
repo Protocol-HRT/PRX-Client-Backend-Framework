@@ -228,14 +228,15 @@ class FlexibleSectionTypesTest extends TestCase
         );
     }
 
-    public function test_schema_with_nested_repeater_is_rejected(): void
+    public function test_schema_with_singly_nested_repeater_is_accepted(): void
     {
-        $this->expectException(InvalidArgumentException::class);
-
-        app(CreateFlexibleSectionTypeAction::class)->execute(
+        // One level of repeater-in-repeater is part of the vocabulary
+        // (timeline bullets); a third level is rejected — covered in
+        // SectionPlatformVocabularyTest.
+        $type = app(CreateFlexibleSectionTypeAction::class)->execute(
             FlexibleSectionTypeData::validateAndCreate([
-                'name' => 'Bad',
-                'slug' => 'bad-nesting',
+                'name' => 'Nested once',
+                'slug' => 'nested-once',
                 'schema' => ['fields' => [
                     ['key' => 'items', 'kind' => 'repeater', 'fields' => [
                         ['key' => 'nested', 'kind' => 'repeater', 'fields' => [
@@ -245,6 +246,8 @@ class FlexibleSectionTypesTest extends TestCase
                 ]],
             ]),
         );
+
+        $this->assertTrue($type->exists);
     }
 
     public function test_schema_with_duplicate_keys_is_rejected(): void

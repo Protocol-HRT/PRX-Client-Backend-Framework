@@ -3,6 +3,7 @@
 namespace App\Services\Cms;
 
 use App\Cms\FlexibleDefinition;
+use App\Cms\Support\CtaFields;
 use App\Contracts\Cms\SectionDefinition;
 use App\Models\Catalog\CatalogItemSection;
 use App\Models\Cms\GlobalSection;
@@ -130,30 +131,54 @@ class SectionTypeInspector
             // so both origins inventory identically.
             if (($field['kind'] ?? null) === 'group') {
                 foreach ($field['fields'] ?? [] as $child) {
-                    $entry = $map($child);
-                    $entry['name'] = ($field['key'] ?? '').'.'.$entry['name'];
-                    $entry['label'] = filled($child['label'] ?? null) ? $child['label'] : Str::headline($child['key'] ?? '');
-
-                    foreach ($child['fields'] ?? [] as $grandchild) {
-                        $entry['children'][] = $map($grandchild);
+                    foreach ($this->flexibleEntries($child, $map) as $entry) {
+                        $entry['name'] = ($field['key'] ?? '').'.'.$entry['name'];
+                        $out[] = $entry;
                     }
-
-                    $out[] = $entry;
                 }
 
                 continue;
             }
 
-            $entry = $map($field);
-
-            foreach ($field['fields'] ?? [] as $child) {
-                $entry['children'][] = $map($child);
+            foreach ($this->flexibleEntries($field, $map) as $entry) {
+                $out[] = $entry;
             }
-
-            $out[] = $entry;
         }
 
         return $out;
+    }
+
+    /**
+     * One schema field -> inventory entries. A `cta` kind IS its flat keys
+     * (cta_label, cta_mode, …) — expand it exactly as walking the code
+     * blueprints' CtaFields::components() does, so both origins inventory
+     * identically. Repeater children expand recursively under `children`.
+     *
+     * @param  array<string, mixed>  $field
+     * @param  callable(array<string, mixed>): array{name: string, label: string, kind: string, required: ?bool, children: list<mixed>}  $map
+     * @return list<array{name: string, label: string, kind: string, required: ?bool, children: list<mixed>}>
+     */
+    private function flexibleEntries(array $field, callable $map): array
+    {
+        if (($field['kind'] ?? null) === 'cta') {
+            return array_map(fn (string $key): array => [
+                'name' => $key,
+                'label' => Str::headline($key),
+                'kind' => in_array($key, ['cta_mode', 'cta_item_type', 'cta_product_id', 'cta_package_id'], true) ? 'select' : 'text',
+                'required' => false,
+                'children' => [],
+            ], CtaFields::KEYS);
+        }
+
+        $entry = $map($field);
+
+        foreach ($field['fields'] ?? [] as $child) {
+            foreach ($this->flexibleEntries($child, $map) as $childEntry) {
+                $entry['children'][] = $childEntry;
+            }
+        }
+
+        return [$entry];
     }
 
     /**

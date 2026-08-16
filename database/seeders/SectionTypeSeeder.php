@@ -722,6 +722,77 @@ class SectionTypeSeeder extends Seeder
                     ],
                 ],
             ],
+            [
+                'slug' => 'benefits-diagram',
+                'name' => 'Benefits diagram',
+                'icon' => 'heroicon-o-viewfinder-circle',
+                'description' => 'Centered image with benefit points around it, connected by markers and dashed lines. Optional rating row and CTA (link or add-to-cart) underneath.',
+                'schema' => [
+                    'fields' => [
+                        ['key' => 'heading', 'kind' => 'text', 'max' => 255],
+                        ['key' => 'image', 'kind' => 'image', 'label' => 'Center image'],
+                        ['key' => 'image_alt', 'kind' => 'text', 'max' => 255],
+                        ['key' => 'marker_style', 'kind' => 'select', 'default' => 'dot', 'help' => 'How each point is marked next to its connector line.', 'options' => [
+                            ['value' => 'dot', 'label' => 'Dot'],
+                            ['value' => 'number', 'label' => 'Number'],
+                            ['value' => 'icon', 'label' => 'Per-point icon'],
+                        ]],
+                        ['key' => 'points', 'kind' => 'repeater', 'label' => 'Benefit points', 'fields' => [
+                            ['key' => 'text', 'kind' => 'textarea', 'max' => 255, 'required' => true],
+                            ['key' => 'side', 'kind' => 'select', 'default' => 'left', 'options' => [
+                                ['value' => 'left', 'label' => 'Left of image'],
+                                ['value' => 'right', 'label' => 'Right of image'],
+                            ]],
+                            ['key' => 'icon', 'kind' => 'image', 'label' => 'Marker icon', 'help' => 'Only used when marker style is "Per-point icon".'],
+                        ]],
+                        ['key' => 'rating_value', 'kind' => 'number', 'min' => 0, 'max' => 5, 'help' => 'Star fill, 0–5.'],
+                        ['key' => 'rating_text', 'kind' => 'text', 'max' => 255, 'help' => 'Line rendered next to the stars.'],
+                        ['key' => 'cta', 'kind' => 'cta', 'label' => 'Call to action'],
+                        ['key' => 'cta_subtext', 'kind' => 'text', 'label' => 'CTA subtext', 'max' => 160, 'help' => 'Small reassurance line under the button — renders with a lock icon.'],
+                    ],
+                ],
+            ],
+            [
+                'slug' => 'image-callout-banner',
+                'name' => 'Image callout banner',
+                'icon' => 'heroicon-o-photo',
+                'description' => 'Full-width background image with up to two floating callouts (icon/logo, title, text, optional CTA), positioned left and/or right. Each callout renders as a frosted card or as plain feature copy; the photo can be monochrome-tinted.',
+                'schema' => [
+                    'fields' => [
+                        ['key' => 'background_image', 'kind' => 'image', 'label' => 'Background image'],
+                        ['key' => 'background_alt', 'kind' => 'text', 'label' => 'Background alt text', 'max' => 255],
+                        ['key' => 'background_treatment', 'kind' => 'select', 'default' => 'none', 'help' => 'Monochrome tint recolors the photo to a single hue (mix-blend color).', 'options' => [
+                            ['value' => 'none', 'label' => 'None'],
+                            ['value' => 'tint', 'label' => 'Monochrome tint'],
+                        ]],
+                        ['key' => 'tint_color', 'kind' => 'color', 'label' => 'Tint color', 'help' => 'Leave empty for the warm neutral default.', 'visible_when' => [
+                            ['field' => 'background_treatment', 'operator' => 'equals', 'value' => 'tint'],
+                        ]],
+                        ['key' => 'callouts', 'kind' => 'repeater', 'label' => 'Callout cards', 'max' => 2, 'fields' => [
+                            ['key' => 'position', 'kind' => 'select', 'default' => '0', 'required' => true, 'help' => 'Which slot over the image the card occupies.', 'options' => [
+                                ['value' => '0', 'label' => 'Position 1 (left)'],
+                                ['value' => '1', 'label' => 'Position 2 (right)'],
+                            ]],
+                            ['key' => 'variant', 'kind' => 'select', 'default' => 'card', 'help' => 'Compact media card: small left-aligned frosted card (image over text). Feature copy: large serif title with left-aligned text directly over the image, no card.', 'options' => [
+                                ['value' => 'card', 'label' => 'Frosted card'],
+                                ['value' => 'media-card', 'label' => 'Compact media card'],
+                                ['value' => 'feature', 'label' => 'Feature copy (no card)'],
+                            ]],
+                            ['key' => 'align', 'kind' => 'select', 'default' => 'center', 'help' => 'Vertical placement inside the banner on desktop.', 'options' => [
+                                ['value' => 'center', 'label' => 'Vertically centered'],
+                                ['value' => 'top', 'label' => 'Top'],
+                                ['value' => 'bottom', 'label' => 'Bottom'],
+                            ]],
+                            ['key' => 'color', 'kind' => 'color', 'label' => 'Card color', 'help' => 'Card background. Leave empty for the frosted light default.'],
+                            ['key' => 'icon', 'kind' => 'image', 'label' => 'Icon / logo'],
+                            ['key' => 'icon_width', 'kind' => 'number', 'label' => 'Icon width (px)', 'min' => 16, 'max' => 600, 'help' => 'Rendered width of the icon/logo. Leave empty for the small default.'],
+                            ['key' => 'title', 'kind' => 'text', 'max' => 255],
+                            ['key' => 'content', 'kind' => 'richtext', 'help' => 'Rendered as HTML on the public site — bold/italic/line breaks are honored.'],
+                            ['key' => 'cta', 'kind' => 'cta'],
+                        ]],
+                    ],
+                ],
+            ],
         ];
     }
 

@@ -194,24 +194,40 @@ of per-blueprint `resolveData()` overrides.
 **Vocabulary** (all usable by custom types too):
 
 - Field kinds `product` / `package` (single pickers, inlined in place),
-  `category` (raw id), `number` (min/max bounds), `color`, and `cta` — the
+  `category` (raw id), `categories` (multi picker, raw ids — pair with the
+  `categories` op), `number` (min/max bounds), `color`, and `cta` — the
   full CTA group (`CtaFields::components()`, flat keys) with automatic
   add-to-cart inlining. `raw: true` on a catalog picker ships stored ids
   untouched (pair with a resolver op writing the inlined list elsewhere).
+- **Repeaters nest one level** (timeline's `steps.*.bullets`); a third level
+  is rejected. `simple: true` on a repeater mirrors Filament's `->simple()`
+  storage — items hold the single child field's bare value, a flat scalar
+  list (physicians' `badges`, pricing-tiers' `features`/`guarantees`).
+  Define exactly one child field.
+- **`group` kind**: a fixed-shape nested map rendered as a
+  `Fieldset->statePath(key)` — the data-side of code blueprints' dotted
+  field names (`peptide_card.title`). Children may include repeaters; groups
+  never nest inside repeaters or other groups. The Section Types catalog
+  inventories group children under their dotted names.
 - `visible_when` on any field: ANDed `{field, operator: equals|not_equals,
   value}` conditions against sibling state (`App\Cms\Support\VisibleWhen`),
   loose string comparison because Filament re-saves selects as integers.
 - Select values are re-cast to strings in the payload automatically
   (`FlexibleDefinition::resolveData`) — the integer re-save fix, now global
-  for DB-defined types.
+  for DB-defined types. The cast recurses into repeater items and groups, so
+  child selects (e.g. `callouts.*.position`) need no `cast_string` resolver.
 - **Resolver ops** (`App\Services\Cms\SectionResolverOps`), declared per type
   in `schema.resolvers`, run after field-kind transforms:
   `inline_product|inline_package|inline_products|inline_packages`
   (`input`/`output` keys), `products_by_mode|packages_by_mode` (the slider
   manual/featured/newest/category convention; `output`, optional `*_key`
   overrides), `categories`, `resolve_cta` (`path: ''` or `items.*`),
-  `cast_string` (`path`). The admin form round-trips `schema.fields` only —
-  `UpdateFlexibleSectionTypeAction` carries stored resolvers forward.
+  `cast_string` (`path`). Any op may carry a `when` list (visible_when
+  shape, evaluated against the payload): while conditions fail the op is
+  skipped and its `output` key is written as null — replicating conditional
+  blueprint inlining like product-callout's `item_type` branch. The admin
+  form round-trips `schema.fields` only — `UpdateFlexibleSectionTypeAction`
+  carries stored resolvers forward.
 
 **Shadow/active modes** (`flexible_section_types.mode`): `SectionTypeSeeder`
 mirrors code blueprints as `shadow` rows — visible in Custom Section Types
@@ -225,15 +241,26 @@ rejects reserved slugs; only the seeder introduces colliding rows.
 **Golden parity** (`SectionTypeSeedParityTest`): a seed may only be promoted
 once its test proves the seeded definition matches the blueprint —
 byte-identical `data` payload for a representative fixture, plus equal
-defaults, fieldKinds, and field inventory. Seeded so far: `text-block`,
-`cta-banner`, `video-embed`, `features-grid`, `highlight-banner`,
-`product-slider` (proves `products_by_mode` + `visible_when` + `raw`).
+defaults, fieldKinds, and field inventory (top-level names; the inspector
+expands a `cta` kind to its flat keys and flattens group children to dotted
+names so both origins inventory identically).
 
-**Remaining to seed** (next sessions): the other 23 blueprints. The complex
-ones map as: catalog sliders/grids → `*_by_mode` ops; `product-callout` →
-`inline_product`/`inline_package`; `category-grid` → `categories`;
-`benefits-diagram`/`image-callout-banner` → `cta` kind (or `resolve_cta` at
-`callouts.*`) + `cast_string` for slot positions. Form-layout groups degrade
-to flat forms; conditional visibility survives via `visible_when`. Frontend
-impact of promotion: envelope `origin` flips to `flexible` and a `schema`
-map appears — atlas keys components by `type` only, so no changes needed.
+**All 28 code blueprints are now mirrored as shadow seeds** (2026-08-16):
+the original six, the 15 content types (final-cta, stats-marquee,
+results-stats, story, how-it-works, testimonials, timeline,
+image-text-split, physicians, benefits-him/her, transformed, pricing-tiers,
+faq, hero), the five catalog-driven types (product-grid, package-slider,
+package-pricing-comparison, product-callout, category-grid), and the two
+CTA-bearing types (benefits-diagram, image-callout-banner). Every seed has
+a parity test; promotion is an admin decision per deployment. Form-layout
+Sections degrade to flat forms (accepted); conditional visibility survives
+via `visible_when`. Frontend impact of promotion: envelope `origin` flips
+to `flexible` and a `schema` map appears — atlas keys components by `type`
+only, so no changes needed.
+
+**Authoring-UI subset caveat**: the admin schema editor cannot express
+everything seeds can (child select options, nested repeater grandchildren,
+group children). Editing a promoted seed's *fields* in the admin round-trips
+only what the editor renders — the validator rejects saves that would strip
+a required construct (e.g. a repeater losing all children), so a failed save
+here means "this schema is seed-managed", not data loss.

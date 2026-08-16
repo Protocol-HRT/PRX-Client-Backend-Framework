@@ -633,6 +633,88 @@ class SectionTypeSeedParityTest extends TestCase
         $this->assertSame($categories[2]->name, $envelope['data']['categories'][0]['name']);
     }
 
+    public function test_benefits_diagram_seed_matches_blueprint(): void
+    {
+        $center = $this->media('sections/diagram.png');
+        $pointIcon = $this->media('sections/point-icon.png');
+        $product = Product::factory()->create();
+
+        $envelope = $this->assertSeedParity('benefits-diagram', [
+            'heading' => 'One protocol, many benefits',
+            'image' => $center->id,
+            'image_alt' => 'Product vial',
+            'marker_style' => 'icon',
+            'points' => [
+                ['text' => 'Deeper sleep', 'side' => 'left', 'icon' => $pointIcon->id],
+                ['text' => 'Sharper focus', 'side' => 'right', 'icon' => null],
+            ],
+            'rating_value' => 4.8,
+            'rating_text' => '4.8/5 from 300+ members',
+            'cta_label' => 'Add to cart',
+            'cta_mode' => 'add_to_cart',
+            'cta_url' => null,
+            'cta_item_type' => 'product',
+            'cta_product_id' => $product->id,
+            'cta_package_id' => null,
+            'cta_subtext' => 'Secure checkout',
+        ]);
+
+        $this->assertSame($product->name, $envelope['data']['cta_product']['name']);
+        $this->assertNull($envelope['data']['cta_package']);
+    }
+
+    public function test_image_callout_banner_seed_matches_blueprint(): void
+    {
+        $background = $this->media('sections/banner-bg.jpg');
+        $icon = $this->media('sections/callout-icon.png');
+        $package = Package::factory()->create();
+
+        $envelope = $this->assertSeedParity('image-callout-banner', [
+            'background_image' => $background->id,
+            'background_alt' => 'Coastline at dawn',
+            'background_treatment' => 'tint',
+            'tint_color' => '#8a7a5c',
+            'callouts' => [
+                [
+                    'position' => '0',
+                    'variant' => 'card',
+                    'align' => 'center',
+                    'color' => null,
+                    'icon' => $icon->id,
+                    'icon_width' => 48,
+                    'title' => 'Concierge care',
+                    'content' => '<p>Message your care team anytime.</p>',
+                    'cta_label' => 'Learn more',
+                    'cta_mode' => 'link',
+                    'cta_url' => '/care',
+                    'cta_item_type' => 'product',
+                    'cta_product_id' => null,
+                    'cta_package_id' => null,
+                ],
+                [
+                    'position' => '1',
+                    'variant' => 'feature',
+                    'align' => 'bottom',
+                    'color' => null,
+                    'icon' => null,
+                    'icon_width' => null,
+                    'title' => 'The complete stack',
+                    'content' => '<p>Everything in one bundle.</p>',
+                    'cta_label' => 'Add the stack',
+                    'cta_mode' => 'add_to_cart',
+                    'cta_url' => null,
+                    'cta_item_type' => 'package',
+                    'cta_product_id' => null,
+                    'cta_package_id' => $package->id,
+                ],
+            ],
+        ]);
+
+        $this->assertNull($envelope['data']['callouts'][0]['cta_product']);
+        $this->assertSame($package->name, $envelope['data']['callouts'][1]['cta_package']['name']);
+        $this->assertSame('1', $envelope['data']['callouts'][1]['position']);
+    }
+
     public function test_every_seeded_schema_passes_validation(): void
     {
         foreach (FlexibleSectionType::query()->get() as $row) {
