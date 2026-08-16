@@ -2221,6 +2221,41 @@
                                                         }
                                                     ]
                                                 },
+                                                "rating": {
+                                                    "anyOf": [
+                                                        {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "average": {
+                                                                    "type": "number"
+                                                                },
+                                                                "count": {
+                                                                    "type": "string"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "average",
+                                                                "count"
+                                                            ]
+                                                        },
+                                                        {
+                                                            "type": "null"
+                                                        },
+                                                        {
+                                                            "type": "object"
+                                                        }
+                                                    ]
+                                                },
+                                                "reviews": {
+                                                    "anyOf": [
+                                                        {
+                                                            "type": "string"
+                                                        },
+                                                        {
+                                                            "type": "object"
+                                                        }
+                                                    ]
+                                                },
                                                 "seo": {
                                                     "anyOf": [
                                                         {
@@ -2309,6 +2344,8 @@
                                                 "price",
                                                 "plans",
                                                 "faqs",
+                                                "rating",
+                                                "reviews",
                                                 "seo",
                                                 "provider",
                                                 "categories",
@@ -2787,6 +2824,41 @@
                                                         }
                                                     ]
                                                 },
+                                                "rating": {
+                                                    "anyOf": [
+                                                        {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "average": {
+                                                                    "type": "number"
+                                                                },
+                                                                "count": {
+                                                                    "type": "string"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "average",
+                                                                "count"
+                                                            ]
+                                                        },
+                                                        {
+                                                            "type": "null"
+                                                        },
+                                                        {
+                                                            "type": "object"
+                                                        }
+                                                    ]
+                                                },
+                                                "reviews": {
+                                                    "anyOf": [
+                                                        {
+                                                            "type": "string"
+                                                        },
+                                                        {
+                                                            "type": "object"
+                                                        }
+                                                    ]
+                                                },
                                                 "categories": {
                                                     "type": "array",
                                                     "items": {
@@ -2851,6 +2923,8 @@
                                                 "products",
                                                 "plans",
                                                 "faqs",
+                                                "rating",
+                                                "reviews",
                                                 "categories",
                                                 "tags",
                                                 "related",
@@ -6059,6 +6133,27 @@
                     "faqs": {
                         "type": "string"
                     },
+                    "rating": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "properties": {
+                            "average": {
+                                "type": "number"
+                            },
+                            "count": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "average",
+                            "count"
+                        ]
+                    },
+                    "reviews": {
+                        "type": "string"
+                    },
                     "categories": {
                         "type": "array",
                         "items": {
@@ -6589,6 +6684,27 @@
                         }
                     },
                     "faqs": {
+                        "type": "string"
+                    },
+                    "rating": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "properties": {
+                            "average": {
+                                "type": "number"
+                            },
+                            "count": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "average",
+                            "count"
+                        ]
+                    },
+                    "reviews": {
                         "type": "string"
                     },
                     "seo": {

@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Storage;
 
 class PackageResource extends JsonResource
 {
+    use Concerns\BuildsRatingSummary;
     use Concerns\NormalizesDetailSections;
 
     /**
@@ -61,6 +62,15 @@ class PackageResource extends JsonResource
                 'question' => $faq->question,
                 'answer' => $faq->answer,
                 'category' => $faq->category?->name,
+            ])->values()->all()),
+            'rating' => $this->whenLoaded('approvedReviews', fn () => $this->ratingFromLoadedReviews()),
+            'reviews' => $this->whenLoaded('approvedReviews', fn () => $this->approvedReviews->map(fn ($review) => [
+                'id' => $review->id,
+                'rating' => $review->rating,
+                'author_name' => $review->author_name,
+                'title' => $review->title,
+                'body' => $review->body,
+                'reviewed_at' => $review->reviewed_at?->toDateString(),
             ])->values()->all()),
             'categories' => CategoryResource::collection($this->whenLoaded('categories')),
             'tags' => TagResource::collection($this->whenLoaded('tags')),

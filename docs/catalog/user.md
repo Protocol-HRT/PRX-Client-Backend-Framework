@@ -149,6 +149,22 @@ render on that item's storefront detail page, in the order you drag them into.
 
 ---
 
+## Product & stack reviews
+
+Every product and package edit page has a **Reviews** tab for curating
+customer reviews (star rating, author display name, optional title/body,
+review date).
+
+- Only **approved** reviews appear on the storefront or count toward the
+  star rating shown there. Un-approving hides a review without deleting it.
+- If an item has no approved reviews, the storefront shows no stars at all —
+  ratings are never invented.
+- Reviews collected through future channels (patient portal, external review
+  platforms) will appear in this same tab for the same approve/hide
+  moderation.
+
+---
+
 ## Publishing checklist
 
 Before setting a product or package to **Published**:

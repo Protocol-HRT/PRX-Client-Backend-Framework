@@ -123,6 +123,7 @@ class ProductController extends ApiController
             'coas',
             'faqs' => fn ($q) => $q->where('is_published', true),
             'faqs.category',
+            'approvedReviews',
         ]);
 
         return $this->success((new ProductResource($product))->toArray(request()));

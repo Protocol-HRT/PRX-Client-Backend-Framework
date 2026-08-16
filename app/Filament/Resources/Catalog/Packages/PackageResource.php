@@ -10,6 +10,7 @@ use App\Filament\Resources\Catalog\Packages\Schemas\PackageForm;
 use App\Filament\Resources\Catalog\Packages\Tables\PackagesTable;
 use App\Filament\Resources\Catalog\Products\RelationManagers\CatalogRelationsRelationManager;
 use App\Filament\Resources\Catalog\Products\RelationManagers\FaqsRelationManager;
+use App\Filament\Resources\Catalog\Products\RelationManagers\ReviewsRelationManager;
 use App\Models\Catalog\Package;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -48,6 +49,7 @@ class PackageResource extends Resource
             PlansRelationManager::class,
             CatalogRelationsRelationManager::class,
             FaqsRelationManager::class,
+            ReviewsRelationManager::class,
         ];
     }
 

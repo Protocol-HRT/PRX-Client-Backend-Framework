@@ -104,6 +104,7 @@ class PackageController extends ApiController
             'tags',
             'faqs' => fn ($q) => $q->where('is_published', true),
             'faqs.category',
+            'approvedReviews',
         ]);
 
         return $this->success((new PackageResource($package))->toArray(request()));

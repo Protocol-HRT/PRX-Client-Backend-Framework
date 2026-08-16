@@ -163,6 +163,24 @@ inverse `products()`/`packages()` on `FaqItem`).
   (multi-select) or author a new one in place ("New FAQ" creates the
   FaqItem and attaches it).
 
+### Reviews (base module)
+
+Products and packages expose on their **show** endpoints only:
+
+- `rating` — `{average, count}` across approved reviews, or `null` when none
+  (the frontend must render nothing, never a zero-count rating).
+- `reviews` — approved only, newest `reviewed_at` first:
+  `[{id, rating, author_name, title, body, reviewed_at}]`.
+
+Backing: polymorphic `reviews` table (`App\Models\Content\Review`,
+`HasReviews` concern on Product/Package with `approvedReviews()` +
+`ratingSummary()`). Deliberately thin — rows are admin-curated today
+(`source` = `admin`); the patient portal and per-client external review
+integrations are expected to write into the same table with their own
+`source` values, and the moderation flow (`is_approved`) stays identical.
+Admin: shared `ReviewsRelationManager` on both catalog resources
+(author-in-place, approve toggle, ternary approved filter).
+
 ### `GET /api/v1/catalog/tags`
 
 All visible tags ordered by position.

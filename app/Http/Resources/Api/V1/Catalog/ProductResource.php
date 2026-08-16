@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Storage;
 
 class ProductResource extends JsonResource
 {
+    use Concerns\BuildsRatingSummary;
     use Concerns\NormalizesDetailSections;
 
     /**
@@ -89,6 +90,15 @@ class ProductResource extends JsonResource
                 'question' => $faq->question,
                 'answer' => $faq->answer,
                 'category' => $faq->category?->name,
+            ])->values()->all()),
+            'rating' => $this->whenLoaded('approvedReviews', fn () => $this->ratingFromLoadedReviews()),
+            'reviews' => $this->whenLoaded('approvedReviews', fn () => $this->approvedReviews->map(fn ($review) => [
+                'id' => $review->id,
+                'rating' => $review->rating,
+                'author_name' => $review->author_name,
+                'title' => $review->title,
+                'body' => $review->body,
+                'reviewed_at' => $review->reviewed_at?->toDateString(),
             ])->values()->all()),
             'seo' => $this->when($request->routeIs('api.v1.catalog.products.show'), [
                 'meta_title' => $this->meta_title,
