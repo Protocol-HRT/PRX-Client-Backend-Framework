@@ -61,19 +61,29 @@ class AppServiceProvider extends ServiceProvider
      * locks the other out and every later thumbnail 500s with "Could not
      * write the image". Give Glide a dedicated cache filesystem whose
      * visibility keeps directories group/world-writable instead.
+     *
+     * The permissive modes are LOCAL-ONLY: the dual-writer situation exists
+     * only in dev (nginx vhost + artisan serve side by side). Production
+     * runs a single server user, where Flysystem's restrictive defaults are
+     * correct — world-writable cache dirs there would let any local user
+     * poison served thumbnails.
      */
     private function configureGlideCache(): void
     {
+        $devSharedVisibility = app()->environment('local')
+            ? PortableVisibilityConverter::fromArray([
+                'file' => ['public' => 0666, 'private' => 0666],
+                'dir' => ['public' => 0777, 'private' => 0777],
+            ], Visibility::PUBLIC)
+            : null;
+
         app(GlideManager::class)->serverConfig([
             'response' => new SymfonyResponseFactory(app('request')),
             'source' => storage_path('app'),
             'source_path_prefix' => 'public',
             'cache' => new Filesystem(new LocalFilesystemAdapter(
                 storage_path('app/glide-cache'),
-                PortableVisibilityConverter::fromArray([
-                    'file' => ['public' => 0666, 'private' => 0666],
-                    'dir' => ['public' => 0777, 'private' => 0777],
-                ], Visibility::PUBLIC),
+                $devSharedVisibility,
             )),
             'max_image_size' => 2000 * 2000,
             'base_url' => 'curator',
