@@ -24,7 +24,6 @@ use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
-use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -138,7 +137,6 @@ class SectionsRelationManager extends RelationManager
             ])
             ->headerActions([
                 CreateAction::make()
-                    ->modalWidth(Width::Screen)
                     ->mutateDataUsing(function (array $data) use ($registry): array {
                         if (! empty($data['global_section_id'])) {
                             // Global-backed section: mirror the block's type and
@@ -159,8 +157,7 @@ class SectionsRelationManager extends RelationManager
                     }),
             ])
             ->recordActions([
-                EditAction::make()
-                    ->modalWidth(Width::Screen),
+                EditAction::make(),
                 Action::make('detach')
                     ->label('Detach copy')
                     ->icon('heroicon-o-scissors')

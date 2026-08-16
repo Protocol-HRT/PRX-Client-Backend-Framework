@@ -59,8 +59,9 @@ class AppServiceProvider extends ServiceProvider
     /**
      * Filament's default create/edit modal is too narrow for real content
      * forms — fields quarter down and wrap. Default every Create/Edit modal
-     * to 7xl; individual actions can still override (the section relation
-     * managers go full-screen). Pages (non-modal) ignore the width entirely.
+     * to 7xl; individual actions can still override. Width::Screen is NOT
+     * used anywhere: it swaps the overlay for a chrome-less full-viewport
+     * takeover with broken scrolling. Pages (non-modal) ignore the width.
      */
     private function configureFilamentModalDefaults(): void
     {
