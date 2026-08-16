@@ -469,10 +469,7 @@
                                                     ]
                                                 },
                                                 "hero_image_url": {
-                                                    "type": [
-                                                        "string",
-                                                        "null"
-                                                    ]
+                                                    "type": "null"
                                                 },
                                                 "gallery": {
                                                     "type": "array",
@@ -484,13 +481,19 @@
                                                     "type": "string"
                                                 },
                                                 "featured": {
-                                                    "type": "string"
+                                                    "type": "boolean"
                                                 },
                                                 "published_at": {
                                                     "type": "string"
                                                 },
-                                                "read_time_minutes": {
+                                                "updated_at": {
                                                     "type": "string"
+                                                },
+                                                "read_time_minutes": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ]
                                                 },
                                                 "author": {
                                                     "anyOf": [
@@ -538,10 +541,7 @@
                                                                     "type": "string"
                                                                 },
                                                                 "og_image_url": {
-                                                                    "type": [
-                                                                        "string",
-                                                                        "null"
-                                                                    ]
+                                                                    "type": "null"
                                                                 }
                                                             },
                                                             "required": [
@@ -567,6 +567,7 @@
                                                 "status",
                                                 "featured",
                                                 "published_at",
+                                                "updated_at",
                                                 "read_time_minutes",
                                                 "author",
                                                 "categories",
@@ -669,10 +670,7 @@
                                                     "type": "string"
                                                 },
                                                 "hero_image_url": {
-                                                    "type": [
-                                                        "string",
-                                                        "null"
-                                                    ]
+                                                    "type": "null"
                                                 },
                                                 "is_visible": {
                                                     "type": "string"
@@ -743,7 +741,7 @@
         "/pages": {
             "get": {
                 "operationId": "v1.pages.index",
-                "description": "Returns a lightweight list of published pages (no section content) ordered by title.\nResults are cached for 5 minutes. Useful for building navigation or sitemap structures.",
+                "description": "Returns a lightweight list of published pages (no section content) ordered by title.\nCached; invalidated instantly when CMS content is saved.",
                 "summary": "List all published CMS pages",
                 "tags": [
                     "CMS"
@@ -756,10 +754,7 @@
                                 "schema": {
                                     "type": "object",
                                     "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {}
-                                        },
+                                        "data": {},
                                         "meta": {
                                             "type": "string"
                                         }
@@ -779,7 +774,7 @@
         "/pages/{slug}": {
             "get": {
                 "operationId": "v1.pages.show",
-                "description": "Returns the page with all typed sections included. Results are cached for 5 minutes.",
+                "description": "Returns the page with all typed sections included.\nCached; invalidated instantly when CMS content is saved.",
                 "summary": "Get a published CMS page by slug",
                 "tags": [
                     "CMS"
@@ -802,10 +797,7 @@
                                 "schema": {
                                     "type": "object",
                                     "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {}
-                                        },
+                                        "data": {},
                                         "meta": {
                                             "type": "string"
                                         }
@@ -832,6 +824,134 @@
                                     },
                                     "required": [
                                         "message"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": []
+            }
+        },
+        "/menus": {
+            "get": {
+                "operationId": "v1.menus.index",
+                "description": "Lightweight index of menu names and slugs. Fetch a menu's items via\n/api/v1/menus/{slug}. Cached; invalidated instantly on save.",
+                "summary": "List all menus",
+                "tags": [
+                    "CMS"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {},
+                                        "meta": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": []
+            }
+        },
+        "/menus/{slug}": {
+            "get": {
+                "operationId": "v1.menus.show",
+                "description": "Items link to internal entities by `{type, slug}` (the frontend owns\nroute patterns) or to direct URLs/anchors by `{type, url}`. Items whose\ntarget is unpublished or deleted are omitted, as are disabled items.\nNested up to 3 levels via `children`. Cached; invalidated instantly on save.",
+                "summary": "Get a menu by slug with its nested item tree",
+                "tags": [
+                    "CMS"
+                ],
+                "parameters": [
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {},
+                                        "meta": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "const": "Menu not found."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": []
+            }
+        },
+        "/layout": {
+            "get": {
+                "operationId": "v1.layout",
+                "description": "Returns every fixed region (top_bar, header, pre_footer, footer,\nsidebar_left, sidebar_right \u2014 all keys always present) with its ordered\nitems. Each item is `{kind: \"section\", section: {...}}` (same envelope\nas page sections, including inlined media/catalog data) or\n`{kind: \"menu\", menu: {name, slug, items: [...]}}`. Global blocks are\nemitted as sections with a `global` reference. Fetch once per app load\nalongside the page payload. Cached; invalidated instantly on save.",
+                "summary": "Get the global layout regions",
+                "tags": [
+                    "CMS"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {},
+                                        "meta": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
                                     ]
                                 }
                             }
@@ -1186,6 +1306,26 @@
                             }
                         }
                     },
+                    "403": {
+                        "description": "An error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Error overview.",
+                                            "example": "This item does not belong to your cart."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    },
                     "422": {
                         "$ref": "#/components/responses/ValidationException"
                     },
@@ -1266,6 +1406,26 @@
                                     "required": [
                                         "data",
                                         "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "An error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "description": "Error overview.",
+                                            "example": "This item does not belong to your cart."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
                                     ]
                                 }
                             }
@@ -1355,10 +1515,7 @@
                                                     "type": "string"
                                                 },
                                                 "hero_image_url": {
-                                                    "type": [
-                                                        "string",
-                                                        "null"
-                                                    ]
+                                                    "type": "null"
                                                 },
                                                 "icon": {
                                                     "type": "string"
@@ -1437,7 +1594,7 @@
         "/catalog/products": {
             "get": {
                 "operationId": "v1.catalog.products.index",
-                "description": "Returns a paginated list of published products with categories and tags.\nSupports filtering by category slug, tag slug, featured flag, and name/subtitle search.",
+                "description": "Returns a paginated list of published products with categories and tags.",
                 "summary": "List published catalog products",
                 "tags": [
                     "Catalog"
@@ -1464,6 +1621,95 @@
                             "type": "boolean",
                             "default": false
                         }
+                    },
+                    {
+                        "name": "in_stock",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean",
+                            "default": false
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Filter by product name or subtitle.",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "testosterone"
+                    },
+                    {
+                        "name": "class",
+                        "in": "query",
+                        "description": "Filter by product class slug.",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "peptides"
+                    },
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "description": "Filter by product type slug.",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "blends"
+                    },
+                    {
+                        "name": "form",
+                        "in": "query",
+                        "description": "Filter by product form slug.",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "vial-lyophilized"
+                    },
+                    {
+                        "name": "ingredient",
+                        "in": "query",
+                        "description": "Filter by ingredient (compound) slug.",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "bpc-157"
+                    },
+                    {
+                        "name": "price_min",
+                        "in": "query",
+                        "description": "Filter products with an effective price at or above this amount (USD).",
+                        "schema": {
+                            "type": "number"
+                        },
+                        "example": 50
+                    },
+                    {
+                        "name": "price_max",
+                        "in": "query",
+                        "description": "Filter products with an effective price at or below this amount (USD).",
+                        "schema": {
+                            "type": "number"
+                        },
+                        "example": 300
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "description": "Sort order: position (default), name, -name, price, -price, newest, oldest.",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "-price"
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Results per page (1\u201350, default 15).",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "example": 15
                     }
                 ],
                 "responses": {
@@ -1666,10 +1912,7 @@
                                                     ]
                                                 },
                                                 "hero_image_url": {
-                                                    "type": [
-                                                        "string",
-                                                        "null"
-                                                    ]
+                                                    "type": "null"
                                                 },
                                                 "gallery": {
                                                     "type": "array",
@@ -1688,35 +1931,278 @@
                                                     "items": {}
                                                 },
                                                 "is_featured": {
+                                                    "type": "boolean"
+                                                },
+                                                "is_in_stock": {
+                                                    "type": "boolean"
+                                                },
+                                                "inventory_status": {
                                                     "type": "string"
                                                 },
+                                                "is_on_sale": {
+                                                    "type": "boolean"
+                                                },
                                                 "requires_lab": {
-                                                    "type": "string"
+                                                    "type": "boolean"
+                                                },
+                                                "rx_required": {
+                                                    "type": "boolean"
+                                                },
+                                                "is_controlled_substance": {
+                                                    "type": "boolean"
                                                 },
                                                 "sort_order": {
                                                     "type": "string"
+                                                },
+                                                "classification": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "class": {
+                                                            "type": [
+                                                                "object",
+                                                                "null"
+                                                            ],
+                                                            "properties": {
+                                                                "id": {
+                                                                    "type": "string"
+                                                                },
+                                                                "name": {
+                                                                    "type": "string"
+                                                                },
+                                                                "slug": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "id",
+                                                                "name",
+                                                                "slug"
+                                                            ]
+                                                        },
+                                                        "type": {
+                                                            "type": [
+                                                                "object",
+                                                                "null"
+                                                            ],
+                                                            "properties": {
+                                                                "id": {
+                                                                    "type": "string"
+                                                                },
+                                                                "name": {
+                                                                    "type": "string"
+                                                                },
+                                                                "slug": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "id",
+                                                                "name",
+                                                                "slug"
+                                                            ]
+                                                        },
+                                                        "form": {
+                                                            "type": [
+                                                                "object",
+                                                                "null"
+                                                            ],
+                                                            "properties": {
+                                                                "id": {
+                                                                    "type": "string"
+                                                                },
+                                                                "name": {
+                                                                    "type": "string"
+                                                                },
+                                                                "slug": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "id",
+                                                                "name",
+                                                                "slug"
+                                                            ]
+                                                        },
+                                                        "administration_method": {
+                                                            "type": [
+                                                                "object",
+                                                                "null"
+                                                            ],
+                                                            "properties": {
+                                                                "id": {
+                                                                    "type": "string"
+                                                                },
+                                                                "name": {
+                                                                    "type": "string"
+                                                                },
+                                                                "slug": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "id",
+                                                                "name",
+                                                                "slug"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "class",
+                                                        "type",
+                                                        "form",
+                                                        "administration_method"
+                                                    ]
+                                                },
+                                                "volume": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "value": {
+                                                            "type": [
+                                                                "number",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "unit": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "value",
+                                                        "unit"
+                                                    ]
+                                                },
+                                                "ingredients": {
+                                                    "anyOf": [
+                                                        {
+                                                            "type": "string"
+                                                        },
+                                                        {
+                                                            "type": "object"
+                                                        }
+                                                    ]
+                                                },
+                                                "detail_sections": {
+                                                    "anyOf": [
+                                                        {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "title": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "placement": {
+                                                                        "anyOf": [
+                                                                            {
+                                                                                "type": "string"
+                                                                            },
+                                                                            {
+                                                                                "type": "string",
+                                                                                "enum": [
+                                                                                    "accordion"
+                                                                                ]
+                                                                            }
+                                                                        ]
+                                                                    },
+                                                                    "content": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "title",
+                                                                    "placement",
+                                                                    "content"
+                                                                ]
+                                                            }
+                                                        },
+                                                        {
+                                                            "type": "object"
+                                                        }
+                                                    ]
+                                                },
+                                                "coas": {
+                                                    "anyOf": [
+                                                        {
+                                                            "type": "string"
+                                                        },
+                                                        {
+                                                            "type": "object"
+                                                        }
+                                                    ]
+                                                },
+                                                "related": {
+                                                    "anyOf": [
+                                                        {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "$ref": "#/components/schemas/CatalogRelationItemResource"
+                                                            }
+                                                        },
+                                                        {
+                                                            "type": "object"
+                                                        }
+                                                    ]
+                                                },
+                                                "pairs_with": {
+                                                    "anyOf": [
+                                                        {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "$ref": "#/components/schemas/CatalogRelationItemResource"
+                                                            }
+                                                        },
+                                                        {
+                                                            "type": "object"
+                                                        }
+                                                    ]
                                                 },
                                                 "price": {
                                                     "type": "object",
                                                     "properties": {
                                                         "retail": {
-                                                            "type": "string"
+                                                            "type": [
+                                                                "number",
+                                                                "null"
+                                                            ]
                                                         },
                                                         "sale": {
-                                                            "type": "string"
+                                                            "type": [
+                                                                "number",
+                                                                "null"
+                                                            ]
                                                         },
                                                         "effective": {
-                                                            "type": "string"
+                                                            "type": "number"
                                                         },
                                                         "suffix": {
                                                             "type": "string"
+                                                        },
+                                                        "currency": {
+                                                            "type": "string",
+                                                            "const": "USD"
                                                         }
                                                     },
                                                     "required": [
                                                         "retail",
                                                         "sale",
                                                         "effective",
-                                                        "suffix"
+                                                        "suffix",
+                                                        "currency"
                                                     ]
                                                 },
                                                 "seo": {
@@ -1731,10 +2217,7 @@
                                                                     "type": "string"
                                                                 },
                                                                 "og_image_url": {
-                                                                    "type": [
-                                                                        "string",
-                                                                        "null"
-                                                                    ]
+                                                                    "type": "null"
                                                                 }
                                                             },
                                                             "required": [
@@ -1793,8 +2276,20 @@
                                                 "badge_text",
                                                 "highlights",
                                                 "is_featured",
+                                                "is_in_stock",
+                                                "inventory_status",
+                                                "is_on_sale",
                                                 "requires_lab",
+                                                "rx_required",
+                                                "is_controlled_substance",
                                                 "sort_order",
+                                                "classification",
+                                                "volume",
+                                                "ingredients",
+                                                "detail_sections",
+                                                "coas",
+                                                "related",
+                                                "pairs_with",
                                                 "price",
                                                 "seo",
                                                 "provider",
@@ -1824,7 +2319,7 @@
         "/catalog/packages": {
             "get": {
                 "operationId": "v1.catalog.packages.index",
-                "description": "Returns a paginated list of published packages with their plans, categories, and tags.\nSupports filtering by category slug, tag slug, featured flag, and name/subtitle search.",
+                "description": "Returns a paginated list of published packages with their plans, categories, and tags.",
                 "summary": "List published catalog packages",
                 "tags": [
                     "Catalog"
@@ -1851,6 +2346,59 @@
                             "type": "boolean",
                             "default": false
                         }
+                    },
+                    {
+                        "name": "in_stock",
+                        "in": "query",
+                        "schema": {
+                            "type": "boolean",
+                            "default": false
+                        }
+                    },
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Filter by package name or subtitle.",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "hormone"
+                    },
+                    {
+                        "name": "price_min",
+                        "in": "query",
+                        "description": "Filter packages with at least one plan priced at or above this amount (USD).",
+                        "schema": {
+                            "type": "number"
+                        },
+                        "example": 50
+                    },
+                    {
+                        "name": "price_max",
+                        "in": "query",
+                        "description": "Filter packages with at least one plan priced at or below this amount (USD).",
+                        "schema": {
+                            "type": "number"
+                        },
+                        "example": 300
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "description": "Sort order: position (default), name, -name, price, -price, newest, oldest.",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "-price"
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Results per page (1\u201350, default 15).",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "example": 15
                     }
                 ],
                 "responses": {
@@ -2046,16 +2594,10 @@
                                                     "type": "string"
                                                 },
                                                 "hero_image_url": {
-                                                    "type": [
-                                                        "string",
-                                                        "null"
-                                                    ]
+                                                    "type": "null"
                                                 },
                                                 "banner_image_url": {
-                                                    "type": [
-                                                        "string",
-                                                        "null"
-                                                    ]
+                                                    "type": "null"
                                                 },
                                                 "gallery": {
                                                     "type": "array",
@@ -2074,10 +2616,16 @@
                                                     "items": {}
                                                 },
                                                 "is_featured": {
-                                                    "type": "string"
+                                                    "type": "boolean"
+                                                },
+                                                "is_in_stock": {
+                                                    "type": "boolean"
+                                                },
+                                                "is_on_sale": {
+                                                    "type": "boolean"
                                                 },
                                                 "requires_lab": {
-                                                    "type": "string"
+                                                    "type": "boolean"
                                                 },
                                                 "sort_order": {
                                                     "type": "string"
@@ -2089,13 +2637,13 @@
                                                             "properties": {
                                                                 "from": {
                                                                     "type": [
-                                                                        "string",
+                                                                        "number",
                                                                         "null"
                                                                     ]
                                                                 },
                                                                 "to": {
                                                                     "type": [
-                                                                        "string",
+                                                                        "number",
                                                                         "null"
                                                                     ]
                                                                 },
@@ -2115,6 +2663,45 @@
                                                         }
                                                     ]
                                                 },
+                                                "detail_sections": {
+                                                    "anyOf": [
+                                                        {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "object",
+                                                                "properties": {
+                                                                    "title": {
+                                                                        "type": "string"
+                                                                    },
+                                                                    "placement": {
+                                                                        "anyOf": [
+                                                                            {
+                                                                                "type": "string"
+                                                                            },
+                                                                            {
+                                                                                "type": "string",
+                                                                                "enum": [
+                                                                                    "accordion"
+                                                                                ]
+                                                                            }
+                                                                        ]
+                                                                    },
+                                                                    "content": {
+                                                                        "type": "string"
+                                                                    }
+                                                                },
+                                                                "required": [
+                                                                    "title",
+                                                                    "placement",
+                                                                    "content"
+                                                                ]
+                                                            }
+                                                        },
+                                                        {
+                                                            "type": "object"
+                                                        }
+                                                    ]
+                                                },
                                                 "seo": {
                                                     "anyOf": [
                                                         {
@@ -2127,10 +2714,7 @@
                                                                     "type": "string"
                                                                 },
                                                                 "og_image_url": {
-                                                                    "type": [
-                                                                        "string",
-                                                                        "null"
-                                                                    ]
+                                                                    "type": "null"
                                                                 }
                                                             },
                                                             "required": [
@@ -2186,6 +2770,32 @@
                                                     "items": {
                                                         "$ref": "#/components/schemas/TagResource"
                                                     }
+                                                },
+                                                "related": {
+                                                    "anyOf": [
+                                                        {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "$ref": "#/components/schemas/CatalogRelationItemResource"
+                                                            }
+                                                        },
+                                                        {
+                                                            "type": "object"
+                                                        }
+                                                    ]
+                                                },
+                                                "pairs_with": {
+                                                    "anyOf": [
+                                                        {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "$ref": "#/components/schemas/CatalogRelationItemResource"
+                                                            }
+                                                        },
+                                                        {
+                                                            "type": "object"
+                                                        }
+                                                    ]
                                                 }
                                             },
                                             "required": [
@@ -2202,15 +2812,20 @@
                                                 "badge_text",
                                                 "highlights",
                                                 "is_featured",
+                                                "is_in_stock",
+                                                "is_on_sale",
                                                 "requires_lab",
                                                 "sort_order",
                                                 "price_range",
+                                                "detail_sections",
                                                 "seo",
                                                 "provider",
                                                 "products",
                                                 "plans",
                                                 "categories",
-                                                "tags"
+                                                "tags",
+                                                "related",
+                                                "pairs_with"
                                             ]
                                         },
                                         "meta": {
@@ -2257,6 +2872,194 @@
                                     },
                                     "required": [
                                         "data"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": []
+            }
+        },
+        "/catalog/facets": {
+            "get": {
+                "operationId": "v1.catalog.facets.index",
+                "description": "Returns the option lists a product-listing filter UI needs: categories,\nclasses, types, forms, and ingredients (each with published-product\ncounts), the price bounds across published products, and availability\ncounts. Facet values with zero published products are omitted.",
+                "summary": "Get catalog filter facets",
+                "tags": [
+                    "Catalog"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "categories": {
+                                                    "type": "string"
+                                                },
+                                                "classes": {
+                                                    "type": "string"
+                                                },
+                                                "types": {
+                                                    "type": "string"
+                                                },
+                                                "forms": {
+                                                    "type": "string"
+                                                },
+                                                "ingredients": {
+                                                    "type": "string"
+                                                },
+                                                "tags": {
+                                                    "type": "string"
+                                                },
+                                                "price": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "min": {
+                                                            "type": [
+                                                                "number",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "max": {
+                                                            "type": [
+                                                                "number",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "currency": {
+                                                            "type": "string",
+                                                            "const": "USD"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "min",
+                                                        "max",
+                                                        "currency"
+                                                    ]
+                                                },
+                                                "availability": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "in_stock": {
+                                                            "type": "integer",
+                                                            "minimum": 0
+                                                        },
+                                                        "out_of_stock": {
+                                                            "type": "integer",
+                                                            "minimum": 0
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "in_stock",
+                                                        "out_of_stock"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "categories",
+                                                "classes",
+                                                "types",
+                                                "forms",
+                                                "ingredients",
+                                                "tags",
+                                                "price",
+                                                "availability"
+                                            ]
+                                        },
+                                        "meta": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": []
+            }
+        },
+        "/checkout/gateway-config": {
+            "get": {
+                "operationId": "v1.checkout.gateway-config",
+                "description": "Returns the gateway provider name, the public/publishable key required to\ninitialize the gateway's client-side tokenization SDK (Accept.js, Collect.js,\nStripe.js, Square Web Payments), and the environment so the frontend can\ntarget the correct SDK URL and form endpoint.",
+                "summary": "Get the active payment gateway configuration for the checkout frontend",
+                "tags": [
+                    "Checkout"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "gateway_provider": {
+                                                    "type": "string"
+                                                },
+                                                "environment": {
+                                                    "type": "string"
+                                                },
+                                                "public_key": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "location_id": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "gateway_provider",
+                                                "environment",
+                                                "public_key",
+                                                "location_id"
+                                            ]
+                                        },
+                                        "meta": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "const": "No active payment gateway is configured."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
                                     ]
                                 }
                             }
@@ -2317,14 +3120,30 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "message": {
-                                            "type": "string"
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "message": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "message"
+                                            ]
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "message": {
+                                                    "type": "string",
+                                                    "const": "payment_method is required for local checkout."
+                                                }
+                                            },
+                                            "required": [
+                                                "message"
+                                            ]
                                         }
-                                    },
-                                    "required": [
-                                        "message"
                                     ]
                                 }
                             }
@@ -2400,34 +3219,19 @@
                                                             "type": "string"
                                                         },
                                                         "logo_url": {
-                                                            "type": [
-                                                                "string",
-                                                                "null"
-                                                            ]
+                                                            "type": "null"
                                                         },
                                                         "logo_dark_url": {
-                                                            "type": [
-                                                                "string",
-                                                                "null"
-                                                            ]
+                                                            "type": "null"
                                                         },
                                                         "logo_light_url": {
-                                                            "type": [
-                                                                "string",
-                                                                "null"
-                                                            ]
+                                                            "type": "null"
                                                         },
                                                         "favicon_url": {
-                                                            "type": [
-                                                                "string",
-                                                                "null"
-                                                            ]
+                                                            "type": "null"
                                                         },
                                                         "hero_image_url": {
-                                                            "type": [
-                                                                "string",
-                                                                "null"
-                                                            ]
+                                                            "type": "null"
                                                         },
                                                         "announcement": {
                                                             "type": [
@@ -2488,6 +3292,15 @@
                                                         },
                                                         "font_body": {
                                                             "type": "string"
+                                                        },
+                                                        "custom_css": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "frontend_template": {
+                                                            "type": "string"
                                                         }
                                                     },
                                                     "required": [
@@ -2497,7 +3310,9 @@
                                                         "background_color",
                                                         "text_color",
                                                         "font_display",
-                                                        "font_body"
+                                                        "font_body",
+                                                        "custom_css",
+                                                        "frontend_template"
                                                     ]
                                                 },
                                                 "contact": {
@@ -2514,10 +3329,7 @@
                                                             "type": "string"
                                                         },
                                                         "og_image_url": {
-                                                            "type": [
-                                                                "string",
-                                                                "null"
-                                                            ]
+                                                            "type": "null"
                                                         },
                                                         "google_analytics_id": {
                                                             "type": [
@@ -2537,6 +3349,24 @@
                                                                 "null"
                                                             ]
                                                         },
+                                                        "tiktok_pixel_id": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "custom_head_scripts": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "custom_body_scripts": {
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
+                                                        },
                                                         "allow_indexing": {
                                                             "type": "boolean"
                                                         }
@@ -2548,6 +3378,9 @@
                                                         "google_analytics_id",
                                                         "google_tag_manager_id",
                                                         "facebook_pixel_id",
+                                                        "tiktok_pixel_id",
+                                                        "custom_head_scripts",
+                                                        "custom_body_scripts",
                                                         "allow_indexing"
                                                     ]
                                                 },
@@ -3579,6 +4412,749 @@
                 "security": []
             }
         },
+        "/patient/auth/register": {
+            "post": {
+                "operationId": "v1.patient.auth.register",
+                "description": "Creates a local patient record and attempts to link an existing PRX chart\nif one is found for the supplied email. Returns the patient resource and\na Sanctum bearer token.",
+                "summary": "Register a new patient account",
+                "tags": [
+                    "PatientAuth"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "device_name": {
+                                        "type": "string",
+                                        "default": "api"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "token": {
+                                                    "type": "string"
+                                                },
+                                                "token_type": {
+                                                    "type": "string",
+                                                    "const": "Bearer"
+                                                },
+                                                "patient": {
+                                                    "type": "object",
+                                                    "additionalProperties": {}
+                                                }
+                                            },
+                                            "required": [
+                                                "token",
+                                                "token_type",
+                                                "patient"
+                                            ]
+                                        },
+                                        "meta": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": []
+            }
+        },
+        "/patient/auth/login": {
+            "post": {
+                "operationId": "v1.patient.auth.login",
+                "description": "Returns a `patient:*`-scoped bearer token. The token is shown only once.",
+                "summary": "Authenticate a patient and issue a Sanctum token",
+                "tags": [
+                    "PatientAuth"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email"
+                                    },
+                                    "password": {
+                                        "type": "string"
+                                    },
+                                    "device_name": {
+                                        "type": "string",
+                                        "maxLength": 255
+                                    }
+                                },
+                                "required": [
+                                    "email",
+                                    "password"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "token": {
+                                                    "type": "string"
+                                                },
+                                                "token_type": {
+                                                    "type": "string",
+                                                    "const": "Bearer"
+                                                },
+                                                "patient": {
+                                                    "type": "object",
+                                                    "additionalProperties": {}
+                                                }
+                                            },
+                                            "required": [
+                                                "token",
+                                                "token_type",
+                                                "patient"
+                                            ]
+                                        },
+                                        "meta": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                },
+                "security": []
+            }
+        },
+        "/patient/auth/logout": {
+            "post": {
+                "operationId": "v1.patient.auth.logout",
+                "summary": "Revoke the current patient token",
+                "tags": [
+                    "PatientAuth"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "message": {
+                                                    "type": "string",
+                                                    "const": "Token revoked."
+                                                }
+                                            },
+                                            "required": [
+                                                "message"
+                                            ]
+                                        },
+                                        "meta": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/patient/auth/me": {
+            "get": {
+                "operationId": "v1.patient.auth.me",
+                "summary": "Return the authenticated patient's profile",
+                "tags": [
+                    "PatientAuth"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "additionalProperties": {}
+                                        },
+                                        "meta": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/patient/dashboard": {
+            "get": {
+                "operationId": "v1.patient.portal.dashboard",
+                "summary": "Patient portal dashboard summary",
+                "tags": [
+                    "PatientPortal"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {},
+                                        "meta": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/patient/encounters": {
+            "get": {
+                "operationId": "v1.patient.portal.encounters.index",
+                "summary": "List the patient's encounters",
+                "tags": [
+                    "PatientPortal"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {},
+                                        "meta": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/patient/encounters/{encounterId}/video-token": {
+            "get": {
+                "operationId": "v1.patient.portal.encounters.video-token",
+                "description": "PRX requires the patient token (not the sales-org token) for video room\naccess so the PHI audit log attributes the session to the patient.",
+                "summary": "Retrieve a video-room token for an encounter",
+                "tags": [
+                    "PatientPortal"
+                ],
+                "parameters": [
+                    {
+                        "name": "encounterId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {},
+                                        "meta": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/patient/vitals": {
+            "get": {
+                "operationId": "v1.patient.portal.vitals.index",
+                "summary": "List the patient's vitals",
+                "tags": [
+                    "PatientPortal"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {},
+                                        "meta": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "v1.patient.portal.vitals.store",
+                "summary": "Record a new vital entry",
+                "tags": [
+                    "PatientPortal"
+                ],
+                "responses": {
+                    "201": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {},
+                                        "meta": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/patient/orders": {
+            "get": {
+                "operationId": "v1.patient.portal.orders.index",
+                "summary": "List the patient's orders",
+                "tags": [
+                    "PatientPortal"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {},
+                                        "meta": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/patient/prescriptions": {
+            "get": {
+                "operationId": "v1.patient.portal.prescriptions.index",
+                "summary": "List the patient's prescriptions",
+                "tags": [
+                    "PatientPortal"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {},
+                                        "meta": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/patient/conversations": {
+            "get": {
+                "operationId": "v1.patient.portal.conversations.index",
+                "summary": "List the patient's conversations",
+                "tags": [
+                    "PatientPortal"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {},
+                                        "meta": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/patient/conversations/{conversationId}/messages": {
+            "get": {
+                "operationId": "v1.patient.portal.conversations.messages",
+                "summary": "List messages in a conversation",
+                "tags": [
+                    "PatientPortal"
+                ],
+                "parameters": [
+                    {
+                        "name": "conversationId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {},
+                                        "meta": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "v1.patient.portal.conversations.messages.store",
+                "summary": "Send a message in a conversation",
+                "tags": [
+                    "PatientPortal"
+                ],
+                "parameters": [
+                    {
+                        "name": "conversationId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "body": {
+                                        "type": "string",
+                                        "maxLength": 10000
+                                    }
+                                },
+                                "required": [
+                                    "body"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {},
+                                        "meta": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/patient/scheduling/slots": {
+            "get": {
+                "operationId": "v1.patient.portal.scheduling.slots",
+                "description": "Scheduling uses the sales-org token (not the patient token).",
+                "summary": "List available scheduling slots",
+                "tags": [
+                    "PatientPortal"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "object",
+                                                    "additionalProperties": {}
+                                                },
+                                                {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "data": {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "string"
+                                                            },
+                                                            "minItems": 0,
+                                                            "maxItems": 0,
+                                                            "additionalItems": false
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "data"
+                                                    ]
+                                                }
+                                            ]
+                                        },
+                                        "meta": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
+        "/patient/scheduling/appointments": {
+            "post": {
+                "operationId": "v1.patient.portal.scheduling.appointments.store",
+                "description": "Injects the patient's PRX chart ID. Scheduling uses the sales-org token.",
+                "summary": "Book an appointment",
+                "tags": [
+                    "PatientPortal"
+                ],
+                "responses": {
+                    "201": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "anyOf": [
+                                                {
+                                                    "type": "object",
+                                                    "additionalProperties": {}
+                                                },
+                                                {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string",
+                                                            "const": "stub-appt-id"
+                                                        },
+                                                        "": {
+                                                            "type": "array",
+                                                            "items": {}
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "id",
+                                                        null
+                                                    ]
+                                                }
+                                            ]
+                                        },
+                                        "meta": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/AuthenticationException"
+                    }
+                }
+            }
+        },
         "/webhooks/prescribe-rx": {
             "post": {
                 "operationId": "v1.webhooks.prescribe-rx",
@@ -3679,10 +5255,7 @@
                         "type": "string"
                     },
                     "hero_image_url": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
+                        "type": "null"
                     },
                     "is_visible": {
                         "type": "string"
@@ -3717,10 +5290,7 @@
                         "type": "string"
                     },
                     "hero_image_url": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
+                        "type": "null"
                     },
                     "gallery": {
                         "type": "array",
@@ -3732,13 +5302,19 @@
                         "type": "string"
                     },
                     "featured": {
-                        "type": "string"
+                        "type": "boolean"
                     },
                     "published_at": {
                         "type": "string"
                     },
-                    "read_time_minutes": {
+                    "updated_at": {
                         "type": "string"
+                    },
+                    "read_time_minutes": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
                     },
                     "author": {
                         "type": "object",
@@ -3777,10 +5353,7 @@
                                 "type": "string"
                             },
                             "og_image_url": {
-                                "type": [
-                                    "string",
-                                    "null"
-                                ]
+                                "type": "null"
                             }
                         },
                         "required": [
@@ -3800,6 +5373,7 @@
                     "status",
                     "featured",
                     "published_at",
+                    "updated_at",
                     "read_time_minutes"
                 ],
                 "title": "BlogPostResource"
@@ -3876,6 +5450,85 @@
                 ],
                 "title": "CartItemResource"
             },
+            "CatalogRelationItemResource": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "package",
+                            "product"
+                        ]
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "slug": {
+                        "type": "string"
+                    },
+                    "subtitle": {
+                        "type": "string"
+                    },
+                    "badge_text": {
+                        "type": "string"
+                    },
+                    "hero_image_url": {
+                        "type": "null"
+                    },
+                    "is_in_stock": {
+                        "type": "boolean"
+                    },
+                    "price": {
+                        "type": "object",
+                        "properties": {
+                            "retail": {
+                                "type": [
+                                    "number",
+                                    "null"
+                                ]
+                            },
+                            "sale": {
+                                "type": [
+                                    "number",
+                                    "null"
+                                ]
+                            },
+                            "effective": {
+                                "type": "number"
+                            },
+                            "suffix": {
+                                "type": "string"
+                            },
+                            "currency": {
+                                "type": "string",
+                                "const": "USD"
+                            }
+                        },
+                        "required": [
+                            "retail",
+                            "sale",
+                            "effective",
+                            "suffix",
+                            "currency"
+                        ]
+                    }
+                },
+                "required": [
+                    "type",
+                    "id",
+                    "name",
+                    "slug",
+                    "subtitle",
+                    "badge_text",
+                    "hero_image_url",
+                    "is_in_stock",
+                    "price"
+                ],
+                "title": "CatalogRelationItemResource"
+            },
             "CategoryResource": {
                 "type": "object",
                 "properties": {
@@ -3892,10 +5545,7 @@
                         "type": "string"
                     },
                     "hero_image_url": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
+                        "type": "null"
                     },
                     "icon": {
                         "type": "string"
@@ -4230,16 +5880,10 @@
                         "type": "string"
                     },
                     "hero_image_url": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
+                        "type": "null"
                     },
                     "banner_image_url": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
+                        "type": "null"
                     },
                     "gallery": {
                         "type": "array",
@@ -4258,10 +5902,16 @@
                         "items": {}
                     },
                     "is_featured": {
-                        "type": "string"
+                        "type": "boolean"
+                    },
+                    "is_in_stock": {
+                        "type": "boolean"
+                    },
+                    "is_on_sale": {
+                        "type": "boolean"
                     },
                     "requires_lab": {
-                        "type": "string"
+                        "type": "boolean"
                     },
                     "sort_order": {
                         "type": "string"
@@ -4271,13 +5921,13 @@
                         "properties": {
                             "from": {
                                 "type": [
-                                    "string",
+                                    "number",
                                     "null"
                                 ]
                             },
                             "to": {
                                 "type": [
-                                    "string",
+                                    "number",
                                     "null"
                                 ]
                             },
@@ -4292,6 +5942,38 @@
                             "currency"
                         ]
                     },
+                    "detail_sections": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "title": {
+                                    "type": "string"
+                                },
+                                "placement": {
+                                    "anyOf": [
+                                        {
+                                            "type": "string"
+                                        },
+                                        {
+                                            "type": "string",
+                                            "enum": [
+                                                "accordion"
+                                            ]
+                                        }
+                                    ]
+                                },
+                                "content": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "title",
+                                "placement",
+                                "content"
+                            ]
+                        }
+                    },
                     "seo": {
                         "type": "object",
                         "properties": {
@@ -4302,10 +5984,7 @@
                                 "type": "string"
                             },
                             "og_image_url": {
-                                "type": [
-                                    "string",
-                                    "null"
-                                ]
+                                "type": "null"
                             }
                         },
                         "required": [
@@ -4356,6 +6035,18 @@
                         "items": {
                             "$ref": "#/components/schemas/TagResource"
                         }
+                    },
+                    "related": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CatalogRelationItemResource"
+                        }
+                    },
+                    "pairs_with": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CatalogRelationItemResource"
+                        }
                     }
                 },
                 "required": [
@@ -4372,6 +6063,8 @@
                     "badge_text",
                     "highlights",
                     "is_featured",
+                    "is_in_stock",
+                    "is_on_sale",
                     "requires_lab",
                     "sort_order",
                     "provider"
@@ -4403,7 +6096,7 @@
                         "type": "string"
                     },
                     "is_default": {
-                        "type": "string"
+                        "type": "boolean"
                     },
                     "sort_order": {
                         "type": "string"
@@ -4412,23 +6105,41 @@
                         "type": "object",
                         "properties": {
                             "retail": {
-                                "type": "string"
+                                "type": [
+                                    "number",
+                                    "null"
+                                ]
                             },
                             "sale": {
-                                "type": "string"
+                                "type": [
+                                    "number",
+                                    "null"
+                                ]
+                            },
+                            "intro": {
+                                "type": [
+                                    "number",
+                                    "null"
+                                ]
                             },
                             "effective": {
-                                "type": "string"
+                                "type": "number"
                             },
                             "suffix": {
                                 "type": "string"
+                            },
+                            "currency": {
+                                "type": "string",
+                                "const": "USD"
                             }
                         },
                         "required": [
                             "retail",
                             "sale",
+                            "intro",
                             "effective",
-                            "suffix"
+                            "suffix",
+                            "currency"
                         ]
                     },
                     "billing": {
@@ -4440,11 +6151,20 @@
                             "period_label": {
                                 "type": "string"
                             },
-                            "term_months": {
+                            "mode": {
                                 "type": "string"
                             },
-                            "is_recurring": {
+                            "mode_label": {
                                 "type": "string"
+                            },
+                            "term_months": {
+                                "type": [
+                                    "integer",
+                                    "null"
+                                ]
+                            },
+                            "is_recurring": {
+                                "type": "boolean"
                             },
                             "rebill_strategy": {
                                 "type": "string"
@@ -4453,12 +6173,17 @@
                                 "type": "string"
                             },
                             "trial_days": {
-                                "type": "string"
+                                "type": [
+                                    "integer",
+                                    "null"
+                                ]
                             }
                         },
                         "required": [
                             "period",
                             "period_label",
+                            "mode",
+                            "mode_label",
                             "term_months",
                             "is_recurring",
                             "rebill_strategy",
@@ -4467,7 +6192,7 @@
                         ]
                     },
                     "requires_lab": {
-                        "type": "string"
+                        "type": "boolean"
                     },
                     "provider": {
                         "type": "object",
@@ -4564,10 +6289,7 @@
                         "type": "string"
                     },
                     "hero_image_url": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
+                        "type": "null"
                     },
                     "gallery": {
                         "type": "array",
@@ -4586,35 +6308,243 @@
                         "items": {}
                     },
                     "is_featured": {
+                        "type": "boolean"
+                    },
+                    "is_in_stock": {
+                        "type": "boolean"
+                    },
+                    "inventory_status": {
                         "type": "string"
                     },
+                    "is_on_sale": {
+                        "type": "boolean"
+                    },
                     "requires_lab": {
-                        "type": "string"
+                        "type": "boolean"
+                    },
+                    "rx_required": {
+                        "type": "boolean"
+                    },
+                    "is_controlled_substance": {
+                        "type": "boolean"
                     },
                     "sort_order": {
                         "type": "string"
+                    },
+                    "classification": {
+                        "type": "object",
+                        "properties": {
+                            "class": {
+                                "type": [
+                                    "object",
+                                    "null"
+                                ],
+                                "properties": {
+                                    "id": {
+                                        "type": "string"
+                                    },
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "slug": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "id",
+                                    "name",
+                                    "slug"
+                                ]
+                            },
+                            "type": {
+                                "type": [
+                                    "object",
+                                    "null"
+                                ],
+                                "properties": {
+                                    "id": {
+                                        "type": "string"
+                                    },
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "slug": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "id",
+                                    "name",
+                                    "slug"
+                                ]
+                            },
+                            "form": {
+                                "type": [
+                                    "object",
+                                    "null"
+                                ],
+                                "properties": {
+                                    "id": {
+                                        "type": "string"
+                                    },
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "slug": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "id",
+                                    "name",
+                                    "slug"
+                                ]
+                            },
+                            "administration_method": {
+                                "type": [
+                                    "object",
+                                    "null"
+                                ],
+                                "properties": {
+                                    "id": {
+                                        "type": "string"
+                                    },
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "slug": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    }
+                                },
+                                "required": [
+                                    "id",
+                                    "name",
+                                    "slug"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "class",
+                            "type",
+                            "form",
+                            "administration_method"
+                        ]
+                    },
+                    "volume": {
+                        "type": "object",
+                        "properties": {
+                            "value": {
+                                "type": [
+                                    "number",
+                                    "null"
+                                ]
+                            },
+                            "unit": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "value",
+                            "unit"
+                        ]
+                    },
+                    "ingredients": {
+                        "type": "string"
+                    },
+                    "detail_sections": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "title": {
+                                    "type": "string"
+                                },
+                                "placement": {
+                                    "anyOf": [
+                                        {
+                                            "type": "string"
+                                        },
+                                        {
+                                            "type": "string",
+                                            "enum": [
+                                                "accordion"
+                                            ]
+                                        }
+                                    ]
+                                },
+                                "content": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "title",
+                                "placement",
+                                "content"
+                            ]
+                        }
+                    },
+                    "coas": {
+                        "type": "string"
+                    },
+                    "related": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CatalogRelationItemResource"
+                        }
+                    },
+                    "pairs_with": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/CatalogRelationItemResource"
+                        }
                     },
                     "price": {
                         "type": "object",
                         "properties": {
                             "retail": {
-                                "type": "string"
+                                "type": [
+                                    "number",
+                                    "null"
+                                ]
                             },
                             "sale": {
-                                "type": "string"
+                                "type": [
+                                    "number",
+                                    "null"
+                                ]
                             },
                             "effective": {
-                                "type": "string"
+                                "type": "number"
                             },
                             "suffix": {
                                 "type": "string"
+                            },
+                            "currency": {
+                                "type": "string",
+                                "const": "USD"
                             }
                         },
                         "required": [
                             "retail",
                             "sale",
                             "effective",
-                            "suffix"
+                            "suffix",
+                            "currency"
                         ]
                     },
                     "seo": {
@@ -4627,10 +6557,7 @@
                                 "type": "string"
                             },
                             "og_image_url": {
-                                "type": [
-                                    "string",
-                                    "null"
-                                ]
+                                "type": "null"
                             }
                         },
                         "required": [
@@ -4683,8 +6610,15 @@
                     "badge_text",
                     "highlights",
                     "is_featured",
+                    "is_in_stock",
+                    "inventory_status",
+                    "is_on_sale",
                     "requires_lab",
+                    "rx_required",
+                    "is_controlled_substance",
                     "sort_order",
+                    "classification",
+                    "volume",
                     "price",
                     "provider"
                 ],
