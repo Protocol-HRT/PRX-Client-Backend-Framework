@@ -132,6 +132,23 @@ Tags are a flat taxonomy for cross-cutting filters (e.g., "Popular", "Testostero
 
 ---
 
+## Product & stack FAQs
+
+Every product and package edit page has a **FAQs** tab. Questions shown there
+render on that item's storefront detail page, in the order you drag them into.
+
+- **Attach** picks existing questions from the FAQ module (multi-select) — the
+  same question can appear on any number of products and on the general FAQ
+  page at once.
+- **New FAQ** authors a question in place; it is saved into the FAQ module and
+  attached to this item in one step.
+- Unpublishing a question (here or in the FAQ module) removes it from every
+  page it's attached to without losing the attachments.
+- The drag order here only affects this item's page. The general FAQ page
+  keeps its own category/position ordering.
+
+---
+
 ## Publishing checklist
 
 Before setting a product or package to **Published**:

@@ -56,6 +56,12 @@ class PackageResource extends JsonResource
             ],
             'products' => ProductResource::collection($this->whenLoaded('products')),
             'plans' => PlanResource::collection($this->whenLoaded('plans')),
+            'faqs' => $this->whenLoaded('faqs', fn () => $this->faqs->map(fn ($faq) => [
+                'id' => $faq->id,
+                'question' => $faq->question,
+                'answer' => $faq->answer,
+                'category' => $faq->category?->name,
+            ])->values()->all()),
             'categories' => CategoryResource::collection($this->whenLoaded('categories')),
             'tags' => TagResource::collection($this->whenLoaded('tags')),
             'related' => $this->when(

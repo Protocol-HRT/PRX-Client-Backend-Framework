@@ -121,6 +121,8 @@ class ProductController extends ApiController
             'volumeUnit',
             'ingredients',
             'coas',
+            'faqs' => fn ($q) => $q->where('is_published', true),
+            'faqs.category',
         ]);
 
         return $this->success((new ProductResource($product))->toArray(request()));

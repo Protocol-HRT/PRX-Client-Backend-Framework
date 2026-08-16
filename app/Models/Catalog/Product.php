@@ -6,6 +6,7 @@ use App\Enums\CatalogStatus;
 use App\Enums\InventoryStatus;
 use App\Models\Concerns\HasCatalogRelations;
 use App\Models\Concerns\HasCategories;
+use App\Models\Concerns\HasFaqs;
 use App\Models\Concerns\HasFulfillmentCenter;
 use App\Models\Concerns\HasTags;
 use App\Models\User;
@@ -24,7 +25,7 @@ use Spatie\Sluggable\SlugOptions;
 
 class Product extends Model implements Sortable
 {
-    use HasCatalogRelations, HasCategories, HasFactory, HasFulfillmentCenter, HasSlug, HasTags, SoftDeletes, SortableTrait;
+    use HasCatalogRelations, HasCategories, HasFactory, HasFaqs, HasFulfillmentCenter, HasSlug, HasTags, SoftDeletes, SortableTrait;
 
     public function getSlugOptions(): SlugOptions
     {

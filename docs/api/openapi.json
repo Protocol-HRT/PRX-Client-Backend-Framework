@@ -2211,6 +2211,16 @@
                                                         "$ref": "#/components/schemas/PlanResource"
                                                     }
                                                 },
+                                                "faqs": {
+                                                    "anyOf": [
+                                                        {
+                                                            "type": "string"
+                                                        },
+                                                        {
+                                                            "type": "object"
+                                                        }
+                                                    ]
+                                                },
                                                 "seo": {
                                                     "anyOf": [
                                                         {
@@ -2298,6 +2308,7 @@
                                                 "pairs_with",
                                                 "price",
                                                 "plans",
+                                                "faqs",
                                                 "seo",
                                                 "provider",
                                                 "categories",
@@ -2766,6 +2777,16 @@
                                                         "$ref": "#/components/schemas/PlanResource"
                                                     }
                                                 },
+                                                "faqs": {
+                                                    "anyOf": [
+                                                        {
+                                                            "type": "string"
+                                                        },
+                                                        {
+                                                            "type": "object"
+                                                        }
+                                                    ]
+                                                },
                                                 "categories": {
                                                     "type": "array",
                                                     "items": {
@@ -2829,6 +2850,7 @@
                                                 "provider",
                                                 "products",
                                                 "plans",
+                                                "faqs",
                                                 "categories",
                                                 "tags",
                                                 "related",
@@ -6034,6 +6056,9 @@
                             "$ref": "#/components/schemas/PlanResource"
                         }
                     },
+                    "faqs": {
+                        "type": "string"
+                    },
                     "categories": {
                         "type": "array",
                         "items": {
@@ -6562,6 +6587,9 @@
                         "items": {
                             "$ref": "#/components/schemas/PlanResource"
                         }
+                    },
+                    "faqs": {
+                        "type": "string"
                     },
                     "seo": {
                         "type": "object",

@@ -8,6 +8,7 @@ use App\Filament\Resources\Catalog\Products\Pages\EditProduct;
 use App\Filament\Resources\Catalog\Products\Pages\ListProducts;
 use App\Filament\Resources\Catalog\Products\RelationManagers\CatalogRelationsRelationManager;
 use App\Filament\Resources\Catalog\Products\RelationManagers\CoasRelationManager;
+use App\Filament\Resources\Catalog\Products\RelationManagers\FaqsRelationManager;
 use App\Filament\Resources\Catalog\Products\RelationManagers\IngredientsRelationManager;
 use App\Filament\Resources\Catalog\Products\Schemas\ProductForm;
 use App\Filament\Resources\Catalog\Products\Tables\ProductsTable;
@@ -50,6 +51,7 @@ class ProductResource extends Resource
             IngredientsRelationManager::class,
             CoasRelationManager::class,
             CatalogRelationsRelationManager::class,
+            FaqsRelationManager::class,
         ];
     }
 

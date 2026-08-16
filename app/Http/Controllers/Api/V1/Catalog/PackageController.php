@@ -102,6 +102,8 @@ class PackageController extends ApiController
             'products' => fn ($q) => $q->where('status', CatalogStatus::Published)->orderByPivot('sort_order'),
             'categories',
             'tags',
+            'faqs' => fn ($q) => $q->where('is_published', true),
+            'faqs.category',
         ]);
 
         return $this->success((new PackageResource($package))->toArray(request()));

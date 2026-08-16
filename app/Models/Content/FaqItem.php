@@ -2,11 +2,14 @@
 
 namespace App\Models\Content;
 
+use App\Models\Catalog\Package;
+use App\Models\Catalog\Product;
 use App\Models\Concerns\HasTags;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\EloquentSortable\Sortable;
 use Spatie\EloquentSortable\SortableTrait;
@@ -44,5 +47,17 @@ class FaqItem extends Model implements Sortable
     public function scopePublished(Builder $query): Builder
     {
         return $query->where('is_published', true);
+    }
+
+    /** Catalog products this FAQ is attached to (faqables pivot). */
+    public function products(): MorphToMany
+    {
+        return $this->morphedByMany(Product::class, 'faqable')->withPivot('position');
+    }
+
+    /** Catalog packages this FAQ is attached to (faqables pivot). */
+    public function packages(): MorphToMany
+    {
+        return $this->morphedByMany(Package::class, 'faqable')->withPivot('position');
     }
 }

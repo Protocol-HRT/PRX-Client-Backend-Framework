@@ -133,6 +133,7 @@ shape as package plans; drives the detail-page deal grid, with the product's
 own `price` as the one-time/buy-once option). A plan belongs to a package OR
 a product, never both. Relation light cards price packages from their
 default plan; `price.effective` is `null` (never `0.00`) when unpriced.
+Also includes `faqs` — see [Polymorphic FAQs](#polymorphic-faqs).
 
 ### `GET /api/v1/catalog/packages`
 
@@ -140,7 +141,27 @@ Same filter params as products (minus class/type/form/ingredient) plus `sort`. E
 
 ### `GET /api/v1/catalog/packages/{slug}`
 
-Full package detail. Includes `products` (bundled items), `plans` (subscription tiers), `detail_sections`, `related`, `pairs_with`. Plans include a `billing` sub-object with `term_months`, `is_recurring`, `rebill_strategy`, `trial_days`, and `mode`/`mode_label` (billing mode).
+Full package detail. Includes `products` (bundled items), `plans` (subscription tiers), `detail_sections`, `related`, `pairs_with`, `faqs`. Plans include a `billing` sub-object with `term_months`, `is_recurring`, `rebill_strategy`, `trial_days`, and `mode`/`mode_label` (billing mode).
+
+### Polymorphic FAQs
+
+Products and packages expose `faqs` on their **show** endpoints only:
+`[{id, question, answer, category}]` (`category` is the FAQ category name or
+`null`). Items come from the Content module's `faq_items` table via the
+`faqables` morph pivot (`App\Models\Concerns\HasFaqs` on Product/Package;
+inverse `products()`/`packages()` on `FaqItem`).
+
+- **Ordering** is per-attachment: `faqables.position` (drag-reorder in the
+  admin), NOT `faq_items.position` (which orders the general FAQ page).
+  Both tables have a `position` column — always qualify the pivot column.
+- **Visibility**: only `is_published` items are returned; unpublished items
+  stay attached but never render. Attachment does not affect the general
+  `/api/v1/faqs` endpoint — the same item can serve both.
+- **Admin**: shared `FaqsRelationManager`
+  (`app/Filament/Resources/Catalog/Products/RelationManagers/`, wired into
+  both ProductResource and PackageResource) — attach existing items
+  (multi-select) or author a new one in place ("New FAQ" creates the
+  FaqItem and attaches it).
 
 ### `GET /api/v1/catalog/tags`
 
