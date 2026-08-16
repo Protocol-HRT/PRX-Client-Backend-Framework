@@ -224,6 +224,49 @@ Clear all items from the cart. The cart record itself is not deleted; only its i
 
 ---
 
+### `GET /api/v1/cart/suggestions`
+
+Upsell / cross-sell suggestions for the current cart, driven by the admin-curated
+**Pairs With** / **Related** catalog relations of the items in the cart. Nothing
+is hardcoded — the admin curates relations on each product/package.
+
+**Headers:** `X-Cart-Token: <ulid>` (optional — an absent/expired token yields an empty cart and therefore no suggestions)
+
+**Resolution rules (server-side):**
+
+1. Pairs-with targets of every cart item are collected first, then related targets fill remaining slots.
+2. Items already in the cart are excluded; duplicates across sources are removed.
+3. Unpublished (draft/archived) targets are filtered out.
+4. The list is capped at `BillingSettings::$upsells_limit` (admin: Settings → Billing).
+5. Returns `[]` when `BillingSettings::$upsells_enabled` is off — frontends can simply hide the placement when the list is empty.
+
+**Response `200`:** array of `CatalogRelationItemResource` light cards:
+
+```json
+{
+  "data": [
+    {
+      "type": "product",
+      "id": 9,
+      "name": "Sleep Stack",
+      "slug": "sleep-stack",
+      "subtitle": null,
+      "badge_text": null,
+      "hero_image_url": "https://…/storage/sections/….png",
+      "is_in_stock": true,
+      "price": { "retail": 199, "sale": null, "effective": 199, "suffix": null, "currency": "USD" }
+    }
+  ]
+}
+```
+
+`type` (`product` | `package`) tells the frontend which detail route to link to.
+Packages carry no plan data in the light card — frontends should link packages
+through to their detail page for plan selection rather than adding them directly
+(the same rule the quick-view modal follows).
+
+---
+
 ## Integration points
 
 ### Leads

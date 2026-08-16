@@ -1099,6 +1099,69 @@
                 "security": []
             }
         },
+        "/cart/suggestions": {
+            "get": {
+                "operationId": "v1.cart.suggestions",
+                "description": "Returns catalog items related to what is already in the cart, driven by the\nadmin-curated \"Pairs With\" and \"Related\" catalog relations. Pairs-with items\nare preferred; related items fill any remaining slots. Items already in the\ncart are excluded. Returns an empty list when upsells are disabled in the\nadmin billing settings or the cart is empty.",
+                "summary": "Get upsell suggestions for the current cart",
+                "tags": [
+                    "Cart"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "anyOf": [
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "$ref": "#/components/schemas/CatalogRelationItemResource"
+                                                    }
+                                                },
+                                                "meta": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "data",
+                                                "meta"
+                                            ]
+                                        },
+                                        {
+                                            "type": "object",
+                                            "properties": {
+                                                "data": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    },
+                                                    "minItems": 0,
+                                                    "maxItems": 0,
+                                                    "additionalItems": false
+                                                },
+                                                "meta": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "data",
+                                                "meta"
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": []
+            }
+        },
         "/cart/items": {
             "post": {
                 "operationId": "v1.cart.items.add",
@@ -3531,6 +3594,34 @@
                                                         "allow_indexing"
                                                     ]
                                                 },
+                                                "checkout": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "path": {
+                                                            "type": "string",
+                                                            "description": "'prx' \u2014 frontend collects lead info then redirects to the\nbackend handoff page (lead.handoff_url) where the PRX embed\nruns clinical intake + payment. 'local' \u2014 frontend tokenizes\npayment via the gateway SDK and posts it to /api/v1/checkout."
+                                                        },
+                                                        "upsells": {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "enabled": {
+                                                                    "type": "boolean"
+                                                                },
+                                                                "limit": {
+                                                                    "type": "integer"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "enabled",
+                                                                "limit"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "path",
+                                                        "upsells"
+                                                    ]
+                                                },
                                                 "provider": {
                                                     "type": "object",
                                                     "properties": {
@@ -3560,6 +3651,7 @@
                                                 "theme",
                                                 "contact",
                                                 "seo",
+                                                "checkout",
                                                 "provider"
                                             ]
                                         },
@@ -4263,6 +4355,10 @@
                                                 "checkout_path": {
                                                     "type": "string"
                                                 },
+                                                "handoff_url": {
+                                                    "type": "string",
+                                                    "description": "Absolute URL of the server-rendered PRX embed handoff page.\nThe frontend redirects here after lead creation when the\nconfigured checkout path is 'prx'."
+                                                },
                                                 "cart_items": {
                                                     "type": "array",
                                                     "items": {}
@@ -4292,6 +4388,7 @@
                                                 "address",
                                                 "consents",
                                                 "checkout_path",
+                                                "handoff_url",
                                                 "cart_items",
                                                 "cart_subtotal",
                                                 "handed_off_at",
@@ -4445,6 +4542,10 @@
                                                 "checkout_path": {
                                                     "type": "string"
                                                 },
+                                                "handoff_url": {
+                                                    "type": "string",
+                                                    "description": "Absolute URL of the server-rendered PRX embed handoff page.\nThe frontend redirects here after lead creation when the\nconfigured checkout path is 'prx'."
+                                                },
                                                 "cart_items": {
                                                     "type": "array",
                                                     "items": {}
@@ -4474,6 +4575,7 @@
                                                 "address",
                                                 "consents",
                                                 "checkout_path",
+                                                "handoff_url",
                                                 "cart_items",
                                                 "cart_subtotal",
                                                 "handed_off_at",

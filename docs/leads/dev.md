@@ -210,6 +210,7 @@ The controller also captures `ip_address` from the request and `user_agent` from
       "given_at": null
     },
     "checkout_path": "prx",
+    "handoff_url": "https://example-install.com/checkout/handoff/550e8400-e29b-41d4-a716-446655440000",
     "cart_items": [],
     "cart_subtotal": null,
     "handed_off_at": null,
@@ -217,6 +218,8 @@ The controller also captures `ip_address` from the request and `user_agent` from
   }
 }
 ```
+
+`handoff_url` is the absolute URL of the server-rendered Prescribe-Rx embed handoff page. When the configured checkout path is `prx`, the frontend redirects the browser here immediately after lead creation — see `docs/checkout/dev.md`. The URL host follows the request host (the API base the frontend called), so it is correct in every environment without configuration.
 
 **Response: 422 Unprocessable Entity** — standard Laravel validation error envelope.
 

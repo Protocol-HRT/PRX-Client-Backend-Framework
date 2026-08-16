@@ -68,10 +68,13 @@ Route pattern: a catch-all route mapping URL path → page slug, plus `/` → sl
 
 ## 6. Commerce flow
 
+The active checkout path comes from `GET /config` → `checkout.path` (`prx` | `local`). Branch the whole flow on it — never assume one.
+
 1. **Cart** — send `X-Cart-Token` (ULID) on every cart call; the backend mints one if absent (read it back from the response and persist client-side). `GET /cart`, `POST /cart/items` (`{type: product|package, id, plan_id?, quantity}`), `PATCH|DELETE /cart/items/{id}`.
-2. **Lead** — `POST /leads` with customer identity + consents + UTM attribution; include `X-Cart-Token` to bind the cart. Returns a lead `uuid`.
-3. **Gateway config** — `GET /checkout/gateway-config` tells the frontend which payment path this install uses.
-4. **Checkout** — `POST /checkout` with `cart_ulid`, `lead_uuid`, `intake_answers`, and (local path only) `payment_method`. The response's `checkout_path` branches the UX: `prx` → render the provider's embed; `local` → confirm payment locally. Order status afterwards: `GET /orders/{uuid}`.
+2. **Upsells** — `GET /cart/suggestions` returns admin-curated Pairs With / Related light cards for the current cart (empty when the admin disabled upsells — just hide the placement). `config.checkout.upsells` carries the knobs. Products can be added directly (buy-once); link packages through to their page for plan selection.
+3. **Lead** — `POST /leads` with customer identity + consents + UTM attribution; include `X-Cart-Token` to bind the cart. Returns a lead `uuid` **and `handoff_url`**.
+4. **`prx` path (embed handoff — the default)** — after lead creation, redirect the browser to `lead.handoff_url`. That backend page hosts the provider embed with prefill + product selection already applied; clinical intake and payment happen there. Do **not** call `POST /checkout` on this path.
+5. **`local` path** — `GET /checkout/gateway-config` for the tokenization SDK, then `POST /checkout` with `cart_ulid`, `lead_uuid`, and the tokenized `payment_method`. Order status afterwards: `GET /orders/{uuid}`.
 
 ## 7. Local development
 

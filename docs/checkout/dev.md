@@ -1,6 +1,6 @@
 # Checkout Module — Developer Guide
 
-**Status:** Complete (PRX path + local gateway path)
+**Status:** Complete (PRX embed-handoff path live end-to-end; local gateway path complete server-side, frontend payment UI pending the merchant-accounts milestone)
 
 ---
 
@@ -14,6 +14,45 @@ Checkout bridges a visitor's cart + lead to the payment/clinical provider. A sin
 | `local` | Configured merchant account | This app charges via NMI / Auth.Net / Stripe / Square |
 
 Both paths return the same `CheckoutResultData` shape. The frontend branches on `checkout_path` to decide the next step.
+
+The frontend learns the active path (plus upsell knobs) from the `checkout` block of `GET /api/v1/config`:
+
+```json
+{ "checkout": { "path": "prx", "upsells": { "enabled": true, "limit": 4 } } }
+```
+
+---
+
+## Embed-first frontend flow (`checkout_path = prx`)
+
+The default, shipped flow. The frontend never collects payment or clinical data — it captures a lead and hands the browser to a server-rendered page hosting the PRX embed.
+
+```
+Frontend /checkout page
+  1. lead-capture form (contact, demographics, address, consents)
+  2. POST /api/v1/leads  (X-Cart-Token header pairs the cart → leads.cart_ulid)
+  3. redirect browser to the response's `handoff_url`
+        ▼
+GET /checkout/handoff/{lead:uuid}   ← the ONLY server-rendered public page
+  - resources/views/pages/checkout/handoff.blade.php, minimal styling (brand-agnostic)
+  - App\Services\PrescribeRx\Embed\PrxEmbedPayloadBuilder::forLead() builds the
+    embed SDK payload: prefill (lead demographics), selectPackages/selectProducts/
+    selectPlan (from the lead's cart_items snapshot, translated to PRX numbers),
+    skipSteps (config/prescribe-rx.php → embed.skip_steps), metadata (lead uuid, UTM)
+  - embed code comes from IntegrationSettings::$prescribe_rx_embed_code; the page
+    renders a clear "Embed code not configured" fallback when unset
+        ▼
+PRX embed runs clinical intake + payment
+  - onComplete → POST /api/internal/checkout/embed-complete (advisory ping only)
+  - authoritative state: POST /api/webhooks/prescribe-rx (HMAC-verified via
+    VerifyPrescribeRxSignature middleware; idempotent, at-least-once)
+```
+
+`POST /api/v1/checkout` is **not called** in this flow — it exists for the local
+gateway path and for API-driven PRX submission (unified intake without the embed).
+
+Upsell placements (cart drawer + checkout page) are fed by
+`GET /api/v1/cart/suggestions` — documented in `docs/cart/dev.md`.
 
 ---
 
@@ -170,8 +209,15 @@ DB::transaction:
 | Property | Default | Values |
 |---|---|---|
 | `checkout_path` | `'prx'` | `'prx'` or `'local'` |
+| `upsells_enabled` | `true` | Show upsell suggestions in cart drawer + checkout |
+| `upsells_limit` | `4` | Max suggestions per `GET /cart/suggestions` response (1–12) |
 
-**Admin:** Settings → Billing (radio with descriptions).
+**Admin:** Settings → Billing (checkout-path radio + upsells section).
+
+`UpdateBillingSettingsAction` clears the cached `/api/v1/config` bundle
+(`Cache::forget('api.v1.config')`) so the frontend sees path/upsell changes on
+its next boot call instead of waiting out the 5-minute TTL. **The other settings
+actions do not do this yet** — they still rely on the TTL.
 
 ---
 
@@ -203,7 +249,19 @@ database/settings/2026_06_29_020250_create_billing_settings_migration.php
 
 tests/Feature/
 ├── Api/V1/Checkout/CheckoutControllerTest.php  (PRX path — 8 tests)
+├── Api/V1/Cart/CartSuggestionsTest.php         (upsell suggestions — 7 tests)
 └── Checkout/LocalCheckoutTest.php              (local path — 8 tests)
+```
+
+Embed-handoff surface (outside `app/Actions/Checkout`):
+
+```
+routes/web.php                                   GET /checkout/handoff/{lead:uuid}
+resources/views/pages/checkout/handoff.blade.php
+app/Services/PrescribeRx/Embed/PrxEmbedPayloadBuilder.php
+app/Http/Controllers/PrescribeRx/EmbedCompleteController.php   (advisory)
+app/Http/Controllers/PrescribeRx/WebhookController.php         (authoritative)
+app/Http/Middleware/VerifyPrescribeRxSignature.php
 ```
 
 ---
