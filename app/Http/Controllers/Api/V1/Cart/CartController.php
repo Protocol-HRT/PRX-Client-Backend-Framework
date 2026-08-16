@@ -71,9 +71,10 @@ class CartController extends ApiController
     /**
      * Add an item to the cart.
      *
-     * Adds a product or package+plan combination to the cart. Increments quantity if the
-     * same item and plan already exist in the cart. Requires `type`, `id`, and (for packages)
-     * `plan_id`. Returns the updated cart.
+     * Adds a product or package to the cart, optionally under one of its plans. Increments
+     * quantity if the same item and plan already exist in the cart. Requires `type` and `id`;
+     * `plan_id` is required for packages and optional for products (term plans — omit it for
+     * a one-time buy-once purchase). The plan must belong to the item. Returns the updated cart.
      *
      * @tags Cart
      *
@@ -96,13 +97,18 @@ class CartController extends ApiController
 
         $itemable = $itemableClass::findOrFail($validated['id']);
 
-        // Resolve the display price from the plan (for packages) or the item itself.
-        $price = null;
-        if ($validated['type'] === 'package' && ! empty($validated['plan_id'])) {
+        // Resolve the price snapshot from the plan when one is given (package
+        // plans and product term plans), else from the item's own buy-once
+        // price. A plan must belong to the item it is being added under.
+        $price = $itemable->sale_price ?? $itemable->retail_price;
+
+        if (! empty($validated['plan_id'])) {
             $plan = Plan::findOrFail($validated['plan_id']);
+            $ownerKey = $validated['type'] === 'package' ? 'package_id' : 'product_id';
+
+            abort_if($plan->{$ownerKey} !== $itemable->id, 422, 'The selected plan does not belong to this item.');
+
             $price = $plan->sale_price ?? $plan->retail_price;
-        } else {
-            $price = $itemable->sale_price ?? $itemable->retail_price;
         }
 
         // Increment quantity if the same item+plan combination is already in the cart.

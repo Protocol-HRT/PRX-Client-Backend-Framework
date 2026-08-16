@@ -122,6 +122,43 @@ class CartEndpointTest extends TestCase
         ]);
     }
 
+    public function test_add_product_with_term_plan_snapshots_plan_price(): void
+    {
+        $product = Product::factory()->create(['retail_price' => 299.00]);
+        $plan = Plan::factory()->create(['product_id' => $product->id, 'retail_price' => 1435.20]);
+        $cart = Cart::factory()->create();
+
+        $this->postJson('/api/v1/cart/items', [
+            'type' => 'product',
+            'id' => $product->id,
+            'plan_id' => $plan->id,
+        ], ['X-Cart-Token' => $cart->ulid])->assertStatus(201);
+
+        $this->assertDatabaseHas('cart_items', [
+            'cart_id' => $cart->id,
+            'itemable_type' => Product::class,
+            'itemable_id' => $product->id,
+            'plan_id' => $plan->id,
+            'unit_price_snapshot' => 1435.20,
+        ]);
+    }
+
+    public function test_add_item_rejects_plan_belonging_to_another_item(): void
+    {
+        $product = Product::factory()->create(['retail_price' => 299.00]);
+        $otherProduct = Product::factory()->create();
+        $foreignPlan = Plan::factory()->create(['product_id' => $otherProduct->id]);
+        $cart = Cart::factory()->create();
+
+        $this->postJson('/api/v1/cart/items', [
+            'type' => 'product',
+            'id' => $product->id,
+            'plan_id' => $foreignPlan->id,
+        ], ['X-Cart-Token' => $cart->ulid])->assertStatus(422);
+
+        $this->assertDatabaseCount('cart_items', 0);
+    }
+
     public function test_add_same_product_twice_increments_quantity(): void
     {
         $product = Product::factory()->create(['retail_price' => 99.00]);
