@@ -6,16 +6,30 @@ use App\Actions\Cms\DeleteMenuAction;
 use App\Actions\Cms\UpdateMenuAction;
 use App\Data\Cms\MenuData;
 use App\Filament\Resources\Cms\Menus\MenuResource;
+use App\Filament\Support\RelationTabs;
 use App\Models\Cms\Menu;
 use Filament\Actions\DeleteAction;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Model;
 use InvalidArgumentException;
 
 class EditMenu extends EditRecord
 {
     protected static string $resource = MenuResource::class;
+
+    /**
+     * Form tabs on top, relation managers as vertical tabs directly below
+     * (instead of the default horizontal below-the-fold strip).
+     */
+    public function content(Schema $schema): Schema
+    {
+        return $schema->components([
+            $this->getFormContentComponent(),
+            RelationTabs::make($this),
+        ]);
+    }
 
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
