@@ -193,14 +193,24 @@ class FlexibleSectionTypesTest extends TestCase
 
     // ─── Registry ─────────────────────────────────────────────────────
 
-    public function test_code_definition_wins_on_slug_collision(): void
+    public function test_shadow_row_defers_to_code_definition_on_slug_collision(): void
+    {
+        FlexibleSectionType::factory()->shadow()->create(['slug' => 'hero']);
+        app(SectionRegistry::class)->flush();
+
+        $definition = app(SectionRegistry::class)->resolve('hero');
+
+        $this->assertFalse($definition->isFlexible());
+    }
+
+    public function test_active_row_overrides_code_definition_on_slug_collision(): void
     {
         FlexibleSectionType::factory()->create(['slug' => 'hero']);
         app(SectionRegistry::class)->flush();
 
         $definition = app(SectionRegistry::class)->resolve('hero');
 
-        $this->assertFalse($definition->isFlexible());
+        $this->assertTrue($definition->isFlexible());
     }
 
     // ─── Authoring actions ────────────────────────────────────────────

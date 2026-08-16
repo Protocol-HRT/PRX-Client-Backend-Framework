@@ -2,6 +2,7 @@
 
 namespace Database\Factories\Cms;
 
+use App\Enums\Cms\SectionTypeMode;
 use App\Models\Cms\FlexibleSectionType;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
@@ -36,6 +37,13 @@ class FlexibleSectionTypeFactory extends Factory
     {
         return $this->state(fn (array $attributes): array => [
             'enabled' => false,
+        ]);
+    }
+
+    public function shadow(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'mode' => SectionTypeMode::Shadow,
         ]);
     }
 }

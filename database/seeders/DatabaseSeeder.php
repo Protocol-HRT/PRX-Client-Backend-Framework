@@ -18,5 +18,6 @@ class DatabaseSeeder extends Seeder
         $this->call(AdminUserSeeder::class);
         $this->call(BaseRolesSeeder::class);
         $this->call(CatalogVocabularySeeder::class);
+        $this->call(SectionTypeSeeder::class);
     }
 }

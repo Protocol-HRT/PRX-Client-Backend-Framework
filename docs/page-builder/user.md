@@ -59,6 +59,16 @@ pickers).
   kinds. For a bespoke design, ask your developer to build a dedicated component
   for that type's slug.
 
+### Built-in types in this list
+
+Rows badged **Shadow · code-backed** are editable mirrors of built-in section
+types. Out of the box they are inert — the built-in definition drives the
+section form and website payload. **Promote** a row to take over its type:
+its fields become editable here (add a badge field, reword help text, …) and
+the website payload follows. **Revert to built-in** switches back at any
+time; existing page content is never touched by either action. Only promote
+a type when your frontend developer expects the change.
+
 ## Global blocks (reusable sections)
 
 **Content → Global Blocks.** A global block is one section defined once and

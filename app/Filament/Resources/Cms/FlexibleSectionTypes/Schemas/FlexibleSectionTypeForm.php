@@ -99,8 +99,23 @@ class FlexibleSectionTypeForm
                                                 FlexibleFieldKind::Repeater->value,
                                                 FlexibleFieldKind::Products->value,
                                                 FlexibleFieldKind::Packages->value,
+                                                FlexibleFieldKind::Number->value,
                                             ], true))
-                                            ->helperText('Max length (text) or max items (repeater/pickers).'),
+                                            ->helperText('Max length (text), max items (repeater/pickers), or max value (number).'),
+                                        TextInput::make('min')
+                                            ->numeric()
+                                            ->visible(fn (callable $get): bool => $get('kind') === FlexibleFieldKind::Number->value)
+                                            ->helperText('Minimum value.'),
+                                        Toggle::make('raw')
+                                            ->label('Keep raw in API')
+                                            ->visible(fn (callable $get): bool => in_array($get('kind'), [
+                                                FlexibleFieldKind::Products->value,
+                                                FlexibleFieldKind::Packages->value,
+                                                FlexibleFieldKind::Product->value,
+                                                FlexibleFieldKind::Package->value,
+                                            ], true))
+                                            ->helperText('Ship the stored ids untouched instead of inlined cards — pair with a resolver op that writes the inlined list to another key.'),
+                                        self::visibleWhenRepeater(),
                                         Repeater::make('options')
                                             ->reorderable()
                                             ->columnSpanFull()
@@ -136,11 +151,39 @@ class FlexibleSectionTypeForm
                                                 Toggle::make('required'),
                                                 TextInput::make('help')
                                                     ->maxLength(255),
+                                                self::visibleWhenRepeater(),
                                             ]),
                                     ])
                                     ->columns(2),
                             ]),
                     ]),
+            ]);
+    }
+
+    /**
+     * Declarative visibility rules for one field: show it only while the
+     * named sibling fields hold (or don't hold) the given values.
+     */
+    private static function visibleWhenRepeater(): Repeater
+    {
+        return Repeater::make('visible_when')
+            ->label('Visibility conditions')
+            ->helperText('Show this field only while every condition passes. Leave empty to always show it.')
+            ->columnSpanFull()
+            ->defaultItems(0)
+            ->addActionLabel('Add condition')
+            ->columns(3)
+            ->schema([
+                TextInput::make('field')
+                    ->required()
+                    ->regex(self::KEY_PATTERN)
+                    ->helperText('Sibling field key.'),
+                Select::make('operator')
+                    ->options(['equals' => 'Equals', 'not_equals' => 'Does not equal'])
+                    ->default('equals')
+                    ->native(false),
+                TextInput::make('value')
+                    ->required(),
             ]);
     }
 

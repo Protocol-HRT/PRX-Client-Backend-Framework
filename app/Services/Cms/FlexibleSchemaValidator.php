@@ -2,6 +2,7 @@
 
 namespace App\Services\Cms;
 
+use App\Cms\Support\CtaFields;
 use App\Enums\Cms\FlexibleFieldKind;
 use InvalidArgumentException;
 
@@ -32,6 +33,7 @@ class FlexibleSchemaValidator
     private static function validateLevel(array $fields, bool $insideRepeater, string $context): void
     {
         $seenKeys = [];
+        $ctaSeen = false;
 
         foreach (array_values($fields) as $index => $field) {
             $position = 'Field #'.($index + 1).$context;
@@ -76,12 +78,67 @@ class FlexibleSchemaValidator
                 self::validateSelectOptions($field, $key, $context);
             }
 
+            if ($kind === FlexibleFieldKind::Cta) {
+                if ($ctaSeen) {
+                    throw new InvalidArgumentException("Field '{$key}'{$context}: only one CTA group is allowed per level — its keys (cta_label, cta_mode, …) are flat and would collide.");
+                }
+
+                $ctaSeen = true;
+            }
+
+            self::validateVisibleWhen($field, $key, $context);
+
             if ($kind === FlexibleFieldKind::Repeater) {
                 if ($insideRepeater) {
                     throw new InvalidArgumentException("Repeater field '{$key}'{$context} cannot contain another repeater — only one nesting level is allowed.");
                 }
 
                 self::validateRepeaterChildren($field, $key);
+            }
+        }
+
+        if ($ctaSeen) {
+            $reserved = array_intersect(
+                array_keys($seenKeys),
+                array_merge(CtaFields::KEYS, CtaFields::RESOLVED_KEYS),
+            );
+
+            if ($reserved !== []) {
+                throw new InvalidArgumentException("Field key '".reset($reserved)."'{$context} collides with the CTA group's flat keys.");
+            }
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $field
+     */
+    private static function validateVisibleWhen(array $field, string $key, string $context): void
+    {
+        $conditions = $field['visible_when'] ?? null;
+
+        if ($conditions === null || $conditions === []) {
+            return;
+        }
+
+        if (! is_array($conditions)) {
+            throw new InvalidArgumentException("Field '{$key}'{$context}: visible_when must be a list of conditions.");
+        }
+
+        foreach (array_values($conditions) as $index => $condition) {
+            $target = is_array($condition) ? ($condition['field'] ?? null) : null;
+
+            if (! is_string($target) || ! preg_match(self::KEY_PATTERN, $target)) {
+                throw new InvalidArgumentException('Condition #'.($index + 1)." on field '{$key}'{$context} needs a snake_case sibling field name.");
+            }
+
+            $operator = $condition['operator'] ?? 'equals';
+
+            if (! in_array($operator, ['equals', 'not_equals'], true)) {
+                throw new InvalidArgumentException('Condition #'.($index + 1)." on field '{$key}'{$context} has unknown operator '{$operator}'.");
+            }
+
+            if (! is_scalar($condition['value'] ?? null)) {
+                throw new InvalidArgumentException('Condition #'.($index + 1)." on field '{$key}'{$context} needs a scalar value.");
             }
         }
     }

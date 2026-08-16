@@ -7,6 +7,7 @@ use App\Data\Cms\FlexibleSectionTypeData;
 use App\Models\Cms\FlexibleSectionType;
 use App\Services\Cms\FlexibleSchemaValidator;
 use App\Services\Cms\SectionRegistry;
+use App\Services\Cms\SectionResolverOps;
 use Illuminate\Support\Facades\Auth;
 use InvalidArgumentException;
 
@@ -22,6 +23,7 @@ class CreateFlexibleSectionTypeAction
             }
 
             FlexibleSchemaValidator::validate($data->schema['fields'] ?? []);
+            SectionResolverOps::validate(array_values($data->schema['resolvers'] ?? []));
 
             $userId = Auth::id();
 

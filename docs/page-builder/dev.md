@@ -183,3 +183,57 @@ as `__PHP_Incomplete_Class` on cache hits). Regression-tested in
 
 **New region**: add a `Region` case — ships together with the frontend component
 that renders it.
+
+## Data-driven section types (code → DB migration)
+
+Decided 2026-08-16: section-type *structure* migrates from code blueprints to
+seeded DB rows so deployments can reshape sections without backend changes.
+Runtime *behavior* stays PHP, but as a shared, declarative vocabulary instead
+of per-blueprint `resolveData()` overrides.
+
+**Vocabulary** (all usable by custom types too):
+
+- Field kinds `product` / `package` (single pickers, inlined in place),
+  `category` (raw id), `number` (min/max bounds), `color`, and `cta` — the
+  full CTA group (`CtaFields::components()`, flat keys) with automatic
+  add-to-cart inlining. `raw: true` on a catalog picker ships stored ids
+  untouched (pair with a resolver op writing the inlined list elsewhere).
+- `visible_when` on any field: ANDed `{field, operator: equals|not_equals,
+  value}` conditions against sibling state (`App\Cms\Support\VisibleWhen`),
+  loose string comparison because Filament re-saves selects as integers.
+- Select values are re-cast to strings in the payload automatically
+  (`FlexibleDefinition::resolveData`) — the integer re-save fix, now global
+  for DB-defined types.
+- **Resolver ops** (`App\Services\Cms\SectionResolverOps`), declared per type
+  in `schema.resolvers`, run after field-kind transforms:
+  `inline_product|inline_package|inline_products|inline_packages`
+  (`input`/`output` keys), `products_by_mode|packages_by_mode` (the slider
+  manual/featured/newest/category convention; `output`, optional `*_key`
+  overrides), `categories`, `resolve_cta` (`path: ''` or `items.*`),
+  `cast_string` (`path`). The admin form round-trips `schema.fields` only —
+  `UpdateFlexibleSectionTypeAction` carries stored resolvers forward.
+
+**Shadow/active modes** (`flexible_section_types.mode`): `SectionTypeSeeder`
+mirrors code blueprints as `shadow` rows — visible in Custom Section Types
+(badge "Shadow · code-backed") but inert; the code definition keeps serving.
+Promoting a row (table action, or `SetFlexibleSectionTypeModeAction`) flips
+registry precedence: an **active** DB row now wins the slug, making the
+type's fields editable in the admin. Revert at any time — the registry falls
+back to code whenever no active row holds the slug. Admin creation still
+rejects reserved slugs; only the seeder introduces colliding rows.
+
+**Golden parity** (`SectionTypeSeedParityTest`): a seed may only be promoted
+once its test proves the seeded definition matches the blueprint —
+byte-identical `data` payload for a representative fixture, plus equal
+defaults, fieldKinds, and field inventory. Seeded so far: `text-block`,
+`cta-banner`, `video-embed`, `features-grid`, `highlight-banner`,
+`product-slider` (proves `products_by_mode` + `visible_when` + `raw`).
+
+**Remaining to seed** (next sessions): the other 23 blueprints. The complex
+ones map as: catalog sliders/grids → `*_by_mode` ops; `product-callout` →
+`inline_product`/`inline_package`; `category-grid` → `categories`;
+`benefits-diagram`/`image-callout-banner` → `cta` kind (or `resolve_cta` at
+`callouts.*`) + `cast_string` for slot positions. Form-layout groups degrade
+to flat forms; conditional visibility survives via `visible_when`. Frontend
+impact of promotion: envelope `origin` flips to `flexible` and a `schema`
+map appears — atlas keys components by `type` only, so no changes needed.

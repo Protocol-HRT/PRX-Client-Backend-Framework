@@ -2,9 +2,13 @@
 
 namespace App\Services\Cms;
 
+use App\Cms\Support\CtaFields;
+use App\Cms\Support\VisibleWhen;
 use App\Filament\Support\SectionImagePicker;
+use App\Models\Catalog\Category;
 use App\Models\Catalog\Package;
 use App\Models\Catalog\Product;
+use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
@@ -13,6 +17,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Fieldset;
+use Filament\Schemas\Components\Utilities\Get;
 
 /**
  * Turns a FlexibleSectionType's stored field schema into Filament form
@@ -64,6 +69,24 @@ class FlexibleSchemaFormBuilder
                 ->options(collect($field['options'] ?? [])->pluck('label', 'value')->all())
                 ->default($field['default'] ?? null)
                 ->native(false),
+            'number' => TextInput::make($key)
+                ->numeric()
+                ->minValue($field['min'] ?? null)
+                ->maxValue($field['max'] ?? null)
+                ->default($field['default'] ?? null),
+            'color' => ColorPicker::make($key),
+            'product' => Select::make($key)
+                ->searchable()
+                ->options(fn () => Product::published()->orderBy('name')->pluck('name', 'id')->all()),
+            'package' => Select::make($key)
+                ->searchable()
+                ->options(fn () => Package::published()->orderBy('name')->pluck('name', 'id')->all()),
+            'category' => Select::make($key)
+                ->searchable()
+                ->options(fn () => Category::query()->orderBy('name')->pluck('name', 'id')->all()),
+            'cta' => Fieldset::make($label)
+                ->components(CtaFields::components())
+                ->columns(2),
             'repeater' => Repeater::make($key)
                 ->schema($this->build(array_values($field['fields'] ?? [])))
                 ->minItems($field['min'] ?? null)
@@ -94,6 +117,12 @@ class FlexibleSchemaFormBuilder
 
         if ($help !== null && method_exists($component, 'helperText') && ($field['kind'] ?? null) !== 'svg') {
             $component->helperText($help);
+        }
+
+        $conditions = $field['visible_when'] ?? [];
+
+        if (is_array($conditions) && $conditions !== [] && method_exists($component, 'visible')) {
+            $component->visible(fn (Get $get): bool => VisibleWhen::passes($conditions, $get));
         }
 
         return $component;

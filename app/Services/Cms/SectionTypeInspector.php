@@ -274,8 +274,10 @@ class SectionTypeInspector
             'textarea' => 'Example '.Str::lower($label).' copy shown on the storefront.',
             'image', 'svg' => null, // Replaced with a media-shaped sample after the envelope pass.
             'select' => null,       // Blueprint defaults usually carry the real option value.
+            'number', 'color', 'category', 'cta' => null,
             'repeater' => [],
             'products', 'packages' => [],
+            'product', 'package' => null,
             default => 'Example '.Str::lower($label),
         };
     }
@@ -309,6 +311,8 @@ class SectionTypeInspector
                 ],
                 'products' => ['(inlined product summaries — add a live section of this type to see the full shape)'],
                 'packages' => ['(inlined package summaries — add a live section of this type to see the full shape)'],
+                'product' => '(inlined product summary — add a live section of this type to see the full shape)',
+                'package' => '(inlined package summary — add a live section of this type to see the full shape)',
                 default => null,
             };
 

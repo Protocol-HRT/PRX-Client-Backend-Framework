@@ -12,10 +12,13 @@ use Illuminate\Support\Facades\Schema;
 /**
  * Single lookup point for every section type the page builder can offer.
  *
- * Phase 0: code-defined blueprints only. Phase 3 merges DB-defined
- * FlexibleSectionType rows behind the same SectionDefinition contract —
- * code definitions always win on slug collision, and flexible slugs are
- * validated against reservedSlugs() at authoring time.
+ * Code blueprints and DB-defined FlexibleSectionType rows share the
+ * SectionDefinition contract. Precedence: an ACTIVE DB row wins on slug
+ * collision — that's how a seeded code type is promoted to data-driven
+ * after golden-parity checks. SHADOW rows (seeded mirrors awaiting
+ * promotion) are skipped, so their code definition keeps serving. Admins
+ * cannot author over a code slug (reservedSlugs() at creation time); only
+ * the seeder introduces colliding rows, in shadow mode.
  *
  * Registered as a singleton so the definition map is built once per request.
  */
@@ -42,9 +45,11 @@ class SectionRegistry
         }
 
         foreach ($this->flexibleTypes() as $type) {
-            // Code definitions win on slug collision (reserved slugs are also
-            // rejected at authoring time — this is the belt to that suspender).
-            $definitions[$type->slug] ??= new FlexibleDefinition($type);
+            if ($type->isShadow()) {
+                continue;
+            }
+
+            $definitions[$type->slug] = new FlexibleDefinition($type);
         }
 
         return $this->definitions = $definitions;

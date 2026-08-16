@@ -4,7 +4,10 @@ namespace App\Filament\Resources\Cms\FlexibleSectionTypes\Tables;
 
 use App\Actions\Cms\DeleteFlexibleSectionTypeAction;
 use App\Actions\Cms\SetFlexibleSectionTypeArchivedAction;
+use App\Actions\Cms\SetFlexibleSectionTypeModeAction;
+use App\Enums\Cms\SectionTypeMode;
 use App\Models\Cms\FlexibleSectionType;
+use App\Services\Cms\SectionRegistry;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
@@ -39,8 +42,19 @@ class FlexibleSectionTypesTable
                 TextColumn::make('archived_at')
                     ->label('Status')
                     ->badge()
-                    ->state(fn (FlexibleSectionType $record): string => $record->isArchived() ? 'Archived' : 'Active')
-                    ->color(fn (string $state): string => $state === 'Archived' ? 'gray' : 'success'),
+                    ->state(fn (FlexibleSectionType $record): string => match (true) {
+                        $record->isArchived() => 'Archived',
+                        $record->isShadow() => 'Shadow · code-backed',
+                        default => 'Active',
+                    })
+                    ->color(fn (string $state): string => match ($state) {
+                        'Archived' => 'gray',
+                        'Shadow · code-backed' => 'info',
+                        default => 'success',
+                    })
+                    ->tooltip(fn (FlexibleSectionType $record): ?string => $record->isShadow()
+                        ? 'Seeded mirror of a built-in section type. The built-in definition keeps serving until this row is promoted.'
+                        : null),
                 TextColumn::make('updated_at')
                     ->label('Updated')
                     ->since()
@@ -60,11 +74,54 @@ class FlexibleSectionTypesTable
             ])
             ->recordActions([
                 EditAction::make(),
+                self::promoteAction(),
+                self::demoteAction(),
                 self::archiveAction(),
                 self::restoreAction(),
                 DeleteAction::make()
                     ->using(fn (FlexibleSectionType $record): bool => self::delete($record)),
             ]);
+    }
+
+    /**
+     * Promote a seeded shadow definition: this row starts serving instead
+     * of the built-in blueprint, making the type's fields editable here.
+     */
+    public static function promoteAction(): Action
+    {
+        return Action::make('promote')
+            ->icon(Heroicon::OutlinedArrowUpCircle)
+            ->color('info')
+            ->visible(fn (FlexibleSectionType $record): bool => $record->isShadow())
+            ->requiresConfirmation()
+            ->modalDescription('This definition takes over from the built-in section type — its fields become editable here and drive the section form and API payload. Existing content is unaffected. You can revert at any time.')
+            ->action(function (FlexibleSectionType $record): void {
+                app(SetFlexibleSectionTypeModeAction::class)->execute($record, SectionTypeMode::Active);
+
+                Notification::make()->success()->title('Section type promoted')->send();
+            });
+    }
+
+    /**
+     * Revert a promoted code-backed row: the built-in blueprint serves
+     * again. Only offered for slugs that have a code definition to fall
+     * back to — demoting a purely custom type would orphan its sections.
+     */
+    public static function demoteAction(): Action
+    {
+        return Action::make('demote')
+            ->label('Revert to built-in')
+            ->icon(Heroicon::OutlinedArrowUturnDown)
+            ->color('gray')
+            ->visible(fn (FlexibleSectionType $record): bool => ! $record->isShadow()
+                && in_array($record->slug, app(SectionRegistry::class)->reservedSlugs(), true))
+            ->requiresConfirmation()
+            ->modalDescription('The built-in definition serves this type again; this row goes back to shadow. Any field changes made here stop applying until re-promoted.')
+            ->action(function (FlexibleSectionType $record): void {
+                app(SetFlexibleSectionTypeModeAction::class)->execute($record, SectionTypeMode::Shadow);
+
+                Notification::make()->success()->title('Section type reverted to built-in')->send();
+            });
     }
 
     /**

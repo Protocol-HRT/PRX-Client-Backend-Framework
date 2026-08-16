@@ -12,9 +12,15 @@ enum FlexibleFieldKind: string
     case Link = 'link';
     case Boolean = 'boolean';
     case Select = 'select';
+    case Number = 'number';
+    case Color = 'color';
     case Repeater = 'repeater';
     case Products = 'products';
     case Packages = 'packages';
+    case Product = 'product';
+    case Package = 'package';
+    case Category = 'category';
+    case Cta = 'cta';
 
     public function label(): string
     {
@@ -27,9 +33,15 @@ enum FlexibleFieldKind: string
             self::Link => 'Link (label + URL)',
             self::Boolean => 'Toggle (yes/no)',
             self::Select => 'Dropdown choice',
+            self::Number => 'Number',
+            self::Color => 'Color',
             self::Repeater => 'Repeating items',
-            self::Products => 'Product picker',
-            self::Packages => 'Package picker',
+            self::Products => 'Product picker (multiple)',
+            self::Packages => 'Package picker (multiple)',
+            self::Product => 'Product picker (single)',
+            self::Package => 'Package picker (single)',
+            self::Category => 'Category picker (single)',
+            self::Cta => 'Call to action (link or add-to-cart)',
         };
     }
 
@@ -40,5 +52,15 @@ enum FlexibleFieldKind: string
             self::cases(),
             fn (self $kind): bool => $kind !== self::Repeater,
         ));
+    }
+
+    /**
+     * Kinds whose stored value is resolved in place in the API payload
+     * (media ids -> url objects, catalog ids -> inlined cards) unless the
+     * field opts out with `raw: true`.
+     */
+    public static function inlineResolvedKinds(): array
+    {
+        return [self::Image, self::Svg, self::Products, self::Packages, self::Product, self::Package];
     }
 }

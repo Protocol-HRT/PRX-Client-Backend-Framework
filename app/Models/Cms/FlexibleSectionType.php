@@ -2,6 +2,7 @@
 
 namespace App\Models\Cms;
 
+use App\Enums\Cms\SectionTypeMode;
 use App\Models\PageSection;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -24,6 +25,7 @@ class FlexibleSectionType extends Model
         'icon',
         'schema',
         'enabled',
+        'mode',
         'created_by',
         'updated_by',
     ];
@@ -33,8 +35,19 @@ class FlexibleSectionType extends Model
         return [
             'schema' => 'array',
             'enabled' => 'boolean',
+            'mode' => SectionTypeMode::class,
             'archived_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Shadow rows are seeded mirrors of code blueprints: inert in the
+     * registry (the code definition keeps winning) until promoted to
+     * active after passing golden-parity checks.
+     */
+    public function isShadow(): bool
+    {
+        return $this->mode === SectionTypeMode::Shadow;
     }
 
     /**

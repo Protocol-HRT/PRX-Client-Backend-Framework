@@ -183,6 +183,8 @@ class SectionDataTransformer
             'image' => $this->media->resolve($value),
             'products' => $this->catalog->productsByIds($this->intList($value)),
             'packages' => $this->catalog->packagesByIds($this->intList($value)),
+            'product' => $this->catalog->product(is_numeric($value) ? (int) $value : null),
+            'package' => $this->catalog->package(is_numeric($value) ? (int) $value : null),
             'svg' => is_string($value) ? SvgSanitizer::sanitize($value) : null,
             default => $value,
         };
