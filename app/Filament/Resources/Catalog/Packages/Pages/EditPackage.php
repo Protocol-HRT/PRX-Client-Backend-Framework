@@ -5,16 +5,30 @@ namespace App\Filament\Resources\Catalog\Packages\Pages;
 use App\Actions\Catalog\UpdatePackageAction;
 use App\Data\Catalog\PackageData;
 use App\Filament\Resources\Catalog\Packages\PackageResource;
+use App\Filament\Support\RelationTabs;
 use App\Models\Catalog\Package;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ForceDeleteAction;
 use Filament\Actions\RestoreAction;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Model;
 
 class EditPackage extends EditRecord
 {
     protected static string $resource = PackageResource::class;
+
+    /**
+     * Form tabs on top, relation managers as vertical tabs directly below
+     * (instead of the default horizontal below-the-fold strip).
+     */
+    public function content(Schema $schema): Schema
+    {
+        return $schema->components([
+            $this->getFormContentComponent(),
+            RelationTabs::make($this),
+        ]);
+    }
 
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
