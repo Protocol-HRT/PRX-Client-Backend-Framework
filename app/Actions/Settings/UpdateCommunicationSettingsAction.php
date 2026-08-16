@@ -5,6 +5,7 @@ namespace App\Actions\Settings;
 use App\Actions\Concerns\Transacts;
 use App\Data\Settings\CommunicationSettingsData;
 use App\Settings\CommunicationSettings;
+use Illuminate\Support\Facades\Cache;
 
 class UpdateCommunicationSettingsAction
 {
@@ -23,6 +24,10 @@ class UpdateCommunicationSettingsAction
             $this->settings->voice_enabled = $data->voice_enabled;
             $this->settings->video_enabled = $data->video_enabled;
             $this->settings->save();
+
+            // Provider capabilities in the public config bundle can depend on
+            // communication toggles — drop the cached copy after every save.
+            Cache::forget('api.v1.config');
 
             return $this->settings;
         });

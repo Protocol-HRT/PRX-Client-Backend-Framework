@@ -5,6 +5,7 @@ namespace App\Actions\Settings;
 use App\Actions\Concerns\Transacts;
 use App\Data\Settings\ThemeSettingsData;
 use App\Settings\ThemeSettings;
+use Illuminate\Support\Facades\Cache;
 
 class UpdateThemeSettingsAction
 {
@@ -25,6 +26,10 @@ class UpdateThemeSettingsAction
             $this->settings->custom_css = $data->custom_css;
             $this->settings->frontend_template = $data->frontend_template;
             $this->settings->save();
+
+            // The public config bundle exposes these settings — drop the
+            // cached copy so the frontend sees the change on its next boot call.
+            Cache::forget('api.v1.config');
 
             return $this->settings;
         });

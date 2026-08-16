@@ -5,6 +5,7 @@ namespace App\Actions\Settings;
 use App\Actions\Concerns\Transacts;
 use App\Data\Settings\BrandSettingsData;
 use App\Settings\BrandSettings;
+use Illuminate\Support\Facades\Cache;
 
 class UpdateBrandSettingsAction
 {
@@ -28,6 +29,10 @@ class UpdateBrandSettingsAction
             $this->settings->site_url = $data->site_url;
             $this->settings->organization_type = $data->organization_type;
             $this->settings->save();
+
+            // The public config bundle exposes these settings — drop the
+            // cached copy so the frontend sees the change on its next boot call.
+            Cache::forget('api.v1.config');
 
             return $this->settings;
         });

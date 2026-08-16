@@ -214,10 +214,10 @@ DB::transaction:
 
 **Admin:** Settings → Billing (checkout-path radio + upsells section).
 
-`UpdateBillingSettingsAction` clears the cached `/api/v1/config` bundle
-(`Cache::forget('api.v1.config')`) so the frontend sees path/upsell changes on
-its next boot call instead of waiting out the 5-minute TTL. **The other settings
-actions do not do this yet** — they still rely on the TTL.
+Every `Update*SettingsAction` (Billing included) clears the cached
+`/api/v1/config` bundle (`Cache::forget('api.v1.config')`) so the frontend sees
+path/upsell changes on its next boot call instead of waiting out the 5-minute
+TTL. Covered by `tests/Feature/Settings/ConfigCacheInvalidationTest`.
 
 ---
 

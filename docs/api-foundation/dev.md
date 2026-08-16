@@ -119,7 +119,7 @@ No authentication required. Cached for 5 minutes (`API_CONFIG_TTL` env var, defa
 }
 ```
 
-**Cache invalidation:** `cache()->forget('api.v1.config')` — add this call to Settings observer(s) once the Settings Filament pages ship.
+**Cache invalidation:** every `Update*SettingsAction` calls `Cache::forget('api.v1.config')` after save, so admin edits surface on the frontend's next boot call without waiting out the TTL.
 
 ### `POST /api/v1/auth/login`
 

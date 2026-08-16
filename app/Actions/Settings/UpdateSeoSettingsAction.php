@@ -5,6 +5,7 @@ namespace App\Actions\Settings;
 use App\Actions\Concerns\Transacts;
 use App\Data\Settings\SeoSettingsData;
 use App\Settings\SeoSettings;
+use Illuminate\Support\Facades\Cache;
 
 class UpdateSeoSettingsAction
 {
@@ -26,6 +27,10 @@ class UpdateSeoSettingsAction
             $this->settings->custom_body_scripts = $data->custom_body_scripts;
             $this->settings->allow_indexing = $data->allow_indexing;
             $this->settings->save();
+
+            // The public config bundle exposes these settings — drop the
+            // cached copy so the frontend sees the change on its next boot call.
+            Cache::forget('api.v1.config');
 
             return $this->settings;
         });

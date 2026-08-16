@@ -19,8 +19,9 @@ use Illuminate\Support\Facades\Storage;
  * Aggregates brand + theme + contact + SEO + provider capabilities
  * into one cached response so the app shell renders in a single round-trip.
  *
- * Cached for 5 minutes (config.api.config_ttl). Cleared by Settings observers
- * whenever admin saves changes.
+ * Cached for 5 minutes (config.api.config_ttl). Every Update*SettingsAction
+ * calls Cache::forget('api.v1.config') after save, so admin changes are
+ * visible on the frontend's next boot call without waiting out the TTL.
  */
 class ConfigController extends ApiController
 {

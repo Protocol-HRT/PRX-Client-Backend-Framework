@@ -5,6 +5,7 @@ namespace App\Actions\Settings;
 use App\Actions\Concerns\Transacts;
 use App\Data\Settings\LlmSettingsData;
 use App\Settings\LlmSettings;
+use Illuminate\Support\Facades\Cache;
 
 class UpdateLlmSettingsAction
 {
@@ -21,6 +22,10 @@ class UpdateLlmSettingsAction
             $this->settings->openai_api_key = $data->openai_api_key;
             $this->settings->openai_model = $data->openai_model;
             $this->settings->save();
+
+            // Keep the settings→config cache contract uniform: every settings
+            // save invalidates the public config bundle.
+            Cache::forget('api.v1.config');
 
             return $this->settings;
         });
