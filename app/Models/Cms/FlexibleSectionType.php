@@ -33,7 +33,18 @@ class FlexibleSectionType extends Model
         return [
             'schema' => 'array',
             'enabled' => 'boolean',
+            'archived_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Archived = stashed out of the section picker so new sections cannot
+     * use it, while existing sections KEEP rendering. Contrast with
+     * `enabled` = false, which also stops rendering existing sections.
+     */
+    public function isArchived(): bool
+    {
+        return $this->archived_at !== null;
     }
 
     public function sections(): HasMany

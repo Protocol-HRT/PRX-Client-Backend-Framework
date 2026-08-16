@@ -6,6 +6,7 @@ use App\Actions\Cms\DeleteFlexibleSectionTypeAction;
 use App\Actions\Cms\UpdateFlexibleSectionTypeAction;
 use App\Data\Cms\FlexibleSectionTypeData;
 use App\Filament\Resources\Cms\FlexibleSectionTypes\FlexibleSectionTypeResource;
+use App\Filament\Resources\Cms\FlexibleSectionTypes\Tables\FlexibleSectionTypesTable;
 use App\Models\Cms\FlexibleSectionType;
 use Filament\Actions\DeleteAction;
 use Filament\Notifications\Notification;
@@ -44,6 +45,8 @@ class EditFlexibleSectionType extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            FlexibleSectionTypesTable::archiveAction(),
+            FlexibleSectionTypesTable::restoreAction(),
             DeleteAction::make()
                 ->using(function (FlexibleSectionType $record): bool {
                     try {

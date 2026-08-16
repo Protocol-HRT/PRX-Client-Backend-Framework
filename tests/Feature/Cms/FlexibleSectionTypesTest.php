@@ -4,6 +4,7 @@ namespace Tests\Feature\Cms;
 
 use App\Actions\Cms\CreateFlexibleSectionTypeAction;
 use App\Actions\Cms\DeleteFlexibleSectionTypeAction;
+use App\Actions\Cms\SetFlexibleSectionTypeArchivedAction;
 use App\Data\Cms\FlexibleSectionTypeData;
 use App\Models\Catalog\Product;
 use App\Models\Cms\FlexibleSectionType;
@@ -164,6 +165,30 @@ class FlexibleSectionTypesTest extends TestCase
 
         $this->assertCount(1, $sections);
         $this->assertSame('hero', $sections[0]['type']);
+    }
+
+    public function test_archived_type_leaves_picker_but_existing_sections_keep_rendering(): void
+    {
+        $type = $this->makeType([['key' => 'heading', 'kind' => 'text']]);
+
+        $page = Page::factory()->create(['slug' => 'flex-archived']);
+        PageSection::factory()->create([
+            'page_id' => $page->id,
+            'type' => 'trust-badges',
+            'data' => ['heading' => 'Still here'],
+        ]);
+
+        app(SetFlexibleSectionTypeArchivedAction::class)->execute($type, true);
+
+        $registry = app(SectionRegistry::class);
+        $this->assertArrayNotHasKey('trust-badges', $registry->options());
+        $this->assertNotNull($registry->resolve('trust-badges'));
+
+        $section = $this->getJson('/api/v1/pages/flex-archived')->json('data.sections.0');
+        $this->assertSame('Still here', $section['data']['heading']);
+
+        app(SetFlexibleSectionTypeArchivedAction::class)->execute($type->fresh(), false);
+        $this->assertArrayHasKey('trust-badges', app(SectionRegistry::class)->options());
     }
 
     // ─── Registry ─────────────────────────────────────────────────────

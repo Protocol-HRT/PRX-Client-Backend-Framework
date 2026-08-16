@@ -92,9 +92,18 @@ class SectionRegistry
      */
     public function options(): array
     {
+        // Archived flexible types stay resolvable (existing sections keep
+        // rendering) but are withheld from the picker so nothing new is
+        // authored against them.
+        $available = array_filter(
+            $this->all(),
+            fn (SectionDefinition $definition): bool => ! ($definition instanceof FlexibleDefinition
+                && $definition->model()->isArchived()),
+        );
+
         return array_map(
             fn (SectionDefinition $definition): string => $definition->label(),
-            $this->all(),
+            $available,
         );
     }
 
