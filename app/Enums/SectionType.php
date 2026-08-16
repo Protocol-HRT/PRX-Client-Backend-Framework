@@ -28,6 +28,7 @@ use App\Cms\Sections\StatsMarqueeSection;
 use App\Cms\Sections\StorySection;
 use App\Cms\Sections\TestimonialsSection;
 use App\Cms\Sections\TextBlockSection;
+use App\Cms\Sections\TimelineSection;
 use App\Cms\Sections\TransformedSection;
 use App\Cms\Sections\VideoEmbedSection;
 
@@ -57,6 +58,7 @@ enum SectionType: string
     case HighlightBanner = 'highlight-banner';
     case ImageCalloutBanner = 'image-callout-banner';
     case BenefitsDiagram = 'benefits-diagram';
+    case Timeline = 'timeline';
 
     // Product-aware sections (catalog data inlined at API read time)
     case ProductSlider = 'product-slider';
@@ -90,6 +92,7 @@ enum SectionType: string
             self::HighlightBanner => app(HighlightBannerSection::class),
             self::ImageCalloutBanner => app(ImageCalloutBannerSection::class),
             self::BenefitsDiagram => app(BenefitsDiagramSection::class),
+            self::Timeline => app(TimelineSection::class),
             self::ProductSlider => app(ProductSliderSection::class),
             self::ProductGrid => app(ProductGridSection::class),
             self::ProductCallout => app(ProductCalloutSection::class),

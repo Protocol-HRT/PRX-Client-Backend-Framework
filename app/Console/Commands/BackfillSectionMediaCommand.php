@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Catalog\CatalogItemSection;
+use App\Models\Page;
 use App\Models\PageSection;
 use App\Services\Cms\SectionRegistry;
 use Awcodes\Curator\Models\Media;
@@ -80,6 +81,8 @@ class BackfillSectionMediaCommand extends Command
             }
         }
 
+        $this->backfillTitleBanners($dry);
+
         $label = $dry ? 'would be converted' : 'converted';
         $this->info("{$this->converted} image value(s) {$label} to media ids.");
 
@@ -88,6 +91,37 @@ class BackfillSectionMediaCommand extends Command
         }
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Pages store one image outside section data: title_banner.background_image.
+     * Same legacy-path→media-id conversion so the admin picker can hydrate it.
+     */
+    private function backfillTitleBanners(bool $dry): void
+    {
+        foreach (Page::query()->whereNotNull('title_banner')->get() as $page) {
+            $banner = $page->title_banner;
+            $value = $banner['background_image'] ?? null;
+
+            if (! is_string($value) || $value === '' || is_numeric($value)) {
+                continue;
+            }
+
+            $id = $this->resolveOrCreateMedia($value, $dry);
+
+            if ($id === null) {
+                $this->unresolved[] = $value;
+
+                continue;
+            }
+
+            $this->converted++;
+
+            if (! $dry) {
+                $banner['background_image'] = $id;
+                $page->update(['title_banner' => $banner]);
+            }
+        }
     }
 
     private function resolveOrCreateMedia(string $value, bool $dry): ?int

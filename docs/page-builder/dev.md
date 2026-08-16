@@ -30,7 +30,7 @@ The frontend owns 100% of presentation; this backend serves typed data payloads.
 ### The `SectionDefinition` contract (`app/Contracts/Cms/SectionDefinition.php`)
 
 Everything the builder can render implements it:
-- `BlueprintDefinition` (`app/Cms/`) adapts code `SectionBlueprint`s (22 types in `app/Cms/Sections/`, registered in the `SectionType` enum).
+- `BlueprintDefinition` (`app/Cms/`) adapts code `SectionBlueprint`s (28 types in `app/Cms/Sections/`, registered in the `SectionType` enum).
 - `FlexibleDefinition` (`app/Cms/`) adapts admin-created `FlexibleSectionType` rows.
 
 Key methods: `type()` (string stored in `page_sections.type`), `formSchema()` (Filament
@@ -157,7 +157,8 @@ as `__PHP_Incomplete_Class` on cache hits). Regression-tested in
 - `CuratorPicker` wipes unknown string states on save. `SectionImagePicker`
   (`app/Filament/Support/`) resolves legacy paths to media ids at hydration —
   always use it for section image fields. `php artisan cms:backfill-section-media
-  --dry-run` migrates remaining legacy paths.
+  --dry-run` migrates remaining legacy paths (section data on PageSection +
+  CatalogItemSection, plus `pages.title_banner.background_image`).
 - Deleting is guarded in Actions (flexible type / global block in use → exception,
   friendly toast). The DB `nullOnDelete` FKs are the safety net, not the UX.
 - Revisions capture **pre-edit** state (undo semantics): restoring returns to the

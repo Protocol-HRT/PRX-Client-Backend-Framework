@@ -33,7 +33,7 @@ class ImageCalloutBannerSection extends SectionBlueprint
 
     public function description(): ?string
     {
-        return 'Full-width background image with up to two floating callout cards (icon/logo, title, text, optional CTA), positioned left and/or right.';
+        return 'Full-width background image with up to two floating callouts (icon/logo, title, text, optional CTA), positioned left and/or right. Each callout renders as a frosted card or as plain feature copy; the photo can be monochrome-tinted.';
     }
 
     public function defaults(): array
@@ -41,6 +41,8 @@ class ImageCalloutBannerSection extends SectionBlueprint
         return [
             'background_image' => null,
             'background_alt' => null,
+            'background_treatment' => 'none',
+            'tint_color' => null,
             'callouts' => [],
         ];
     }
@@ -55,6 +57,16 @@ class ImageCalloutBannerSection extends SectionBlueprint
                     TextInput::make('background_alt')
                         ->label('Background alt text')
                         ->maxLength(255),
+                    Select::make('background_treatment')
+                        ->options(['none' => 'None', 'tint' => 'Monochrome tint'])
+                        ->default('none')
+                        ->native(false)
+                        ->live()
+                        ->helperText('Monochrome tint recolors the photo to a single hue (mix-blend color).'),
+                    ColorPicker::make('tint_color')
+                        ->label('Tint color')
+                        ->visible(fn (callable $get): bool => $get('background_treatment') === 'tint')
+                        ->helperText('Leave empty for the warm neutral default.'),
                 ]),
             Repeater::make('callouts')
                 ->label('Callout cards')
@@ -66,10 +78,30 @@ class ImageCalloutBannerSection extends SectionBlueprint
                         ->required()
                         ->native(false)
                         ->helperText('Which slot over the image the card occupies.'),
+                    Select::make('variant')
+                        ->options([
+                            'card' => 'Frosted card',
+                            'media-card' => 'Compact media card',
+                            'feature' => 'Feature copy (no card)',
+                        ])
+                        ->default('card')
+                        ->native(false)
+                        ->helperText('Compact media card: small left-aligned frosted card (image over text). Feature copy: large serif title with left-aligned text directly over the image, no card.'),
+                    Select::make('align')
+                        ->options(['center' => 'Vertically centered', 'top' => 'Top', 'bottom' => 'Bottom'])
+                        ->default('center')
+                        ->native(false)
+                        ->helperText('Vertical placement inside the banner on desktop.'),
                     ColorPicker::make('color')
                         ->label('Card color')
                         ->helperText('Card background. Leave empty for the frosted light default.'),
                     SectionImagePicker::make('icon')->label('Icon / logo'),
+                    TextInput::make('icon_width')
+                        ->label('Icon width (px)')
+                        ->numeric()
+                        ->minValue(16)
+                        ->maxValue(600)
+                        ->helperText('Rendered width of the icon/logo. Leave empty for the small default.'),
                     TextInput::make('title')->maxLength(255),
                     Textarea::make('content')->rows(4)->maxLength(2000)->columnSpanFull(),
                     ...$this->ctaFields(),
