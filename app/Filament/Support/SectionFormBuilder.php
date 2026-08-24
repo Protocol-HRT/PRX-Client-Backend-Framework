@@ -5,6 +5,7 @@ namespace App\Filament\Support;
 use App\Services\Cms\SectionRegistry;
 use Filament\Forms\Components\Select;
 use Filament\Schemas\Components\Group;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 
 /**
@@ -35,19 +36,77 @@ class SectionFormBuilder
                 ->visible(fn (Get $get): bool => $get($typeField) === $type);
         }
 
-        // Shared presentation knobs every section type gets, stored alongside
-        // the type-specific fields in the same `data` payload.
-        $groups[] = Group::make([
-            Select::make('extra_padding')
-                ->label('Extra section padding')
-                ->options(['sm' => 'Small', 'md' => 'Medium', 'lg' => 'Large'])
-                ->placeholder('None (default)')
-                ->native(false)
-                ->helperText('Additional vertical breathing room around this section on the public site.'),
-        ])
+        $groups[] = Group::make([self::layoutSection()])
             ->statePath('data')
             ->visible(fn (Get $get): bool => filled($get($typeField)));
 
         return $groups;
+    }
+
+    /**
+     * Layout knobs every section type gets, stored alongside the
+     * type-specific fields in the same `data` payload.
+     *
+     * Deliberately a fixed vocabulary of sizes rather than free-form pixel
+     * values: the frontend maps each to a CSS custom property, so pages stay
+     * visually consistent, operators stay out of inline styling, and the
+     * scale can be retuned globally without touching content.
+     *
+     * The frontend applies these as `sx-*` classes on a wrapper around the
+     * section (see SectionRenderer). Horizontal inset and width move the
+     * section's CONTENT only — backgrounds and hero imagery stay full-bleed.
+     */
+    private static function layoutSection(): Section
+    {
+        return Section::make('Layout & spacing')
+            ->description('How this section sits on the page. Leave everything unset for the design default.')
+            ->collapsed()
+            ->columns(2)
+            ->components([
+                Select::make('extra_padding')
+                    ->label('Extra vertical padding')
+                    ->options([
+                        'sm' => 'Small',
+                        'md' => 'Medium',
+                        'lg' => 'Large',
+                    ])
+                    ->placeholder('None (default)')
+                    ->native(false)
+                    ->helperText('Additional breathing room above and below the section.'),
+
+                Select::make('content_inset')
+                    ->label('Horizontal inset')
+                    ->options([
+                        'sm' => 'Small',
+                        'md' => 'Medium',
+                        'lg' => 'Large',
+                        'xl' => 'Extra large',
+                    ])
+                    ->placeholder('None (default)')
+                    ->native(false)
+                    ->helperText('Pulls text and buttons in from the left and right edges. Background images stay full width.'),
+
+                Select::make('content_width')
+                    ->label('Content width')
+                    ->options([
+                        'narrow' => 'Narrow — long-form reading',
+                        'medium' => 'Medium',
+                        'wide' => 'Wide',
+                    ])
+                    ->placeholder('Full (default)')
+                    ->native(false)
+                    ->helperText('Caps how wide the content runs, centred within the section.'),
+
+                Select::make('content_align')
+                    ->label('Content alignment')
+                    ->options([
+                        'left' => 'Left',
+                        'center' => 'Centre',
+                        'right' => 'Right',
+                    ])
+                    ->placeholder('Design default')
+                    ->native(false)
+                    ->helperText('Aligns headings, copy and buttons within the section.'),
+            ]);
     }
 }
