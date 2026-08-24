@@ -52,7 +52,6 @@ final class LayoutDefaults
         'timeline' => ['content_width' => 'full'],
         'product-slider' => ['content_width' => 'full'],
         'image-callout-banner' => ['content_width' => 'full', 'media_width' => 'contained'],
-        'package-slider' => ['content_width' => 'full', 'media_width' => 'contained'],
 
         // The theme's dominant column, and genuinely capped there today.
         'testimonials' => ['content_width' => 'xwide'],
@@ -64,6 +63,13 @@ final class LayoutDefaults
         'benefits-him' => ['content_width' => 'xwide'],
         'benefits-her' => ['content_width' => 'xwide'],
         'category-grid' => ['content_width' => 'xwide'],
+
+        // Was `full`, read off the section's inner column. But the element an
+        // operator perceives as this section's width is the card wrapping it,
+        // which carried its own cap — so `full` described something invisible.
+        // `xwide` is the width that card previously hardcoded: unchanged on
+        // screen, except the knob owns it now and `full` can genuinely widen.
+        'package-slider' => ['content_width' => 'xwide', 'media_width' => 'contained'],
 
         // Narrower editorial columns.
         'text-block' => ['content_width' => 'wide'],
