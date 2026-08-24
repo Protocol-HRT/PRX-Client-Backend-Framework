@@ -19,8 +19,8 @@
     --prx-teal-light:    #e0f5f9;
     --prx-text-dim:      rgba(203 213 225 / 0.65);
     --prx-border:        rgba(255 255 255 / 0.07);
-    --prx-gold:        #ecab06;
-    --prx-gold-hover:  #fdc330;
+    --prx-gold:        #dfa000;
+    --prx-gold-hover:  #dfab29;
 }
 
 /* ── Sidebar: deep navy clinical dark ─────────────────────── */
@@ -32,27 +32,7 @@
 .dark .fi-sidebar {
     background-color: var(--prx-navy) !important;
 }
-/* Button Color */
-.fi-bg-color-400 {
-    color: var(--prx-gold);
-}
-.hover\:fi-bg-color-300
-{
-    color: var(--prx-gold-hover);
-}
-.dark\:fi-bg-color-600
-{
-    color: var(--prx-gold);
-}
-.dark\:hover\:fi-bg-color-700
-{
-    color: var(--prx-gold-hover);
-}
-/* Sidebar header / branding area */
-.fi-sidebar-group.fi-active .fi-sidebar-group-dropdown-trigger-btn .fi-icon
-{
-    color: var(--prx-gold);
-}
+
 .fi-sidebar-header {
     background-color: var(--prx-navy-800) !important;
     border-bottom: 1px solid var(--prx-border) !important;
@@ -60,16 +40,7 @@
 .fi-tabs-item.fi-active .fi-tabs-item-label, .fi-tabs-item.fi-active > .fi-icon {
     color: var(--prx-gold);
 }
-.fi-sidebar-item.fi-active > .fi-sidebar-item-btn > .fi-sidebar-item-label
-{
-    color: var(--prx-gold);
-}
-.fi-sidebar-item.fi-active > .fi-sidebar-item-btn > .fi-icon {
-    color: var(--prx-gold);
-}
-.fi-sidebar-item-label {
-    color: var(--prx-text-dim);
-}
+
 /* Sidebar nav group labels */
 .fi-sidebar-group-label {
     color: var(--prx-text-dim) !important;
@@ -125,7 +96,7 @@
 
 /* ── Topbar ───────────────────────────────────────────────── */
 .fi-topbar {
-    border-bottom: 1px solid rgb(var(--gray-200)) !important;
+    border-bottom: 1px solid rgb(var(--prx-border)) !important;
     backdrop-filter: blur(8px) !important;
     background-color: rgba(255 255 255 / 0.9) !important;
 }
@@ -162,11 +133,11 @@
 
 .fi-section-header-ctn {
     padding: 0.75rem 1rem !important;
-    border-bottom: 1px solid rgb(var(--gray-200)) !important;
+    border-bottom: 1px solid rgb(var(--prx-border)) !important;
 }
 
 .dark .fi-section-header-ctn {
-    border-bottom-color: rgb(var(--gray-700)) !important;
+    border-bottom-color: rgb(var(--prx-border)) !important;
 }
 
 /* ── Table compact ────────────────────────────────────────── */
@@ -204,10 +175,27 @@
 .fi-section-heading {
     font-size: 0.875rem !important;
     font-weight: 600 !important;
-    color: rgb(var(--primary-600)) !important;
+    color: rgb(var(--prx-border)) !important;
 }
 
 /* ── Scrollbar (webkit) ───────────────────────────────────── */
 .fi-sidebar::-webkit-scrollbar { width: 4px; }
 .fi-sidebar::-webkit-scrollbar-track { background: transparent; }
 .fi-sidebar::-webkit-scrollbar-thumb { background: rgba(255 255 255 / 0.12); border-radius: 2px; }
+
+/* Page Headers */
+@media (min-width: 40rem) {
+    .fi-header {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        padding: 30px;
+    }
+}
+.fi-header {
+    gap: calc(var(--spacing) * 4);
+    flex-direction: column;
+    display: flex;
+    background-color: #fff;
+    border-radius: 20px;
+}
