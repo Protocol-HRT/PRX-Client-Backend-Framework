@@ -3,6 +3,7 @@
 namespace App\Models\Catalog;
 
 use App\Models\Concerns\GeneratesUniqueSlug;
+use Database\Factories\Catalog\CategoryFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -43,9 +44,9 @@ class Category extends Model implements Sortable
         ];
     }
 
-    protected static function newFactory(): \Database\Factories\Catalog\CategoryFactory
+    protected static function newFactory(): CategoryFactory
     {
-        return \Database\Factories\Catalog\CategoryFactory::new();
+        return CategoryFactory::new();
     }
 
     public function parent(): BelongsTo

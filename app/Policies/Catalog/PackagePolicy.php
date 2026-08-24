@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Policies\Catalog;
 
-use Illuminate\Foundation\Auth\User as AuthUser;
 use App\Models\Catalog\Package;
 use Illuminate\Auth\Access\HandlesAuthorization;
+use Illuminate\Foundation\Auth\User as AuthUser;
 
 class PackagePolicy
 {
     use HandlesAuthorization;
-    
+
     public function viewAny(AuthUser $authUser): bool
     {
         return $authUser->can('ViewAny:Package');
@@ -71,5 +71,4 @@ class PackagePolicy
     {
         return $authUser->can('Reorder:Package');
     }
-
 }

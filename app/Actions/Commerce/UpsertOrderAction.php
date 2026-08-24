@@ -3,6 +3,7 @@
 namespace App\Actions\Commerce;
 
 use App\Actions\Concerns\Transacts;
+use App\Data\Commerce\OrderItemData;
 use App\Data\Commerce\UpsertOrderData;
 use App\Models\Commerce\Encounter;
 use App\Models\Commerce\Order;
@@ -55,7 +56,7 @@ class UpsertOrderAction
     }
 
     /**
-     * @param  DataCollection<int, \App\Data\Commerce\OrderItemData>|array<int, \App\Data\Commerce\OrderItemData>  $items
+     * @param  DataCollection<int, OrderItemData>|array<int, OrderItemData>  $items
      */
     private function syncItems(Order $order, $items): void
     {

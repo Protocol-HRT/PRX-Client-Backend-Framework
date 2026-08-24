@@ -11,6 +11,8 @@ use App\Data\Commerce\UpsertEncounterData;
 use App\Data\Commerce\UpsertOrderData;
 use App\Data\Commerce\UpsertShipmentData;
 use App\Enums\EncounterStatus;
+use App\Enums\OrderStatus;
+use App\Enums\ShipmentStatus;
 use App\Models\Lead;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -243,38 +245,38 @@ class WebhookController
         };
     }
 
-    private function resolveOrderStatus(string $event, array $data): \App\Enums\OrderStatus
+    private function resolveOrderStatus(string $event, array $data): OrderStatus
     {
         if ($explicit = Arr::get($data, 'status')) {
-            return \App\Enums\OrderStatus::tryFrom($explicit) ?? \App\Enums\OrderStatus::Pending;
+            return OrderStatus::tryFrom($explicit) ?? OrderStatus::Pending;
         }
 
         return match ($event) {
-            'order.created' => \App\Enums\OrderStatus::Pending,
-            'order.processing' => \App\Enums\OrderStatus::Processing,
-            'order.shipped' => \App\Enums\OrderStatus::Shipped,
-            'order.partially_shipped' => \App\Enums\OrderStatus::PartiallyShipped,
-            'order.delivered' => \App\Enums\OrderStatus::Delivered,
-            'order.cancelled' => \App\Enums\OrderStatus::Cancelled,
-            'order.refunded' => \App\Enums\OrderStatus::Refunded,
-            default => \App\Enums\OrderStatus::Pending,
+            'order.created' => OrderStatus::Pending,
+            'order.processing' => OrderStatus::Processing,
+            'order.shipped' => OrderStatus::Shipped,
+            'order.partially_shipped' => OrderStatus::PartiallyShipped,
+            'order.delivered' => OrderStatus::Delivered,
+            'order.cancelled' => OrderStatus::Cancelled,
+            'order.refunded' => OrderStatus::Refunded,
+            default => OrderStatus::Pending,
         };
     }
 
-    private function resolveShipmentStatus(string $event, array $data): \App\Enums\ShipmentStatus
+    private function resolveShipmentStatus(string $event, array $data): ShipmentStatus
     {
         if ($explicit = Arr::get($data, 'status')) {
-            return \App\Enums\ShipmentStatus::tryFrom($explicit) ?? \App\Enums\ShipmentStatus::Pending;
+            return ShipmentStatus::tryFrom($explicit) ?? ShipmentStatus::Pending;
         }
 
         return match ($event) {
-            'shipment.created', 'shipment.label_created' => \App\Enums\ShipmentStatus::LabelCreated,
-            'shipment.shipped' => \App\Enums\ShipmentStatus::Shipped,
-            'shipment.in_transit' => \App\Enums\ShipmentStatus::InTransit,
-            'shipment.delivered' => \App\Enums\ShipmentStatus::Delivered,
-            'shipment.exception' => \App\Enums\ShipmentStatus::Exception,
-            'shipment.cancelled' => \App\Enums\ShipmentStatus::Cancelled,
-            default => \App\Enums\ShipmentStatus::Pending,
+            'shipment.created', 'shipment.label_created' => ShipmentStatus::LabelCreated,
+            'shipment.shipped' => ShipmentStatus::Shipped,
+            'shipment.in_transit' => ShipmentStatus::InTransit,
+            'shipment.delivered' => ShipmentStatus::Delivered,
+            'shipment.exception' => ShipmentStatus::Exception,
+            'shipment.cancelled' => ShipmentStatus::Cancelled,
+            default => ShipmentStatus::Pending,
         };
     }
 }

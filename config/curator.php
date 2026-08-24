@@ -1,9 +1,18 @@
 <?php
 
 declare(strict_types=1);
+use Awcodes\Curator\Enums\PreviewableExtensions;
+use Awcodes\Curator\Models\Media;
+use Awcodes\Curator\Providers\GlideUrlProvider;
+use Awcodes\Curator\Resources\Media\MediaResource;
+use Awcodes\Curator\Resources\Media\Pages\CreateMedia;
+use Awcodes\Curator\Resources\Media\Pages\EditMedia;
+use Awcodes\Curator\Resources\Media\Pages\ListMedia;
+use Awcodes\Curator\Resources\Media\Schemas\MediaForm;
+use Awcodes\Curator\Resources\Media\Tables\MediaTable;
 
 return [
-    'curation_formats' => Awcodes\Curator\Enums\PreviewableExtensions::toArray(),
+    'curation_formats' => PreviewableExtensions::toArray(),
     'default_disk' => env('CURATOR_DEFAULT_DISK', 'public'),
     'default_directory' => null,
     'default_visibility' => 'public',
@@ -18,7 +27,7 @@ return [
         ],
     ],
     'glide_token' => env('CURATOR_GLIDE_TOKEN'),
-    'model' => Awcodes\Curator\Models\Media::class,
+    'model' => Media::class,
     'path_generator' => null,
     'resource' => [
         'label' => 'Media',
@@ -31,18 +40,18 @@ return [
             'should_register' => true,
             'should_show_badge' => false,
         ],
-        'resource' => Awcodes\Curator\Resources\Media\MediaResource::class,
+        'resource' => MediaResource::class,
         'pages' => [
-            'create' => Awcodes\Curator\Resources\Media\Pages\CreateMedia::class,
-            'edit' => Awcodes\Curator\Resources\Media\Pages\EditMedia::class,
-            'index' => Awcodes\Curator\Resources\Media\Pages\ListMedia::class,
+            'create' => CreateMedia::class,
+            'edit' => EditMedia::class,
+            'index' => ListMedia::class,
         ],
         'schemas' => [
-            'form' => Awcodes\Curator\Resources\Media\Schemas\MediaForm::class,
+            'form' => MediaForm::class,
         ],
         'tables' => [
-            'table' => Awcodes\Curator\Resources\Media\Tables\MediaTable::class,
+            'table' => MediaTable::class,
         ],
     ],
-    'url_provider' => Awcodes\Curator\Providers\GlideUrlProvider::class,
+    'url_provider' => GlideUrlProvider::class,
 ];

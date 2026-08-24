@@ -7,7 +7,6 @@ use App\Actions\Settings\UpdateSeoSettingsAction;
 use App\Data\Settings\BrandSettingsData;
 use App\Data\Settings\SeoSettingsData;
 use App\Settings\BrandSettings;
-use App\Settings\SeoSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\ValidationException;

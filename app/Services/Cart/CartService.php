@@ -279,7 +279,7 @@ class CartService
      * Eager-load all referenced models in 3 grouped queries.
      *
      * @param  array<int, array{resource_type: string, resource_id: int, quantity: int}>  $stored
-     * @return array<string, Product|Package|Plan>  keyed by "type:id"
+     * @return array<string, Product|Package|Plan> keyed by "type:id"
      */
     private function loadModels(array $stored): array
     {
