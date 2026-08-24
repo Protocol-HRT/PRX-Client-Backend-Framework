@@ -3,10 +3,12 @@
 namespace App\Filament\Support;
 
 use App\Services\Cms\SectionRegistry;
+use App\Settings\ThemeSettings;
 use Filament\Forms\Components\Select;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
+use Illuminate\Support\Str;
 
 /**
  * Builds the per-section-type Filament form groups shared by every place a
@@ -36,7 +38,7 @@ class SectionFormBuilder
                 ->visible(fn (Get $get): bool => $get($typeField) === $type);
         }
 
-        $groups[] = Group::make([self::layoutSection()])
+        $groups[] = Group::make([self::styleSection(), self::layoutSection()])
             ->statePath('data')
             ->visible(fn (Get $get): bool => filled($get($typeField)));
 
@@ -56,6 +58,85 @@ class SectionFormBuilder
      * section (see SectionRenderer). Horizontal inset and width move the
      * section's CONTENT only — backgrounds and hero imagery stay full-bleed.
      */
+    /**
+     * Colour knobs every section type gets, stored in the same `data` payload
+     * as the layout ones and classified the same way (LayoutFields::KEYS).
+     *
+     * Colours are chosen BY NAME from the install's palette (ThemeSettings),
+     * never as a hex typed into a section. That is the whole point: the
+     * palette is one edit, and retuning "sand" there moves every section
+     * using it. A section that stores a hex would have to be found and
+     * re-edited by hand at the next rebrand.
+     *
+     * Unset means "whatever this section type already looked like" — the
+     * frontend only emits a class when a knob resolves, so an untouched
+     * section keeps its own stylesheet background rather than being reset to
+     * transparent.
+     */
+    private static function styleSection(): Section
+    {
+        return Section::make('Style')
+            ->description('Colours and imagery for this section. Leave everything unset to keep the section type\'s own design.')
+            ->collapsed()
+            ->columns(2)
+            ->components([
+                Select::make('style_background_color')
+                    ->label('Background colour')
+                    ->options(fn (): array => self::paletteOptions())
+                    ->placeholder('Section default')
+                    ->native(false)
+                    ->helperText(fn (): string => self::paletteHelp('Fills the section band edge to edge. Panels and cards inside keep their own styling.')),
+
+                Select::make('style_text_color')
+                    ->label('Text colour')
+                    ->options(fn (): array => self::paletteOptions())
+                    ->placeholder('Section default')
+                    ->native(false)
+                    ->helperText(fn (): string => self::paletteHelp('Sets the colour copy inherits. Elements this section styles explicitly keep their own colour.')),
+
+                SectionImagePicker::make('style_background_image')
+                    ->label('Background image')
+                    ->helperText('Sits behind the section, covering the band. Pair it with a background colour so text stays readable while the image loads.')
+                    ->columnSpanFull(),
+            ]);
+    }
+
+    /**
+     * The palette as Select options, keyed by NAME because that is what a
+     * section stores. The hex is appended to each label so an operator
+     * picking "sand" can tell which colour that is without opening the theme
+     * settings in another tab.
+     *
+     * @return array<string, string>
+     */
+    private static function paletteOptions(): array
+    {
+        $options = [];
+
+        foreach (app(ThemeSettings::class)->palette as $entry) {
+            $name = $entry['name'] ?? null;
+
+            if (! filled($name)) {
+                continue;
+            }
+
+            $options[$name] = Str::headline($name).' — '.($entry['color'] ?? '');
+        }
+
+        return $options;
+    }
+
+    /**
+     * An empty palette makes both colour selects look broken, so say where
+     * colours come from rather than offering an empty dropdown silently.
+     */
+    private static function paletteHelp(string $base): string
+    {
+        return app(ThemeSettings::class)->palette === []
+            ? 'No colours defined yet — add them under Settings → Theme → Colour palette, then pick one here.'
+            : $base;
+    }
+
     private static function layoutSection(): Section
     {
         return Section::make('Layout & spacing')

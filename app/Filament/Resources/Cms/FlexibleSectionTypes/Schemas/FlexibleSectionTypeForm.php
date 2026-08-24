@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Cms\FlexibleSectionTypes\Schemas;
 
+use App\Cms\Support\LayoutFields;
 use App\Enums\Cms\FlexibleFieldKind;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -13,11 +14,25 @@ use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class FlexibleSectionTypeForm
 {
     private const KEY_PATTERN = '/^[a-z][a-z0-9_]*$/';
 
+    /**
+     * Top-level field keys are additionally refused if they collide with a
+     * layout/style knob (LayoutFields::KEYS). SectionFormBuilder injects
+     * those panels into EVERY type, flexible ones included, so the two share
+     * one flat `data` payload and a shared key silently becomes two things at
+     * once — the section's authored value stops counting as content and
+     * disappears from the live page. The code blueprints are covered by
+     * LayoutFieldCollisionTest; admin-defined types can only be caught here,
+     * at the point they are typed.
+     *
+     * Repeater CHILD keys need no such guard: they live at `parent.child` in
+     * the payload and cannot collide with a top-level knob.
+     */
     public static function configure(Schema $schema): Schema
     {
         return $schema
@@ -80,6 +95,10 @@ class FlexibleSectionTypeForm
                                         TextInput::make('key')
                                             ->required()
                                             ->regex(self::KEY_PATTERN)
+                                            ->rule(Rule::notIn(LayoutFields::KEYS))
+                                            ->validationMessages([
+                                                'not_in' => 'That key is reserved for a layout or style control. Every section already carries these, and reusing the name would make one key mean two things in the same payload.',
+                                            ])
                                             ->maxLength(64)
                                             ->helperText('Snake_case identifier in the API payload. Renaming orphans existing content — avoid changing it once in use.'),
                                         Select::make('kind')

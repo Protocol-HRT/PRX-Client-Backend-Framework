@@ -25,6 +25,33 @@ final class LayoutFields
         'content_width',
         'content_align',
         'media_width',
+        // NAMESPACED, and it must stay that way. `background_image` was tried
+        // bare first and collided head-on with an authored content field of
+        // the same name on hero, cta-banner and image-callout-banner: the
+        // key landed in KEYS, presentationKeys() reclassified those sections'
+        // real background images as presentation, and a hero carrying only a
+        // background image would have reported has_content: false and
+        // vanished from a live page. Style words are exactly what a blueprint
+        // wants to call its own fields, so every style knob carries the
+        // prefix. LayoutFieldCollisionTest enforces it.
+        'style_background_color',
+        'style_background_image',
+        'style_text_color',
+    ];
+
+    /**
+     * Layout keys holding a media id rather than a token.
+     *
+     * Media resolution is driven by each blueprint's fieldKinds(), and these
+     * keys appear in NO blueprint — SectionFormBuilder injects them into
+     * every type. SectionDataTransformer therefore unions this list in, or a
+     * background image reaches the frontend as a bare integer instead of the
+     * resolved {id, url, alt, width, height}.
+     *
+     * @var list<string>
+     */
+    public const IMAGE_KEYS = [
+        'style_background_image',
     ];
 
     /**

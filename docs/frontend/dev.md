@@ -29,16 +29,23 @@ Keep the token server-side (env var). Never ship it in client-side JavaScript.
 | Key | Contents | Frontend responsibility |
 |---|---|---|
 | `brand` | name, tagline, logo variants, favicon, hero image, announcement | Render chrome; never hardcode a brand string or logo file |
-| `theme` | `primary_color`, `accent_color`, `accent_secondary_color`, `background_color`, `text_color`, `font_display`, `font_body`, `custom_css`, `frontend_template`, `text_classes` | Map colors/fonts to CSS custom properties on `<html>`; inject `custom_css` **after** your own styles; switch component/layout variants on `frontend_template` |
+| `theme` | `primary_color`, `accent_color`, `accent_secondary_color`, `background_color`, `text_color`, `font_display`, `font_body`, `custom_css`, `frontend_template`, `palette`, `text_classes` | Map colors/fonts to CSS custom properties on `<html>`; inject `custom_css` **after** your own styles; switch component/layout variants on `frontend_template` |
 | `contact` | emails, phone, address, business hours, social links | Contact page, footer, JSON-LD |
 | `seo` | default title/description, OG image, `google_analytics_id`, `google_tag_manager_id`, `facebook_pixel_id`, `tiktok_pixel_id`, `custom_head_scripts`, `custom_body_scripts`, `allow_indexing` | Metadata defaults, robots handling, analytics bootstrapping. Inject the custom script fields verbatim (head / end-of-body) |
 | `provider` | telehealth provider name/slug, `supports_embed`, `supports_patient_portal_auth` | Feature-gate checkout embed and patient portal |
 
 **Trust note on `custom_css` / `custom_*_scripts`:** these execute verbatim in the page. They are writable only by the install's permission-gated admins and served from the install's own backend — the same trust level as the frontend deploy itself. Never point a frontend at a backend you don't control.
 
-**Text color classes:** `theme.text_classes` is a list of `{name, color}` rows (managed in Settings → Theme). The frontend emits a `.tx-{name} { color: … }` rule for each, so admins can color runs of rich text with `<span class="tx-gold">…</span>` without touching CSS.
+**Colour palette:** `theme.palette` is the install's named colour vocabulary — a list of `{name, color}` rows managed in Settings → Theme. It is the vocabulary the section **style knobs** resolve against, so a frontend that ignores it renders every `style_background_color: "sand"` as nothing. Expose each entry two ways:
 
-**Section presentation:** every section's `data` may carry `extra_padding` (`sm`|`md`|`lg`) — a shared knob added by the section editor; the renderer wraps the section to add vertical breathing room. Long-copy fields (hero slide `description`, image-callout `content`, timeline `body`, hero-banner `subhead`) are HTML: render them with the shared `Html` component (plain legacy text passes through with newlines converted to `<br />`).
+- a custom property `--palette-{name}: {color}` on `<html>`, which is what the style knobs reference;
+- a `.tx-{name} { color: … }` rule, so admins can colour runs of rich text with `<span class="tx-gold">…</span>` without touching CSS.
+
+Sections store the colour's **name**, never a hex — retuning a palette entry in the admin is meant to move every section using it. Sanitize `name` and `color` before injection: both reach a `<style>` tag and an inline style attribute.
+
+`theme.text_classes` is the pre-palette name for the same rows and still ships, in lockstep, for frontends built before the palette existed. New work should read `palette`.
+
+**Long-copy fields** (hero slide `description`, image-callout `content`, timeline `body`, hero-banner `subhead`) are HTML — and see §4b for the presentation knobs every section carries: render them with the shared `Html` component (plain legacy text passes through with newlines converted to `<br />`).
 
 **Theming model:** the frontend defines *structure* with neutral CSS variables (`--color-primary`, `--font-display`, …); the backend supplies *values*. Per-install visual identity therefore requires zero frontend code changes: colors/fonts via theme settings, arbitrary overrides via `custom_css`, and wholesale layout swaps via `frontend_template` (the frontend maps each supported template slug to its own component set; unknown slugs should fall back to `default`).
 
@@ -54,6 +61,30 @@ Each section **envelope** is `{ type, origin, anchor, global, has_content, data,
 - **`has_content: bool` — render nothing when this is `false`.** A section an editor added but never filled in still carries its blueprint's structural flags (`theme: "light"`, `alignment: "left"`, `mode: "manual"`), so a naive "is every value empty?" check judges it authored and an empty scaffold reaches the live page. The backend knows which of its own keys are presentation and does that classification for you — it is computed after catalog inlining, so a slider whose query returned nothing is correctly `false`. Do not reimplement this by guessing which keys look like flags.
 - `anchor` → element `id`; `type` / `global.slug` → CSS hooks (`section--{slug}`); `global` marks shared blocks.
 - Image kinds arrive resolved as `{ id, url, alt, width, height }`; SVG fields arrive sanitized; unknown types should render a visible placeholder in dev builds, never crash.
+
+### 4b. Presentation knobs every section carries
+
+`SectionFormBuilder` injects two shared panels — **Layout & spacing** and **Style** — into *every* section type, so these keys live in the same flat `data` payload as the type's own fields. They are the operator's design controls; the frontend owns what each token measures.
+
+| Key | Values | What it controls |
+|---|---|---|
+| `extra_padding` | `sm` `md` `lg` | Extra vertical breathing room |
+| `content_inset` | `sm` `md` `lg` `xl` | Horizontal inset of the section's **content** (backgrounds stay full-bleed) |
+| `content_width` | `narrow` `medium` `wide` `xwide` `full` | Max-width cap on the content column, centred |
+| `content_align` | `left` `center` `right` | Text and grid/flex item alignment |
+| `media_width` | `contained` `full` | Whether the section's media escapes the content column |
+| `style_background_color` | a `palette` entry **name** | Background colour of the section band |
+| `style_text_color` | a `palette` entry **name** | Colour copy inherits within the section |
+| `style_background_image` | resolved `{id, url, alt, …}` | Image behind the section band |
+
+Four rules that make these safe to consume:
+
+1. **Width values are semantic tokens, never pixels.** prx-backend serves more than one frontend, so a measurement belonging to any one of them may not appear in its code. You own the token → px map and can retune the whole scale without a content edit.
+2. **Unset means "keep this section type's own design".** Emit a class or property *only* when a knob resolves to a value. A rule written unconditionally against an unset custom property resolves to `unset` and will blank whatever the section's own stylesheet painted.
+3. **Colours are stored by name, not by value**, and resolve through `--palette-{name}`. That indirection is the point: it is what makes a palette edit reach every section.
+4. **Style keys are namespaced `style_*`, deliberately.** `background_image` is already an *authored content* field on `hero`, `cta-banner` and `image-callout-banner`. An unprefixed knob collides with it in the flat payload — which both reclassifies those sections' real images as presentation (so `has_content` goes false and the section vanishes) and paints the content image a second time as a backdrop. `LayoutFieldCollisionTest` enforces the prefix; do not strip it.
+
+None of these keys count as authored content: a section carrying nothing but style knobs still reports `has_content: false` and must render nothing.
 
 ### 4a. Authored copy is HTML — never render it as text
 

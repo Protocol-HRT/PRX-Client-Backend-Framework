@@ -92,6 +92,65 @@ class SectionMediaTest extends TestCase
         $this->assertSame('A test image', $section['data']['image']['alt']);
     }
 
+    /**
+     * The background_image layout knob appears in NO blueprint's fieldKinds()
+     * — SectionFormBuilder injects the Style panel into every type — so it
+     * resolves only because SectionDataTransformer unions
+     * LayoutFields::IMAGE_KEYS in. Without that it reaches the frontend as
+     * the bare integer it is stored as.
+     */
+    public function test_api_resolves_the_background_image_layout_knob(): void
+    {
+        $media = $this->makeMedia();
+        $page = Page::factory()->create(['slug' => 'bg-page']);
+        PageSection::factory()->create([
+            'page_id' => $page->id,
+            'type' => 'text-block',
+            'data' => ['heading' => 'Styled', 'style_background_image' => $media->id],
+        ]);
+
+        $background = $this->getJson('/api/v1/pages/bg-page')->json('data.sections.0.data.style_background_image');
+
+        $this->assertSame($media->id, $background['id']);
+        $this->assertStringContainsString('media/test-image.jpg', $background['url']);
+        $this->assertSame(800, $background['width']);
+    }
+
+    /**
+     * Style knobs are presentation, not copy. A section carrying nothing but
+     * a background colour and image must still report has_content: false, or
+     * an untouched scaffold leaks onto a live page the moment an operator
+     * nudges a colour. This is the LayoutFields::KEYS rule, end to end.
+     *
+     * The backend still SERVES the envelope — dropping it is the frontend's
+     * job (SectionRenderer), which needs the flag to make that call. So the
+     * assertion is on has_content, not on the section being absent.
+     */
+    public function test_style_knobs_alone_do_not_make_a_section_authored(): void
+    {
+        $media = $this->makeMedia();
+        $page = Page::factory()->create(['slug' => 'style-only-page']);
+        PageSection::factory()->create([
+            'page_id' => $page->id,
+            'type' => 'text-block',
+            'data' => [
+                'heading' => null,
+                'body' => null,
+                'style_background_color' => 'sand',
+                'style_text_color' => 'ink',
+                'style_background_image' => $media->id,
+            ],
+        ]);
+
+        $section = $this->getJson('/api/v1/pages/style-only-page')->json('data.sections.0');
+
+        $this->assertFalse($section['has_content']);
+        // ...and the knobs did survive into the payload, so the section is
+        // reporting "no copy", not "no data".
+        $this->assertSame('sand', $section['data']['style_background_color']);
+        $this->assertSame($media->id, $section['data']['style_background_image']['id']);
+    }
+
     public function test_api_resolves_repeater_image_fields(): void
     {
         $media = $this->makeMedia();

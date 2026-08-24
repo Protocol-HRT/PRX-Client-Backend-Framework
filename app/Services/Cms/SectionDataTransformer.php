@@ -5,6 +5,7 @@ namespace App\Services\Cms;
 use App\Cms\FlexibleDefinition;
 use App\Cms\Support\LayoutFields;
 use App\Cms\Support\SectionContent;
+use App\Contracts\Cms\SectionDefinition;
 use App\Models\Catalog\CatalogItemSection;
 use App\Models\Cms\GlobalSection;
 use App\Models\PageSection;
@@ -73,7 +74,7 @@ class SectionDataTransformer
         return array_map(function (array $row): array {
             $data = $row['data'];
 
-            foreach ($row['definition']->fieldKinds() as $path => $kind) {
+            foreach ($this->fieldKinds($row['definition']) as $path => $kind) {
                 $this->walk($data, explode('.', $path), fn (mixed $value): mixed => $this->transformValue($kind, $value));
             }
 
@@ -135,7 +136,7 @@ class SectionDataTransformer
 
         $data ??= [];
 
-        foreach ($definition->fieldKinds() as $path => $kind) {
+        foreach ($this->fieldKinds($definition) as $path => $kind) {
             $this->walk($data, explode('.', $path), fn (mixed $value): mixed => $this->transformValue($kind, $value));
         }
 
@@ -173,7 +174,7 @@ class SectionDataTransformer
         $ids = [];
 
         foreach ($prepared as $row) {
-            foreach ($row['definition']->fieldKinds() as $path => $kind) {
+            foreach ($this->fieldKinds($row['definition']) as $path => $kind) {
                 if ($kind !== 'image') {
                     continue;
                 }
@@ -189,6 +190,21 @@ class SectionDataTransformer
         }
 
         $this->media->prime($ids);
+    }
+
+    /**
+     * A definition's field kinds, plus the layout knobs that hold a media id.
+     *
+     * The layout panel is injected into every type by SectionFormBuilder and
+     * so appears in no blueprint's fieldKinds(). Without this union a
+     * background image would be served as the raw id it is stored as, and
+     * every consumer would have to resolve media itself.
+     *
+     * @return array<string, string>
+     */
+    private function fieldKinds(SectionDefinition $definition): array
+    {
+        return $definition->fieldKinds() + array_fill_keys(LayoutFields::IMAGE_KEYS, 'image');
     }
 
     private function transformValue(string $kind, mixed $value): mixed
