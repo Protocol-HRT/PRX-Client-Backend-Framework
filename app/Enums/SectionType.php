@@ -7,6 +7,7 @@ use App\Cms\Sections\BenefitsHerSection;
 use App\Cms\Sections\BenefitsHimSection;
 use App\Cms\Sections\CategoryGridSection;
 use App\Cms\Sections\CtaBannerSection;
+use App\Cms\Sections\FaqCategoriesSection;
 use App\Cms\Sections\FaqSection;
 use App\Cms\Sections\FeaturesGridSection;
 use App\Cms\Sections\FinalCtaSection;
@@ -68,6 +69,9 @@ enum SectionType: string
     case PackagePricingComparison = 'package-pricing-comparison';
     case CategoryGrid = 'category-grid';
 
+    // Content-dataset-aware sections (FAQ dataset inlined at API read time)
+    case FaqCategories = 'faq-categories';
+
     public function blueprint(): SectionBlueprint
     {
         return match ($this) {
@@ -99,6 +103,7 @@ enum SectionType: string
             self::PackageSlider => app(PackageSliderSection::class),
             self::PackagePricingComparison => app(PackagePricingComparisonSection::class),
             self::CategoryGrid => app(CategoryGridSection::class),
+            self::FaqCategories => app(FaqCategoriesSection::class),
         };
     }
 

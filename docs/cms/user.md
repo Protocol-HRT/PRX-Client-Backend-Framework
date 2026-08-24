@@ -44,7 +44,13 @@ After saving, you'll land on the page's edit screen. Below the page form, the **
    - **How it works (steps)** — numbered process steps
    - **Testimonials — expert quotes** — endorsement cards
    - **Transformed — proof + quotes** — headline stats + testimonial grid
-   - **FAQ** — collapsible Q&A list
+   - **FAQ** — collapsible Q&A list, with questions typed into this section
+   - **FAQ categories (from FAQ dataset)** — pulls questions from **Content → FAQ**
+     instead of retyping them: one panel per category with a badge and accordion
+     rows, plus optional category filter pills. Choose *All visible categories* or
+     pick specific ones. Edit the questions in Content → FAQ and every page using
+     this section updates. Use this on the FAQ page; use plain **FAQ** above when
+     you want a handful of one-off questions that belong to just that page.
    - **Final call-to-action** — closer banner with CTAs
    - **Text block** — generic prose section with rich text
    - **Image + text split** — 50/50 image and prose
@@ -63,6 +69,33 @@ After saving, you'll land on the page's edit screen. Below the page form, the **
 - **Edit** — click the row's edit pencil. The section type is locked after creation; if you need to switch types, delete and re-add.
 - **Disable / enable** — quick toggle without leaving the list.
 - **Duplicate** — coming in the next iteration.
+
+## Layout & spacing (every section)
+
+Every section's edit form has a collapsed **Layout & spacing** panel at the bottom. Use it
+instead of asking a developer for padding tweaks — all four are dropdowns, and leaving one
+unset keeps the design's default.
+
+| Setting | What it does |
+|---|---|
+| **Extra vertical padding** | Breathing room above and below the section. |
+| **Horizontal inset** | Pulls the text and buttons in from the left and right edges. Background photos stay full width, so a hero image still bleeds edge-to-edge while its headline moves inward. |
+| **Content width** | Caps how wide the content runs and centres it. *Narrow* suits long-form reading. |
+| **Content alignment** | Left / centre / right for headings, copy and buttons. |
+
+The sizes are a fixed scale rather than pixel values, so pages stay consistent with each
+other and the whole scale can be retuned site-wide without re-editing content.
+
+## Writing formatted text
+
+Headings and body fields accept basic HTML, so you can control line breaks and emphasis
+without a developer:
+
+- `The Operating System<br />for Longevity` — forces the second half onto its own line.
+- `<em>italic</em>`, `<strong>bold</strong>`, `<span class="tx-gold">coloured</span>`
+  (colour classes come from Settings → Theme → text classes).
+
+Plain text works exactly as before — you only need tags when you want the formatting.
 
 ## Image fields
 

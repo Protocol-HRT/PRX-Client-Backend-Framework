@@ -12,10 +12,13 @@ use App\Models\Cms\GlobalSection;
 use App\Models\Cms\Menu;
 use App\Models\Cms\MenuItem;
 use App\Models\Cms\RegionItem;
+use App\Models\Content\FaqCategory;
+use App\Models\Content\FaqItem;
 use App\Models\Page;
 use App\Models\PageSection;
 use App\Observers\CmsCacheObserver;
 use App\Observers\PageSectionObserver;
+use App\Services\Cms\FrontendRevalidator;
 use App\Services\Cms\PageRevisionService;
 use App\Services\Cms\SectionRegistry;
 use App\Services\Payments\PaymentGatewayManager;
@@ -41,6 +44,10 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        // Singleton so one admin save coalesces its many model events
+        // into a single frontend revalidation job.
+        $this->app->singleton(FrontendRevalidator::class);
+
         $this->app->singleton(PaymentGatewayManager::class);
         $this->app->singleton(SectionRegistry::class);
         $this->app->singleton(PageRevisionService::class);
@@ -128,6 +135,11 @@ class AppServiceProvider extends ServiceProvider
         Menu::observe(CmsCacheObserver::class);
         MenuItem::observe(CmsCacheObserver::class);
         RegionItem::observe(CmsCacheObserver::class);
+
+        // The faq-categories section inlines the central FAQ dataset into cached
+        // page payloads, so an FAQ edit is a CMS content write like any other.
+        FaqCategory::observe(CmsCacheObserver::class);
+        FaqItem::observe(CmsCacheObserver::class);
 
         // Menu items reference linkable entities by short alias so DB rows
         // don't couple to class names. Non-enforcing: other morphs (tags,

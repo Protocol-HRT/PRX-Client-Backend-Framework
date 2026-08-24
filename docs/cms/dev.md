@@ -178,9 +178,79 @@ When you change a field, change both. When you add a field, add to both, and add
 
 ### Content-free defaults policy (2026-08-15)
 
-`defaults()` must contain **no copy** — only nulls, empty arrays, and structural flags (`theme`, `image_right`, …). Earlier blueprints shipped a legacy site's marketing copy as defaults; that meant a freshly added (or freshly seeded) section could render text belonging to another deployment. The rule now: **a section renders nothing until an operator authors its content.** Deployment-specific content lives in the DB (authored via admin, or loaded by a fill script kept in that deployment's frontend repo — see `atlas-dev-local/scripts/atlas-home-fill.php` for the pattern). Frontends enforce the same rule by rendering nothing for content-empty section envelopes.
+`defaults()` must contain **no copy** — only nulls, empty arrays, and structural flags (`theme`, `image_right`, …). Earlier blueprints shipped a legacy site's marketing copy as defaults; that meant a freshly added (or freshly seeded) section could render text belonging to another deployment. The rule now: **a section renders nothing until an operator authors its content.** Deployment-specific content lives in the DB (authored via admin, or loaded by a fill script kept in that deployment's frontend repo — see `atlas-protocol-web/scripts/atlas-home-fill.php` for the pattern). Frontends enforce the same rule by rendering nothing for content-empty section envelopes.
 
 Blueprint shape changes shipped the same day: `hero` gained a `slides` repeater (image, heading + emphasis, description, CTA, text tone), `highlight_*` card fields, and `background_image` (static no-slides fallback; concierge-era fields removed); `physicians` entries are now name / title / specialty / image / bio / `badges[]` (legacy credentials chip, accent color, stats, and quote fields dropped); `faq` gained intro `description`, `cta_label`/`cta_url`, `image`/`image_alt`; `image-text-split` gained `lead`.
+
+## Dataset-driven sections
+
+Most blueprints store the content an operator types into them. A second kind stores only a
+*query* and inlines content owned elsewhere at API read time, via `resolveData()`:
+
+| Type | Source dataset | Inliner |
+|---|---|---|
+| `product-slider`, `product-grid`, `product-callout`, `package-slider`, `package-pricing-comparison`, `category-grid` | Catalog | `CatalogInliner` |
+| `faq-categories` | Content → FAQ (`FaqCategory` / `FaqItem`) | `FaqInliner` |
+
+`faq-categories` renders one panel per FAQ category with its published questions, plus
+optional filter pills. It authors **nothing** — questions are managed once in Content → FAQ
+and reused on any page built in the page builder. This is distinct from the older `faq`
+blueprint, which keeps its own hand-authored `faqs` repeater for one-off marketing
+accordions; both types coexist deliberately.
+
+`FaqInliner` emits only visible categories and published items, preserves the admin's chosen
+order in `manual` mode, and drops categories left with no published items so an empty panel
+can never render.
+
+**Cache coupling:** once a dataset is inlined into a cached page payload, edits to that
+dataset are CMS content writes. `FaqCategory` and `FaqItem` are therefore observed by
+`CmsCacheObserver` in `AppServiceProvider::configureCmsObservers()`. **Any new dataset you
+inline must be added there too**, or admins will edit content and see nothing change until
+the TTL expires.
+
+## Cache invalidation across two apps
+
+There are **two** caches between an admin save and what a visitor sees, and both must be
+invalidated or content edits appear to do nothing:
+
+| Cache | Owner | Invalidated by |
+|---|---|---|
+| Public API payloads (pages, layout, menus) | this app, `CmsCache` versioned namespace | `CmsCacheObserver::saved/deleted/restored` → `CmsCache::bump()` |
+| Rendered pages / fetch cache | the decoupled frontend (Next.js ISR) | `FrontendRevalidator` → `RevalidateFrontendJob` → `POST {frontend}/api/revalidate` |
+
+Bumping only the first makes the API fresh while the frontend keeps serving its cached
+render for the length of its ISR window. `FrontendRevalidator` closes that gap.
+
+**Tags, not paths.** The job sends cache tags naming *entities* (`page:faq`, `menu:main-nav`,
+`layout`, `config`, `catalog`, plus the broad `cms`); the frontend attaches the matching tags
+to its fetches and owns which URL each entity renders at. Sending paths would couple this
+backend to one frontend's routing.
+
+`FrontendRevalidator::tagsFor()` maps a model to its tags. Anything whose blast radius is not
+a single addressable entity (global sections, flexible types, FAQ rows inlined by
+`faq-categories`) falls back to the broad `cms` tag — over-purging is cheap, under-purging
+shows operators stale content.
+
+Design points worth preserving:
+
+- **Queued.** An admin save must never block on, or fail because of, an HTTP call to another
+  application. A frontend that is down or mid-deploy costs nothing; the content is saved and
+  the frontend's TTL is still the backstop.
+- **Coalesced.** One page save fires `Page::saved` plus one `PageSection::saved` per section.
+  The service is a singleton that accumulates tags and flushes once, so that is one job, not
+  a dozen.
+- **Flushed from two hooks.** `terminating()` covers HTTP requests and each queued job (a
+  shutdown hook would hold tags until a Horizon worker itself stopped). A
+  `register_shutdown_function` fallback covers `artisan tinker`, which exits without running
+  terminating callbacks — the path the deployment fill scripts use. It is skipped under test
+  (the container is gone by shutdown) and wrapped in try/catch, because losing a
+  revalidation is survivable but fataling at shutdown is not.
+- **Optional.** No `CMS_FRONTEND_REVALIDATE_URL` (or no secret) = disabled. This backend
+  ships without assuming any particular frontend exists. The URL is comma-separated, so one
+  backend can drive several frontends.
+
+Config lives in `config/cms.php` under `frontend`. The secret must match the frontend's
+`REVALIDATE_SECRET`.
 
 ## Adding a new section type
 
