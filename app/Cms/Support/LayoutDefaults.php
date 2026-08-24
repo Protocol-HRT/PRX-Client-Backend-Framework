@@ -9,6 +9,12 @@ namespace App\Cms\Support;
  * them here is the point: the value an operator sees and can override lives
  * in the CMS payload, not in a stylesheet they will never open.
  *
+ * MEASURE WHAT RENDERS, NOT WHAT THE PARTIAL SAYS. A frontend may override a
+ * section's own max-width somewhere else in its cascade, in which case the
+ * value written next to the section is dead and copying it here silently
+ * resizes the section. Every default below was taken from the width actually
+ * in effect.
+ *
  * SEMANTIC TOKENS, NOT PIXELS. `wide` resolves to whatever the consuming
  * theme decides it measures; prx-backend ships to more than one frontend, so
  * a measurement belonging to any one of them may not appear in this repo's
@@ -32,33 +38,38 @@ final class LayoutDefaults
      * @var array<string, array<string, string>>
      */
     private const MAP = [
-        // Full-bleed bands: the section IS the content, no column cap.
+        // Uncapped. These span the full frame, which is what they ALREADY
+        // rendered: the theme lifted their stylesheet max-widths so section
+        // content would line up uniformly, making the value written in each
+        // partial dead. Reading a default off a dead value would silently
+        // narrow the section — see the note above about measuring what is on
+        // screen, not what the stylesheet says.
         'hero' => ['content_width' => 'full', 'media_width' => 'contained'],
         'stats-marquee' => ['content_width' => 'full'],
+        'how-it-works' => ['content_width' => 'full'],
+        'physicians' => ['content_width' => 'full'],
+        'image-text-split' => ['content_width' => 'full'],
+        'timeline' => ['content_width' => 'full'],
+        'product-slider' => ['content_width' => 'full'],
+        'image-callout-banner' => ['content_width' => 'full', 'media_width' => 'contained'],
+        'package-slider' => ['content_width' => 'full', 'media_width' => 'contained'],
 
-        // The theme's dominant column.
-        'how-it-works' => ['content_width' => 'xwide'],
-        'physicians' => ['content_width' => 'xwide'],
+        // The theme's dominant column, and genuinely capped there today.
         'testimonials' => ['content_width' => 'xwide'],
         'faq' => ['content_width' => 'xwide'],
         'final-cta' => ['content_width' => 'xwide'],
         'cta-banner' => ['content_width' => 'xwide'],
-        'image-text-split' => ['content_width' => 'xwide'],
         'results-stats' => ['content_width' => 'xwide'],
         'story' => ['content_width' => 'xwide'],
         'benefits-him' => ['content_width' => 'xwide'],
         'benefits-her' => ['content_width' => 'xwide'],
         'category-grid' => ['content_width' => 'xwide'],
-        'product-slider' => ['content_width' => 'xwide'],
-        'package-slider' => ['content_width' => 'xwide', 'media_width' => 'contained'],
 
         // Narrower editorial columns.
         'text-block' => ['content_width' => 'wide'],
         'faq-categories' => ['content_width' => 'wide'],
-        'timeline' => ['content_width' => 'medium'],
         'highlight-banner' => ['content_width' => 'medium'],
         'benefits-diagram' => ['content_width' => 'medium'],
-        'image-callout-banner' => ['content_width' => 'medium', 'media_width' => 'contained'],
         'video-embed' => ['content_width' => 'narrow'],
 
         // Types with no frontend component yet; values are inert until one
