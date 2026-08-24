@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Policies\Payments;
 
-use Illuminate\Foundation\Auth\User as AuthUser;
 use App\Models\Payments\MerchantAccount;
 use Illuminate\Auth\Access\HandlesAuthorization;
+use Illuminate\Foundation\Auth\User as AuthUser;
 
 class MerchantAccountPolicy
 {
     use HandlesAuthorization;
-    
+
     public function viewAny(AuthUser $authUser): bool
     {
         return $authUser->can('ViewAny:MerchantAccount');
@@ -71,5 +71,4 @@ class MerchantAccountPolicy
     {
         return $authUser->can('Reorder:MerchantAccount');
     }
-
 }

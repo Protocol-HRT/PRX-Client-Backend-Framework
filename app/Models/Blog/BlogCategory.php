@@ -3,6 +3,7 @@
 namespace App\Models\Blog;
 
 use App\Models\Concerns\GeneratesUniqueSlug;
+use Database\Factories\Blog\BlogCategoryFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -48,9 +49,9 @@ class BlogCategory extends Model implements Sortable
         );
     }
 
-    protected static function newFactory(): \Database\Factories\Blog\BlogCategoryFactory
+    protected static function newFactory(): BlogCategoryFactory
     {
-        return \Database\Factories\Blog\BlogCategoryFactory::new();
+        return BlogCategoryFactory::new();
     }
 
     public function getRouteKeyName(): string

@@ -9,6 +9,7 @@ use App\Models\Lead;
 use App\Services\PrescribeRx\Client;
 use App\Services\PrescribeRx\Embed\PrxEmbedPayloadBuilder;
 use App\Settings\IntegrationSettings;
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 
 /**
@@ -327,7 +328,7 @@ class PrescribeRxProvider implements TelehealthProviderInterface
      * strict failure handling should use Client methods (which call
      * `extractData()` and throw `PrescribeRxException` on non-2xx).
      */
-    protected function http(): \Illuminate\Http\Client\PendingRequest
+    protected function http(): PendingRequest
     {
         $env = $this->settings->prescribe_rx_environment === 'production' ? 'production' : 'sandbox';
         $baseUrl = rtrim((string) config("prescribe-rx.urls.{$env}"), '/');

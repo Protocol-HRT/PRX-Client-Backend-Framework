@@ -4,7 +4,6 @@ namespace App\Services\Payments\Gateways;
 
 use App\Contracts\Payments\PaymentGatewayInterface;
 use App\Data\Payments\PaymentResult;
-use App\Enums\Payments\GatewayEnvironment;
 use App\Enums\Payments\GatewayProvider;
 use App\Models\Payments\MerchantAccount;
 use Illuminate\Support\Facades\Http;

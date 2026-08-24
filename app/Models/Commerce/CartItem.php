@@ -3,6 +3,7 @@
 namespace App\Models\Commerce;
 
 use App\Models\Catalog\Plan;
+use Database\Factories\Commerce\CartItemFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -29,9 +30,9 @@ class CartItem extends Model
         ];
     }
 
-    protected static function newFactory(): \Database\Factories\Commerce\CartItemFactory
+    protected static function newFactory(): CartItemFactory
     {
-        return \Database\Factories\Commerce\CartItemFactory::new();
+        return CartItemFactory::new();
     }
 
     public function cart(): BelongsTo

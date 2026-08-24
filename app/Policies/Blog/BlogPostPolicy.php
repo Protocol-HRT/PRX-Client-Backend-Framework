@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Policies\Blog;
 
-use Illuminate\Foundation\Auth\User as AuthUser;
 use App\Models\Blog\BlogPost;
 use Illuminate\Auth\Access\HandlesAuthorization;
+use Illuminate\Foundation\Auth\User as AuthUser;
 
 class BlogPostPolicy
 {
     use HandlesAuthorization;
-    
+
     public function viewAny(AuthUser $authUser): bool
     {
         return $authUser->can('ViewAny:BlogPost');
@@ -71,5 +71,4 @@ class BlogPostPolicy
     {
         return $authUser->can('Reorder:BlogPost');
     }
-
 }

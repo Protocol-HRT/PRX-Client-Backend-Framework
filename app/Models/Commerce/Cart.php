@@ -2,6 +2,7 @@
 
 namespace App\Models\Commerce;
 
+use Database\Factories\Commerce\CartFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -36,9 +37,9 @@ class Cart extends Model
         });
     }
 
-    protected static function newFactory(): \Database\Factories\Commerce\CartFactory
+    protected static function newFactory(): CartFactory
     {
-        return \Database\Factories\Commerce\CartFactory::new();
+        return CartFactory::new();
     }
 
     public function items(): HasMany

@@ -217,7 +217,7 @@ interface TelehealthProviderInterface
      * set of cart lines before checkout confirmation.
      *
      * @param  array<int, array<string, mixed>>  $lines
-     * @param  array<string, mixed>|null          $shippingAddress
+     * @param  array<string, mixed>|null  $shippingAddress
      * @return array<string, mixed>
      */
     public function previewCart(array $lines, ?string $couponCode = null, ?array $shippingAddress = null): array;

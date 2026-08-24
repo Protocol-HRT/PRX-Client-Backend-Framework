@@ -5,9 +5,9 @@ namespace Tests\Feature\Payments;
 use App\Enums\Payments\GatewayEnvironment;
 use App\Enums\Payments\GatewayProvider;
 use App\Models\Payments\MerchantAccount;
-use App\Services\Payments\PaymentGatewayManager;
 use App\Services\Payments\Gateways\AuthorizeNetGateway;
 use App\Services\Payments\Gateways\NmiGateway;
+use App\Services\Payments\PaymentGatewayManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 

@@ -4,6 +4,7 @@ namespace Tests\Feature\Api\V1\Auth;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class AuthEndpointsTest extends TestCase
@@ -18,7 +19,7 @@ class AuthEndpointsTest extends TestCase
         ]);
 
         // Assign a role so the user is valid (canAccessPanel checks roles exist).
-        $user->assignRole(\Spatie\Permission\Models\Role::create(['name' => 'super_admin', 'guard_name' => 'web']));
+        $user->assignRole(Role::create(['name' => 'super_admin', 'guard_name' => 'web']));
 
         $response = $this->postJson('/api/v1/auth/login', [
             'email' => $user->email,
