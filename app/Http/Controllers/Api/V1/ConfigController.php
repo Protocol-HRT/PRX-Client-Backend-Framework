@@ -70,8 +70,14 @@ class ConfigController extends ApiController
                     'font_body' => $theme->font_body,
                     'custom_css' => $theme->custom_css,
                     'frontend_template' => $theme->frontend_template,
-                    // Named color utilities: the frontend emits .tx-{name} CSS
-                    // for each entry so admins can color spans in rich text.
+                    // The install's named colour vocabulary: [{name, color}].
+                    // The frontend exposes each as a --palette-{name} custom
+                    // property and a .tx-{name} utility, and section layout
+                    // knobs reference entries BY NAME so a colour change here
+                    // reaches every section using it.
+                    'palette' => $theme->palette,
+                    // Deprecated alias of `palette`, same shape, kept for
+                    // frontends built before it existed. Read `palette`.
                     'text_classes' => $theme->text_classes,
                 ],
                 'contact' => array_filter([

@@ -25,10 +25,18 @@ class UpdateThemeSettingsAction
             $this->settings->font_body = $data->font_body;
             $this->settings->custom_css = $data->custom_css;
             $this->settings->frontend_template = $data->frontend_template;
-            $this->settings->text_classes = array_values(array_filter(
-                $data->text_classes,
-                fn (array $class): bool => filled($class['name'] ?? null) && filled($class['color'] ?? null),
+            $palette = array_values(array_filter(
+                $data->palette,
+                fn (array $entry): bool => filled($entry['name'] ?? null) && filled($entry['color'] ?? null),
             ));
+
+            $this->settings->palette = $palette;
+
+            // Kept in lockstep, not edited: /config still emits text_classes
+            // for frontends built before the palette existed, and the two
+            // carry the same {name, color} shape. Drop this mirror only once
+            // no consumer reads text_classes.
+            $this->settings->text_classes = $palette;
             $this->settings->save();
 
             // The public config bundle exposes these settings — drop the

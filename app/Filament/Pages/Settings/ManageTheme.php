@@ -80,17 +80,17 @@ class ManageTheme extends BaseSettingsPage
                             ->maxLength(100)
                             ->hintIcon(Heroicon::InformationCircle, 'Font family name used for body/paragraph text, e.g. "Inter" or "Source Sans Pro".'),
                     ]),
-                Section::make('Text color classes')
-                    ->description('Named utility classes the frontend generates CSS for (class "gold" → .tx-gold). Use them in rich text and custom HTML: <span class="tx-gold">…</span>.')
+                Section::make('Color palette')
+                    ->description('The named colors this site is built from. Name a color once here and pick it by name when styling a section (background and text), or use it in rich text and custom HTML as <span class="tx-gold">…</span>. Change a color here and every section using it follows.')
                     ->components([
-                        Repeater::make('text_classes')
-                            ->label('Classes')
+                        Repeater::make('palette')
+                            ->label('Colors')
                             ->schema([
                                 TextInput::make('name')
                                     ->required()
                                     ->maxLength(50)
                                     ->regex('/^[a-z0-9][a-z0-9-]*$/')
-                                    ->helperText('Lowercase slug. Rendered as .tx-{name} on the frontend.'),
+                                    ->helperText('Lowercase slug, e.g. "sand" or "ink". Offered by this name in every section\'s Style panel, and rendered as .tx-{name} for rich text.'),
                                 ColorPicker::make('color')->required(),
                             ])
                             ->columns(2)

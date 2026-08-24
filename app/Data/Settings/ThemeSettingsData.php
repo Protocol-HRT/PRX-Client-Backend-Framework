@@ -29,6 +29,13 @@ class ThemeSettingsData extends Data
         #[Required, Max(100), Regex('/^[a-z0-9][a-z0-9-]*$/')]
         public string $frontend_template = 'default',
         /** @var array<int, array{name: string, color: string}> */
+        public array $palette = [],
+        /**
+         * Deprecated alias of $palette. Not edited in the form; the action
+         * derives it so /config keeps serving older frontends.
+         *
+         * @var array<int, array{name: string, color: string}>
+         */
         public array $text_classes = [],
     ) {}
 }

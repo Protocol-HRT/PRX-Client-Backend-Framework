@@ -2,6 +2,9 @@
 
 namespace Tests\Feature\Api\V1;
 
+use App\Actions\Settings\UpdateThemeSettingsAction;
+use App\Data\Settings\ThemeSettingsData;
+use App\Settings\ThemeSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -99,5 +102,30 @@ class ConfigEndpointTest extends TestCase
                 ],
             ])
             ->assertJsonPath('data.theme.frontend_template', 'default');
+    }
+
+    /**
+     * The palette is the vocabulary section colour knobs resolve against, so
+     * a frontend that cannot read it renders every `background_color: sand`
+     * as nothing. `text_classes` ships the same rows for frontends built
+     * before the palette existed and must stay in lockstep.
+     */
+    public function test_config_theme_section_exposes_the_colour_palette(): void
+    {
+        $palette = [
+            ['name' => 'sand', 'color' => '#e8ded1'],
+            ['name' => 'ink', 'color' => '#151415'],
+        ];
+
+        app(UpdateThemeSettingsAction::class)->execute(
+            ThemeSettingsData::from([
+                ...app(ThemeSettings::class)->toArray(),
+                'palette' => $palette,
+            ])
+        );
+
+        $this->getJson('/api/v1/config')
+            ->assertJsonPath('data.theme.palette', $palette)
+            ->assertJsonPath('data.theme.text_classes', $palette);
     }
 }
