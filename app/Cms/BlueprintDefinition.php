@@ -38,6 +38,14 @@ class BlueprintDefinition implements SectionDefinition
         return $this->blueprint->defaults();
     }
 
+    /**
+     * @return array<string, string>
+     */
+    public function layoutDefaults(): array
+    {
+        return $this->blueprint->layoutDefaults();
+    }
+
     public function formSchema(): array
     {
         return $this->blueprint->formSchema();

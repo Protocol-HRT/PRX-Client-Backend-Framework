@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Cms\Support\LayoutDefaults;
 use App\Enums\Cms\SectionTypeMode;
 use App\Models\Cms\FlexibleSectionType;
 use App\Services\Cms\SectionRegistry;
@@ -23,17 +24,37 @@ class SectionTypeSeeder extends Seeder
     public function run(): void
     {
         foreach ($this->definitions() as $definition) {
-            FlexibleSectionType::query()->firstOrCreate(
+            // Layout defaults come from the same table the code blueprint
+            // reads, so a shadow row and its blueprint cannot drift apart
+            // (SectionTypeSeedParityTest compares the envelopes they produce).
+            $schema = $definition['schema'];
+            $schema['layout_defaults'] = LayoutDefaults::for($definition['slug']);
+
+            $row = FlexibleSectionType::query()->firstOrCreate(
                 ['slug' => $definition['slug']],
                 [
                     'name' => $definition['name'],
                     'description' => $definition['description'],
                     'icon' => $definition['icon'],
-                    'schema' => $definition['schema'],
+                    'schema' => $schema,
                     'enabled' => true,
                     'mode' => SectionTypeMode::Shadow,
                 ],
             );
+
+            // A row still in shadow mode is seeder-owned, so it may be brought
+            // forward when the table gains a type. A promoted row is the
+            // operator's and is left exactly as they saved it.
+            if ($row->wasRecentlyCreated || $row->mode !== SectionTypeMode::Shadow) {
+                continue;
+            }
+
+            $existing = $row->schema;
+
+            if (($existing['layout_defaults'] ?? null) !== $schema['layout_defaults']) {
+                $existing['layout_defaults'] = $schema['layout_defaults'];
+                $row->update(['schema' => $existing]);
+            }
         }
 
         app(SectionRegistry::class)->flush();

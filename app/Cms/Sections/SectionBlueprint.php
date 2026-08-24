@@ -3,6 +3,7 @@
 namespace App\Cms\Sections;
 
 use App\Cms\Concerns\DeclaresPresentationKeys;
+use App\Cms\Support\LayoutDefaults;
 use App\Enums\SectionType;
 use Filament\Schemas\Components\Component;
 
@@ -40,6 +41,18 @@ abstract class SectionBlueprint
     public function defaults(): array
     {
         return [];
+    }
+
+    /**
+     * Design defaults for the shared layout knobs, looked up by type so the
+     * seeded shadow definitions can read the same table and stay in parity.
+     * Override only for a type whose default cannot be expressed there.
+     *
+     * @return array<string, string>
+     */
+    public function layoutDefaults(): array
+    {
+        return LayoutDefaults::for($this->type()->value);
     }
 
     /**

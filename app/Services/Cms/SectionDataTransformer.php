@@ -3,6 +3,7 @@
 namespace App\Services\Cms;
 
 use App\Cms\FlexibleDefinition;
+use App\Cms\Support\LayoutFields;
 use App\Cms\Support\SectionContent;
 use App\Models\Catalog\CatalogItemSection;
 use App\Models\Cms\GlobalSection;
@@ -78,6 +79,11 @@ class SectionDataTransformer
 
             $data = $row['definition']->resolveData($data);
 
+            // Layout defaults fill only knobs the operator left unset, and
+            // only keys in LayoutFields::KEYS, so has_content below is
+            // unaffected — every merged key is a presentation key.
+            $data = LayoutFields::applyDefaults($data, $row['definition']->layoutDefaults());
+
             $envelope = [
                 'type' => $row['definition']->type(),
                 'origin' => $row['definition']->isFlexible() ? 'flexible' : 'code',
@@ -134,6 +140,8 @@ class SectionDataTransformer
         }
 
         $data = $definition->resolveData($data);
+
+        $data = LayoutFields::applyDefaults($data, $definition->layoutDefaults());
 
         $envelope = [
             'type' => $definition->type(),

@@ -4,6 +4,7 @@ namespace App\Cms;
 
 use App\Cms\Concerns\DeclaresPresentationKeys;
 use App\Cms\Support\CtaFields;
+use App\Cms\Support\LayoutDefaults;
 use App\Contracts\Cms\SectionDefinition;
 use App\Enums\Cms\FlexibleFieldKind;
 use App\Models\Cms\FlexibleSectionType;
@@ -79,6 +80,24 @@ class FlexibleDefinition implements SectionDefinition
         }
 
         return $defaults;
+    }
+
+    /**
+     * Admin-defined types carry their layout defaults inside the schema JSON,
+     * so a promoted type keeps the design defaults its code blueprint had
+     * without needing a column of its own.
+     *
+     * @return array<string, string>
+     */
+    public function layoutDefaults(): array
+    {
+        // Falls back to the shared table for a shadow row seeded before the
+        // schema carried the key. An admin-defined type that exists only in a
+        // client's database is never in that table — its defaults live in the
+        // row, which is where a client-specific design value belongs.
+        $defaults = $this->model->schema['layout_defaults'] ?? LayoutDefaults::for($this->model->slug);
+
+        return is_array($defaults) ? array_filter($defaults, 'is_string') : [];
     }
 
     public function formSchema(): array

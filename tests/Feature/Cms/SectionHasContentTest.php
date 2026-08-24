@@ -91,4 +91,73 @@ class SectionHasContentTest extends TestCase
 
         $this->assertTrue($envelope['has_content']);
     }
+
+    public function test_setting_only_media_width_is_not_content(): void
+    {
+        $envelope = $this->sectionEnvelope([
+            'heading' => null,
+            'body' => null,
+            'theme' => 'light',
+            'alignment' => 'left',
+            'media_width' => 'full',
+        ]);
+
+        $this->assertFalse($envelope['has_content']);
+    }
+
+    /**
+     * The type's design default is merged into the payload before has_content
+     * is computed, so the merge running must not be able to resurrect an empty
+     * scaffold. This asserts the ORDER, which the unit tests cannot see.
+     */
+    public function test_a_merged_design_default_does_not_make_a_scaffold_look_authored(): void
+    {
+        $envelope = $this->sectionEnvelope([
+            'heading' => null,
+            'body' => null,
+            'theme' => 'light',
+            'alignment' => 'left',
+        ]);
+
+        $this->assertSame('wide', $envelope['data']['content_width']);
+        $this->assertFalse($envelope['has_content']);
+    }
+
+    public function test_a_section_is_served_its_types_design_default(): void
+    {
+        $envelope = $this->sectionEnvelope([
+            'heading' => 'Privacy Policy',
+            'body' => null,
+            'theme' => 'light',
+            'alignment' => 'left',
+        ]);
+
+        $this->assertSame('wide', $envelope['data']['content_width']);
+    }
+
+    /**
+     * media_width has its own default on the types where containment was
+     * previously hardcoded in the frontend; assert the second knob merges
+     * too, not just content_width.
+     */
+    public function test_a_type_with_a_media_default_is_served_it(): void
+    {
+        $envelope = $this->sectionEnvelope(['heading' => 'Longevity, engineered'], 'hero');
+
+        $this->assertSame('contained', $envelope['data']['media_width']);
+        $this->assertSame('full', $envelope['data']['content_width']);
+    }
+
+    public function test_an_operator_width_survives_the_merge(): void
+    {
+        $envelope = $this->sectionEnvelope([
+            'heading' => 'Privacy Policy',
+            'body' => null,
+            'theme' => 'light',
+            'alignment' => 'left',
+            'content_width' => 'narrow',
+        ]);
+
+        $this->assertSame('narrow', $envelope['data']['content_width']);
+    }
 }

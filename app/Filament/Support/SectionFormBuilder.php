@@ -92,10 +92,12 @@ class SectionFormBuilder
                         'narrow' => 'Narrow — long-form reading',
                         'medium' => 'Medium',
                         'wide' => 'Wide',
+                        'xwide' => 'Extra wide',
+                        'full' => 'Full — no cap',
                     ])
-                    ->placeholder('Full (default)')
+                    ->placeholder('Design default')
                     ->native(false)
-                    ->helperText('Caps how wide the content runs, centred within the section.'),
+                    ->helperText('Caps how wide the content runs, centred within the section. Leave unset to use this section type\'s design default.'),
 
                 Select::make('content_align')
                     ->label('Content alignment')
@@ -107,6 +109,16 @@ class SectionFormBuilder
                     ->placeholder('Design default')
                     ->native(false)
                     ->helperText('Aligns headings, copy and buttons within the section.'),
+
+                Select::make('media_width')
+                    ->label('Media width')
+                    ->options([
+                        'contained' => 'Contained — sits inside the content column',
+                        'full' => 'Full bleed — spans the section edge to edge',
+                    ])
+                    ->placeholder('Design default')
+                    ->native(false)
+                    ->helperText('How this section\'s image or video is framed. Leave unset to use this section type\'s design default.'),
             ]);
     }
 }

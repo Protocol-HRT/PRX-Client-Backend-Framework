@@ -29,6 +29,17 @@ interface SectionDefinition
     public function defaults(): array;
 
     /**
+     * Design defaults for the shared layout knobs, applied where the operator
+     * left one unset. Kept apart from defaults() on purpose: defaults() is
+     * stamped into a row at creation time and frozen there, whereas these are
+     * merged when the payload is served, so retuning a type's design default
+     * reaches sections that already exist.
+     *
+     * @return array<string, string>
+     */
+    public function layoutDefaults(): array;
+
+    /**
      * Filament form components editing this section's `data` payload.
      *
      * @return array<int, Component>
