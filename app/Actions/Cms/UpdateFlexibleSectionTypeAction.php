@@ -17,13 +17,18 @@ class UpdateFlexibleSectionTypeAction
     public function execute(FlexibleSectionType $type, FlexibleSectionTypeData $data): FlexibleSectionType
     {
         return $this->tx(function () use ($type, $data) {
-            // The admin form only round-trips schema.fields — carry any
-            // stored resolver pipeline forward unless the caller explicitly
-            // provides one, or a form save would silently strip it.
+            // The admin form only round-trips schema.fields, so every OTHER
+            // stored key survives by being carried forward unless the caller
+            // explicitly supplies one. Written as a sweep rather than a list
+            // of known keys (`resolvers`, `layout_defaults`, …) because the
+            // failure is silent: a key nobody remembered to name here is
+            // deleted by the next form save, and nothing errors.
             $schema = $data->schema;
 
-            if (! array_key_exists('resolvers', $schema) && isset($type->schema['resolvers'])) {
-                $schema['resolvers'] = $type->schema['resolvers'];
+            foreach ($type->schema ?? [] as $key => $value) {
+                if ($key !== 'fields' && ! array_key_exists($key, $schema)) {
+                    $schema[$key] = $value;
+                }
             }
 
             FlexibleSchemaValidator::validate($schema['fields'] ?? []);
