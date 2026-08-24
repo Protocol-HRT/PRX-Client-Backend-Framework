@@ -47,10 +47,11 @@ Keep the token server-side (env var). Never ship it in client-side JavaScript.
 - `GET /pages` — published page index (no sections).
 - `GET /pages/{slug}` — `{ title, slug, title_banner, seo, sections: [envelope…] }`.
 
-Each section **envelope** is `{ type, origin, anchor, global, data, schema? }`:
+Each section **envelope** is `{ type, origin, anchor, global, has_content, data, schema? }`:
 
 - `origin: "code"` — one of the built-in blueprint types (hero, faq, testimonials, product-slider, …). Render with a dedicated component per `type`. Product/package types arrive with full catalog card data already inlined in `data`.
 - `origin: "flexible"` — an admin-defined type. `schema` is a field-kind map (`text`, `richtext`, `image`, `link`, `boolean`, `select`, `svg`, `repeater`, `products`, `packages`) — render generically from it.
+- **`has_content: bool` — render nothing when this is `false`.** A section an editor added but never filled in still carries its blueprint's structural flags (`theme: "light"`, `alignment: "left"`, `mode: "manual"`), so a naive "is every value empty?" check judges it authored and an empty scaffold reaches the live page. The backend knows which of its own keys are presentation and does that classification for you — it is computed after catalog inlining, so a slider whose query returned nothing is correctly `false`. Do not reimplement this by guessing which keys look like flags.
 - `anchor` → element `id`; `type` / `global.slug` → CSS hooks (`section--{slug}`); `global` marks shared blocks.
 - Image kinds arrive resolved as `{ id, url, alt, width, height }`; SVG fields arrive sanitized; unknown types should render a visible placeholder in dev builds, never crash.
 
@@ -125,7 +126,7 @@ The active checkout path comes from `GET /config` → `checkout.path` (`prx` | `
 
 1. **No hardcoded branding.** Company name, logos, colors, copy, contact info, tracking IDs — all must come from the API. If you find yourself typing a brand string into a component, it belongs in the admin.
 2. **Own your route patterns** for entity links; the backend only emits `{type, slug}`.
-3. **Render unknown section types visibly in dev** (placeholder), silently skip in production — never crash on a new backend type. Exception either way: a section whose `data` holds no authored content (all nulls / empty arrays) must render **nothing** — empty scaffold sections may never leak onto a page.
+3. **Render unknown section types visibly in dev** (placeholder), silently skip in production — never crash on a new backend type. Either way, check `has_content` **first**: a section with none renders nothing, whether or not you have a component for its type. Empty scaffold sections may never leak onto a page.
 4. **Never render an authored string as a text node.** Every operator-editable
    field is HTML — see 4a. Inline-kind fields go inside an element you choose;
    prose-kind fields get a container of their own.

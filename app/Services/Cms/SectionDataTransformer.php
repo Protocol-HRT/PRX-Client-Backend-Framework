@@ -3,6 +3,7 @@
 namespace App\Services\Cms;
 
 use App\Cms\FlexibleDefinition;
+use App\Cms\Support\SectionContent;
 use App\Models\Catalog\CatalogItemSection;
 use App\Models\Cms\GlobalSection;
 use App\Models\PageSection;
@@ -11,7 +12,7 @@ use Illuminate\Support\Collection;
 /**
  * Turns raw section rows into the frontend section envelope:
  *
- *   { type, origin: code|flexible, anchor, global, data }
+ *   { type, origin: code|flexible, anchor, global, has_content, data }
  *
  * Values whose keys are declared in the definition's fieldKinds() are
  * transformed API-side (media ids -> url objects; later: catalog inlining).
@@ -86,6 +87,10 @@ class SectionDataTransformer
                     'slug' => $row['global']->slug,
                     'name' => $row['global']->name,
                 ] : null,
+                // Computed after resolveData() so inlined catalog results count
+                // as the content they are. Consumers render nothing when false
+                // rather than each reimplementing the walk.
+                'has_content' => SectionContent::hasContent($data, $row['definition']->presentationKeys()),
                 'data' => $data,
             ];
 
@@ -139,6 +144,7 @@ class SectionDataTransformer
                 'slug' => $global->slug,
                 'name' => $global->name,
             ] : null,
+            'has_content' => SectionContent::hasContent($data, $definition->presentationKeys()),
             'data' => $data,
         ];
 

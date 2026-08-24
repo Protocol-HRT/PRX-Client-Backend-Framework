@@ -53,6 +53,14 @@ class BlueprintDefinition implements SectionDefinition
         return $this->blueprint->resolveData($data);
     }
 
+    /**
+     * @return list<string>
+     */
+    public function presentationKeys(): array
+    {
+        return $this->blueprint->presentationKeys();
+    }
+
     public function isFlexible(): bool
     {
         return false;

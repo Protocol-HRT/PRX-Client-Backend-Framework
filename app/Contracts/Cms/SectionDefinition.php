@@ -53,6 +53,15 @@ interface SectionDefinition
      */
     public function resolveData(array $data): array;
 
+    /**
+     * Keys in `data` that describe how the section looks rather than what it
+     * says — layout knobs and structural flags. A payload holding nothing but
+     * these was never authored, so the section renders nothing.
+     *
+     * @return list<string>
+     */
+    public function presentationKeys(): array;
+
     /** True when the definition is DB-backed (admin-created), not code-backed. */
     public function isFlexible(): bool;
 }

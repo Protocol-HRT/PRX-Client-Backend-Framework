@@ -2,6 +2,7 @@
 
 namespace App\Cms;
 
+use App\Cms\Concerns\DeclaresPresentationKeys;
 use App\Cms\Support\CtaFields;
 use App\Contracts\Cms\SectionDefinition;
 use App\Enums\Cms\FlexibleFieldKind;
@@ -15,6 +16,10 @@ use App\Services\Cms\SectionResolverOps;
  */
 class FlexibleDefinition implements SectionDefinition
 {
+    use DeclaresPresentationKeys {
+        presentationKeys as presentationKeysFromDefaults;
+    }
+
     public function __construct(private readonly FlexibleSectionType $model) {}
 
     public function model(): FlexibleSectionType
@@ -40,6 +45,22 @@ class FlexibleDefinition implements SectionDefinition
     public function description(): ?string
     {
         return $this->model->description;
+    }
+
+    /**
+     * Admin-defined types classify the same way, plus every boolean field: a
+     * toggle is a knob regardless of whether the operator gave it a default.
+     *
+     * @return list<string>
+     */
+    public function presentationKeys(): array
+    {
+        $booleans = array_column(
+            array_filter($this->model->fields(), static fn (array $f): bool => ($f['kind'] ?? null) === 'boolean'),
+            'key',
+        );
+
+        return array_values(array_unique([...$this->presentationKeysFromDefaults(), ...$booleans]));
     }
 
     public function defaults(): array

@@ -216,6 +216,30 @@ Trade-off accepted: rich inputs have no `maxLength`, so field length is now
 editorial judgement rather than a hard stop. Character counts are misleading once
 a value carries markup.
 
+### Content vs presentation, and `has_content` (2026-08-24)
+
+Every envelope carries `has_content`. It answers "did an operator author anything
+here?", which is not the same as "is every value empty?" — blueprint `defaults()`
+legitimately ship structural flags, so an untouched scaffold looks full.
+
+The classification comes from `SectionDefinition::presentationKeys()`, implemented
+once in `App\Cms\Concerns\DeclaresPresentationKeys`. It leans on the content-free
+defaults policy above: **a key carrying a non-null default is a structural flag**, so
+it needs no separate declaration and cannot drift out of sync with the blueprint. On
+top of that come the four "Layout & spacing" knobs (`App\Cms\Support\LayoutFields`),
+which the form builder writes into every section's data without appearing in any
+blueprint's `defaults()`. `FlexibleDefinition` adds every `boolean` field, since a
+toggle is a knob whether or not the operator gave it a default.
+
+`App\Cms\Support\SectionContent::hasContent()` then walks the payload, skipping those
+keys. It runs **after** `resolveData()`, so inlined catalog results count as the
+content they are — a `product-slider` whose query returned nothing is correctly empty.
+A literal `0` counts as content; only `null`, `''`, `false` and structurally empty
+arrays do not.
+
+If a blueprint has a structural key with no default, override `presentationKeys()` and
+merge it in — otherwise it reads as content and the section renders when it shouldn't.
+
 ## Dataset-driven sections
 
 Most blueprints store the content an operator types into them. A second kind stores only a

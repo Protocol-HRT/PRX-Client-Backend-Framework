@@ -2,6 +2,7 @@
 
 namespace App\Cms\Sections;
 
+use App\Cms\Concerns\DeclaresPresentationKeys;
 use App\Enums\SectionType;
 use Filament\Schemas\Components\Component;
 
@@ -17,6 +18,8 @@ use Filament\Schemas\Components\Component;
  */
 abstract class SectionBlueprint
 {
+    use DeclaresPresentationKeys;
+
     abstract public function type(): SectionType;
 
     abstract public function label(): string;
