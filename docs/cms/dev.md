@@ -182,6 +182,40 @@ When you change a field, change both. When you add a field, add to both, and add
 
 Blueprint shape changes shipped the same day: `hero` gained a `slides` repeater (image, heading + emphasis, description, CTA, text tone), `highlight_*` card fields, and `background_image` (static no-slides fallback; concierge-era fields removed); `physicians` entries are now name / title / specialty / image / bio / `badges[]` (legacy credentials chip, accent color, stats, and quote fields dropped); `faq` gained intro `description`, `cta_label`/`cta_url`, `image`/`image_alt`; `image-text-split` gained `lead`.
 
+### Copy fields are rich inputs (2026-08-24)
+
+Blueprints never construct a text input directly. Every operator-editable string
+comes from `App\Cms\Support\CopyFields`, which offers exactly two kinds:
+
+| Factory | Toolbar | Use for |
+|---|---|---|
+| `CopyFields::inline($name)` | bold, italic, link, undo, redo | Anything the frontend wraps in an element it picks: `heading`, `eyebrow`, `title`, `label`, `value`, `meta`, `badge`, `q`, `name`, `quote`, `text` |
+| `CopyFields::prose($name)` | + h2, h3, bullet/ordered list, blockquote | Copy that gets a container of its own: `body`, `content`, `description`, `bio`, `a` |
+
+Which kind a field takes is decided by **how the frontend renders it**, not by how
+long the copy is. A `lead` is a paragraph of prose in the everyday sense but is
+rendered into a styled `<p>` the component owns, so it is `inline`.
+
+`TextInput` survives only for values that are parsed rather than read: URLs,
+`image_alt`, `limit`, `icon`, numeric knobs, and CTA button labels.
+
+**Why inline fields are normalized on save.** Hiding a toolbar button does not
+remove the capability. Filament's editor registers TipTap's Heading extension with
+levels 1–6 unconditionally and binds `Mod-Alt-1..6`, so a paste from Word or a
+stray keyboard shortcut can put an `<h2>` into a field whose toolbar shows no
+heading button. `App\Cms\Support\HtmlCopy::inline()` therefore flattens block
+markup to inline HTML on dehydrate (block boundaries become `<br />`), and
+`HtmlCopy::prose()` drops the empty `<p></p>` runs the editor emits for blank
+lines. Both return `null` when nothing readable remains, so the content-free
+defaults policy above still holds.
+
+The guarantee this buys a frontend — inline fields never contain block markup —
+is documented for external implementers in `docs/frontend/dev.md` §4a.
+
+Trade-off accepted: rich inputs have no `maxLength`, so field length is now
+editorial judgement rather than a hard stop. Character counts are misleading once
+a value carries markup.
+
 ## Dataset-driven sections
 
 Most blueprints store the content an operator types into them. A second kind stores only a

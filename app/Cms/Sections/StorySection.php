@@ -2,10 +2,10 @@
 
 namespace App\Cms\Sections;
 
+use App\Cms\Support\CopyFields;
 use App\Enums\SectionType;
 use App\Filament\Support\SectionImagePicker;
 use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 
@@ -49,27 +49,24 @@ class StorySection extends SectionBlueprint
         return [
             Section::make('Header')
                 ->components([
-                    TextInput::make('eyebrow')->maxLength(120),
-                    TextInput::make('heading')->required()->maxLength(255),
-                    TextInput::make('emphasis')
+                    CopyFields::inline('eyebrow'),
+                    CopyFields::inline('heading')->required(),
+                    CopyFields::inline('emphasis')
                         ->label('Heading accent (italic sage)')
-                        ->maxLength(255)
                         ->helperText('Optional sage italic run rendered after the heading.'),
-                    Textarea::make('lead')->rows(3)->maxLength(500),
+                    CopyFields::inline('lead'),
                 ]),
             Repeater::make('physicians')
                 ->label('Physicians')
                 ->schema([
-                    TextInput::make('name')->required()->maxLength(255),
-                    TextInput::make('title')->label('Title / role')->maxLength(255),
-                    TextInput::make('badge')
-                        ->maxLength(255)
+                    CopyFields::inline('name')->required(),
+                    CopyFields::inline('title')->label('Title / role'),
+                    CopyFields::inline('badge')
                         ->helperText('Gold pill below the title (e.g. "Author: Some Book").'),
                     SectionImagePicker::make('image')->label('Portrait image'),
                     TextInput::make('image_alt')->maxLength(255),
-                    Textarea::make('body')
+                    CopyFields::prose('body')
                         ->label('Bio')
-                        ->rows(5)
                         ->required()
                         ->columnSpanFull(),
                 ])
@@ -80,10 +77,9 @@ class StorySection extends SectionBlueprint
             Section::make('Closing manifesto')
                 ->description('Italic pull quote in a mint-bg card at the foot of the section.')
                 ->components([
-                    Textarea::make('pull_quote')->rows(2)->maxLength(500),
-                    TextInput::make('pull_quote_attribution')
-                        ->label('Attribution')
-                        ->maxLength(255),
+                    CopyFields::inline('pull_quote'),
+                    CopyFields::inline('pull_quote_attribution')
+                        ->label('Attribution'),
                 ]),
         ];
     }

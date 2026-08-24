@@ -2,13 +2,13 @@
 
 namespace App\Cms\Sections;
 
+use App\Cms\Support\CopyFields;
 use App\Enums\SectionType;
 use App\Filament\Support\SectionImagePicker;
 use App\Models\Catalog\Package;
 use App\Models\Catalog\Product;
 use App\Services\Cms\CatalogInliner;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
@@ -79,9 +79,9 @@ class ProductCalloutSection extends SectionBlueprint
             Section::make('Copy overrides')
                 ->description('Optional. Falls back to the catalog name/description when left blank.')
                 ->components([
-                    TextInput::make('eyebrow')->maxLength(120),
-                    TextInput::make('headline')->maxLength(255),
-                    Textarea::make('body')->rows(3)->maxLength(1000),
+                    CopyFields::inline('eyebrow'),
+                    CopyFields::inline('headline'),
+                    CopyFields::prose('body'),
                     TextInput::make('cta_label')->maxLength(80),
                     TextInput::make('cta_url')->maxLength(2048),
                 ]),

@@ -2,12 +2,11 @@
 
 namespace App\Cms\Sections;
 
+use App\Cms\Support\CopyFields;
 use App\Enums\SectionType;
 use App\Filament\Support\SectionImagePicker;
 use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
@@ -56,14 +55,13 @@ class ImageTextSplitSection extends SectionBlueprint
         return [
             Section::make('Copy')
                 ->components([
-                    TextInput::make('eyebrow')->maxLength(120),
-                    TextInput::make('heading')->maxLength(255),
-                    Textarea::make('lead')
-                        ->rows(3)
-                        ->maxLength(500)
+                    CopyFields::inline('eyebrow'),
+                    CopyFields::inline('heading'),
+                    CopyFields::inline('lead')
+
                         ->helperText('Short paragraph rendered under the heading, beside the body column.')
                         ->columnSpanFull(),
-                    RichEditor::make('body')->columnSpanFull(),
+                    CopyFields::prose('body')->columnSpanFull(),
                     TextInput::make('cta_label')->maxLength(60),
                     TextInput::make('cta_url')->maxLength(2048),
                 ])
@@ -86,11 +84,10 @@ class ImageTextSplitSection extends SectionBlueprint
                         ->required()
                         ->native(false),
                     SectionImagePicker::make('icon')->label('Icon / logo'),
-                    TextInput::make('value')
+                    CopyFields::inline('value')
                         ->label('Stat value')
-                        ->maxLength(20)
                         ->helperText('Large figure rendered above the text (e.g. "15+"). Leave empty for icon/text-only cards.'),
-                    TextInput::make('text')->maxLength(160),
+                    CopyFields::inline('text'),
                     TextInput::make('rating_value')
                         ->label('Star rating (0–5)')
                         ->numeric()
@@ -98,8 +95,7 @@ class ImageTextSplitSection extends SectionBlueprint
                         ->maxValue(5)
                         ->step(0.1)
                         ->helperText('Renders a stars row when set.'),
-                    TextInput::make('rating_text')
-                        ->maxLength(120)
+                    CopyFields::inline('rating_text')
                         ->helperText('Line next to the stars (e.g. "4.9/5 · 200+ reviews").'),
                 ])
                 ->columns(2)

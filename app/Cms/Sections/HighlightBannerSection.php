@@ -2,11 +2,11 @@
 
 namespace App\Cms\Sections;
 
+use App\Cms\Support\CopyFields;
 use App\Enums\SectionType;
 use App\Filament\Support\SectionImagePicker;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 
@@ -71,10 +71,8 @@ class HighlightBannerSection extends SectionBlueprint
                 ->label('Highlights')
                 ->schema([
                     SectionImagePicker::make('icon')->label('Icon'),
-                    Textarea::make('text')
-                        ->rows(2)
+                    CopyFields::inline('text')
                         ->required()
-                        ->maxLength(255)
                         ->helperText('Line breaks are kept — two short lines render as in the design.'),
                 ])
                 ->columns(2)

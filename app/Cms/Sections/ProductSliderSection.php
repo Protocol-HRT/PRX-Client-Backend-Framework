@@ -2,12 +2,12 @@
 
 namespace App\Cms\Sections;
 
+use App\Cms\Support\CopyFields;
 use App\Enums\SectionType;
 use App\Models\Catalog\Category;
 use App\Models\Catalog\Product;
 use App\Services\Cms\CatalogInliner;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
@@ -58,9 +58,9 @@ class ProductSliderSection extends SectionBlueprint
         return [
             Section::make('Header')
                 ->components([
-                    TextInput::make('eyebrow')->maxLength(120),
-                    TextInput::make('heading')->maxLength(255),
-                    Textarea::make('subhead')->rows(2)->maxLength(500),
+                    CopyFields::inline('eyebrow'),
+                    CopyFields::inline('heading'),
+                    CopyFields::inline('subhead'),
                     TextInput::make('cta_label')
                         ->label('Section CTA label')
                         ->maxLength(120)

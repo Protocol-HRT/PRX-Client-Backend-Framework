@@ -3,11 +3,11 @@
 namespace App\Cms\Sections;
 
 use App\Cms\Sections\Concerns\HasCatalogCta;
+use App\Cms\Support\CopyFields;
 use App\Enums\SectionType;
 use App\Filament\Support\SectionImagePicker;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 
@@ -56,7 +56,7 @@ class BenefitsDiagramSection extends SectionBlueprint
             Section::make('Header & centerpiece')
                 ->columns(2)
                 ->components([
-                    TextInput::make('heading')->maxLength(255)->columnSpanFull(),
+                    CopyFields::inline('heading')->columnSpanFull(),
                     SectionImagePicker::make('image')->label('Center image'),
                     TextInput::make('image_alt')->maxLength(255),
                     Select::make('marker_style')
@@ -68,7 +68,7 @@ class BenefitsDiagramSection extends SectionBlueprint
             Repeater::make('points')
                 ->label('Benefit points')
                 ->schema([
-                    Textarea::make('text')->rows(2)->required()->maxLength(255),
+                    CopyFields::inline('text')->required(),
                     Select::make('side')
                         ->options(['left' => 'Left of image', 'right' => 'Right of image'])
                         ->default('left')
@@ -91,17 +91,15 @@ class BenefitsDiagramSection extends SectionBlueprint
                         ->maxValue(5)
                         ->step(0.1)
                         ->helperText('Star fill, 0–5.'),
-                    TextInput::make('rating_text')
-                        ->maxLength(255)
+                    CopyFields::inline('rating_text')
                         ->helperText('Line rendered next to the stars.'),
                 ]),
             Section::make('Call to action')
                 ->columns(2)
                 ->components([
                     ...$this->ctaFields(),
-                    TextInput::make('cta_subtext')
+                    CopyFields::inline('cta_subtext')
                         ->label('CTA subtext')
-                        ->maxLength(160)
                         ->helperText('Small reassurance line under the button — renders with a lock icon.'),
                 ]),
         ];

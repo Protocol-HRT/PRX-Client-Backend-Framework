@@ -2,10 +2,10 @@
 
 namespace App\Cms\Sections;
 
+use App\Cms\Support\CopyFields;
 use App\Enums\SectionType;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 
@@ -47,17 +47,17 @@ class FeaturesGridSection extends SectionBlueprint
         return [
             Section::make('Header')
                 ->components([
-                    TextInput::make('eyebrow')->maxLength(120),
-                    TextInput::make('heading')->maxLength(255),
-                    Textarea::make('lead')->rows(3)->maxLength(500),
+                    CopyFields::inline('eyebrow'),
+                    CopyFields::inline('heading'),
+                    CopyFields::inline('lead'),
                     Select::make('columns')->options(['2' => '2 columns', '3' => '3 columns', '4' => '4 columns'])->default('3')->native(false),
                 ]),
             Repeater::make('features')
                 ->label('Features')
                 ->schema([
                     TextInput::make('icon')->maxLength(64)->helperText('Heroicon name (e.g. heroicon-o-bolt) or emoji.'),
-                    TextInput::make('title')->required()->maxLength(255),
-                    Textarea::make('body')->rows(3)->required()->columnSpanFull(),
+                    CopyFields::inline('title')->required(),
+                    CopyFields::prose('body')->required()->columnSpanFull(),
                 ])
                 ->columns(2)
                 ->reorderable()

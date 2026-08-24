@@ -2,11 +2,10 @@
 
 namespace App\Cms\Sections;
 
+use App\Cms\Support\CopyFields;
 use App\Enums\SectionType;
 use App\Filament\Support\SectionImagePicker;
 use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 
 class TimelineSection extends SectionBlueprint
@@ -47,25 +46,24 @@ class TimelineSection extends SectionBlueprint
             Section::make('Header')
                 ->columns(2)
                 ->components([
-                    TextInput::make('heading')->required()->maxLength(255),
+                    CopyFields::inline('heading')->required(),
                     SectionImagePicker::make('mark_image')
                         ->label('Rail emblem')
                         ->helperText('Small image rendered at the top of the vertical rail (e.g. a logo mark). Optional.'),
-                    Textarea::make('lead')->rows(3)->maxLength(500)->columnSpanFull(),
+                    CopyFields::inline('lead')->columnSpanFull(),
                 ]),
             Repeater::make('steps')
                 ->label('Steps')
                 ->schema([
-                    TextInput::make('title')->required()->maxLength(255),
-                    TextInput::make('meta')
+                    CopyFields::inline('title')->required(),
+                    CopyFields::inline('meta')
                         ->label('Sub label')
-                        ->maxLength(255)
                         ->helperText('Muted line under the title (e.g. a duration).'),
-                    Textarea::make('body')->rows(4)->maxLength(2000)->columnSpanFull(),
+                    CopyFields::prose('body')->columnSpanFull(),
                     Repeater::make('bullets')
                         ->label('Bullet list')
                         ->schema([
-                            TextInput::make('text')->required()->maxLength(255),
+                            CopyFields::inline('text')->required(),
                         ])
                         ->reorderable()
                         ->columnSpanFull()

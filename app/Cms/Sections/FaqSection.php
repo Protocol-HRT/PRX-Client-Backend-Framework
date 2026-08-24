@@ -2,10 +2,10 @@
 
 namespace App\Cms\Sections;
 
+use App\Cms\Support\CopyFields;
 use App\Enums\SectionType;
 use App\Filament\Support\SectionImagePicker;
 use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 
@@ -51,16 +51,14 @@ class FaqSection extends SectionBlueprint
         return [
             Section::make('Header')
                 ->components([
-                    TextInput::make('eyebrow')->label('Sage eyebrow')->maxLength(120),
-                    TextInput::make('heading')->required()->maxLength(255),
-                    TextInput::make('emphasis')
+                    CopyFields::inline('eyebrow')->label('Sage eyebrow'),
+                    CopyFields::inline('heading')->required(),
+                    CopyFields::inline('emphasis')
                         ->label('Heading accent (sage)')
-                        ->maxLength(255)
                         ->helperText('Final-clause word(s) rendered in sage green.'),
-                    Textarea::make('description')
+                    CopyFields::prose('description')
                         ->label('Intro description')
-                        ->rows(3)
-                        ->maxLength(500)
+
                         ->helperText('Short paragraph rendered under the heading in the intro column.'),
                     TextInput::make('cta_label')->label('CTA label')->maxLength(60),
                     TextInput::make('cta_url')->label('CTA URL')->maxLength(2048),
@@ -70,8 +68,8 @@ class FaqSection extends SectionBlueprint
             Repeater::make('faqs')
                 ->label('Questions')
                 ->schema([
-                    TextInput::make('q')->label('Question')->required()->maxLength(255)->columnSpanFull(),
-                    Textarea::make('a')->label('Answer')->rows(4)->required()->columnSpanFull(),
+                    CopyFields::inline('q')->label('Question')->required()->columnSpanFull(),
+                    CopyFields::prose('a')->label('Answer')->required()->columnSpanFull(),
                 ])
                 ->reorderable()
                 ->columnSpanFull()

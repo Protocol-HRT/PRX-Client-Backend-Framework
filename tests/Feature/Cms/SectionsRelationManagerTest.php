@@ -91,7 +91,10 @@ class SectionsRelationManagerTest extends TestCase
             ->mountTableAction('edit', $section)
             ->assertSchemaStateSet([
                 'type' => 'text-block',
-                'data.heading' => 'Before',
+                // Headings are rich inputs now, so the editor hydrates a stored
+                // plain-text value into its own paragraph for editing. The
+                // dehydrate step flattens it back — see the round-trip below.
+                'data.heading' => '<p>Before</p>',
             ]);
 
         $this->manager($page)
@@ -102,5 +105,37 @@ class SectionsRelationManagerTest extends TestCase
 
         $this->assertSame('After', $section->refresh()->data['heading']);
         $this->assertSame('center', $section->data['alignment']);
+    }
+
+    /**
+     * The rich input must not rewrite copy just by being opened. An operator
+     * who edits an unrelated field on a section authored before the WYSIWYG
+     * change should not find their headings wrapped in paragraph tags.
+     */
+    public function test_editing_a_section_leaves_untouched_headings_flat(): void
+    {
+        $page = Page::factory()->create();
+        $section = PageSection::factory()->create([
+            'page_id' => $page->id,
+            'type' => 'text-block',
+            'data' => [
+                'heading' => 'The Operating System<br />for Longevity',
+                'alignment' => 'left',
+            ],
+        ]);
+
+        $this->manager($page)
+            ->callTableAction('edit', $section, data: [
+                'data' => [
+                    'heading' => '<p>The Operating System<br>for Longevity</p>',
+                    'alignment' => 'center',
+                ],
+            ])
+            ->assertHasNoTableActionErrors();
+
+        $this->assertSame(
+            'The Operating System<br />for Longevity',
+            $section->refresh()->data['heading'],
+        );
     }
 }

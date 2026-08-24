@@ -2,6 +2,7 @@
 
 namespace App\Cms\Sections;
 
+use App\Cms\Support\CopyFields;
 use App\Enums\SectionType;
 use App\Filament\Support\SectionImagePicker;
 use Filament\Forms\Components\Select;
@@ -43,8 +44,8 @@ class VideoEmbedSection extends SectionBlueprint
     public function formSchema(): array
     {
         return [
-            TextInput::make('heading')->maxLength(255),
-            TextInput::make('caption')->maxLength(500),
+            CopyFields::inline('heading'),
+            CopyFields::inline('caption'),
             TextInput::make('video_url')->required()->url()->maxLength(2048)->helperText('YouTube or Vimeo URL.'),
             SectionImagePicker::make('poster_image')->label('Poster image'),
             Select::make('theme')->options(['light' => 'Light', 'dark' => 'Dark', 'cream' => 'Cream'])->default('light')->native(false),

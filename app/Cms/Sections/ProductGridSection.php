@@ -2,11 +2,11 @@
 
 namespace App\Cms\Sections;
 
+use App\Cms\Support\CopyFields;
 use App\Enums\SectionType;
 use App\Models\Catalog\Category;
 use App\Models\Catalog\Product;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
@@ -56,9 +56,9 @@ class ProductGridSection extends ProductSliderSection
         return [
             Section::make('Header')
                 ->components([
-                    TextInput::make('eyebrow')->maxLength(120),
-                    TextInput::make('heading')->maxLength(255),
-                    Textarea::make('subhead')->rows(2)->maxLength(500),
+                    CopyFields::inline('eyebrow'),
+                    CopyFields::inline('heading'),
+                    CopyFields::inline('subhead'),
                     Select::make('columns')
                         ->options(['2' => '2 columns', '3' => '3 columns', '4' => '4 columns'])
                         ->default('3')

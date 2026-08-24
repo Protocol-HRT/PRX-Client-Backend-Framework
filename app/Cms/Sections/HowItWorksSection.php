@@ -2,9 +2,9 @@
 
 namespace App\Cms\Sections;
 
+use App\Cms\Support\CopyFields;
 use App\Enums\SectionType;
 use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 
@@ -49,13 +49,12 @@ class HowItWorksSection extends SectionBlueprint
             Section::make('Header')
                 ->columns(2)
                 ->components([
-                    TextInput::make('eyebrow')->label('Eyebrow (sage)')->maxLength(120),
-                    TextInput::make('heading')->required()->maxLength(255),
-                    TextInput::make('emphasis')
+                    CopyFields::inline('eyebrow')->label('Eyebrow (sage)'),
+                    CopyFields::inline('heading')->required(),
+                    CopyFields::inline('emphasis')
                         ->label('Heading accent (sage)')
-                        ->maxLength(255)
                         ->helperText('Sage run rendered after the heading.'),
-                    Textarea::make('lead')->rows(3)->maxLength(500)->columnSpanFull(),
+                    CopyFields::inline('lead')->columnSpanFull(),
                     TextInput::make('cta_label')->maxLength(60),
                     TextInput::make('cta_url')->maxLength(2048),
                 ]),
@@ -66,12 +65,11 @@ class HowItWorksSection extends SectionBlueprint
                         ->required()
                         ->maxLength(8)
                         ->helperText('e.g. 01, 02, 03 — rendered in the circular badge.'),
-                    TextInput::make('title')->required()->maxLength(255),
-                    TextInput::make('meta')
+                    CopyFields::inline('title')->required(),
+                    CopyFields::inline('meta')
                         ->label('Sub label (sage mono)')
-                        ->maxLength(255)
                         ->helperText('Tiny line above the title (e.g. "Takes about 5 minutes").'),
-                    Textarea::make('body')->rows(4)->required()->columnSpanFull(),
+                    CopyFields::prose('body')->required()->columnSpanFull(),
                 ])
                 ->columns(2)
                 ->reorderable()

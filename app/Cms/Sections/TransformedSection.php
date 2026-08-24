@@ -2,10 +2,10 @@
 
 namespace App\Cms\Sections;
 
+use App\Cms\Support\CopyFields;
 use App\Enums\SectionType;
 use App\Filament\Support\SectionImagePicker;
 use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 
@@ -48,30 +48,27 @@ class TransformedSection extends SectionBlueprint
             Section::make('Header')
                 ->columns(2)
                 ->components([
-                    TextInput::make('eyebrow')->label('Editorial tag')->maxLength(120),
-                    TextInput::make('heading')->required()->maxLength(255),
-                    TextInput::make('emphasis')
+                    CopyFields::inline('eyebrow')->label('Editorial tag'),
+                    CopyFields::inline('heading')->required(),
+                    CopyFields::inline('emphasis')
                         ->label('Heading accent (italic gold)')
-                        ->maxLength(255)
                         ->helperText('Gold italic run rendered after the heading.'),
-                    Textarea::make('lead')
-                        ->rows(3)
-                        ->maxLength(500)
+                    CopyFields::inline('lead')
+
                         ->helperText('Right column of the header — lead paragraph that introduces the ambassadors.')
                         ->columnSpanFull(),
                 ]),
             Repeater::make('quotes')
                 ->label('Ambassador cards')
                 ->schema([
-                    TextInput::make('name')->required()->maxLength(255),
-                    TextInput::make('title')->label('Title / role')->maxLength(255),
-                    TextInput::make('protocol')
+                    CopyFields::inline('name')->required(),
+                    CopyFields::inline('title')->label('Title / role'),
+                    CopyFields::inline('protocol')
                         ->label('Protocol pill (mono uppercase)')
-                        ->maxLength(120)
                         ->helperText('Small gold pill on the right of the footer (e.g. "Performance & Hormone Optimization").'),
                     SectionImagePicker::make('image')->label('Portrait image'),
                     TextInput::make('image_alt')->maxLength(255),
-                    Textarea::make('quote')->rows(4)->required()->columnSpanFull(),
+                    CopyFields::inline('quote')->required()->columnSpanFull(),
                 ])
                 ->columns(2)
                 ->reorderable()

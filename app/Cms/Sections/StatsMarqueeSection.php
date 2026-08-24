@@ -2,9 +2,9 @@
 
 namespace App\Cms\Sections;
 
+use App\Cms\Support\CopyFields;
 use App\Enums\SectionType;
 use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\TextInput;
 
 class StatsMarqueeSection extends SectionBlueprint
 {
@@ -41,8 +41,8 @@ class StatsMarqueeSection extends SectionBlueprint
             Repeater::make('items')
                 ->label('Stats')
                 ->schema([
-                    TextInput::make('value')->required()->maxLength(60),
-                    TextInput::make('label')->required()->maxLength(120),
+                    CopyFields::inline('value')->required(),
+                    CopyFields::inline('label')->required(),
                 ])
                 ->columns(2)
                 ->reorderable()

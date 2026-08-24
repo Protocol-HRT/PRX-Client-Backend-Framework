@@ -2,12 +2,11 @@
 
 namespace App\Cms\Sections;
 
+use App\Cms\Support\CopyFields;
 use App\Enums\SectionType;
 use App\Filament\Support\SectionImagePicker;
 use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 
@@ -72,13 +71,11 @@ class HeroSection extends SectionBlueprint
                 ->schema([
                     SectionImagePicker::make('image')->label('Background image'),
                     TextInput::make('image_alt')->label('Image alt text')->maxLength(255),
-                    TextInput::make('heading')->required()->maxLength(255),
-                    TextInput::make('heading_emphasis')
+                    CopyFields::inline('heading')->required(),
+                    CopyFields::inline('heading_emphasis')
                         ->label('Heading accent (italic)')
-                        ->maxLength(120)
                         ->helperText('Optional accent run rendered after the heading.'),
-                    RichEditor::make('description')
-                        ->toolbarButtons(['bold', 'italic', 'link', 'undo', 'redo'])
+                    CopyFields::prose('description')
                         ->columnSpanFull()
                         ->helperText('Rendered as HTML on the public site — bold/italic/line breaks are honored.'),
                     TextInput::make('cta_label')->label('CTA label')->maxLength(60),
@@ -99,9 +96,9 @@ class HeroSection extends SectionBlueprint
                 ->description('Optional floating card overlaid on the slideshow (product spotlight + short quote). Leave the title empty to hide it.')
                 ->columns(2)
                 ->components([
-                    TextInput::make('highlight_title')->label('Title')->maxLength(120),
-                    TextInput::make('highlight_subtitle')->label('Subtitle')->maxLength(120),
-                    Textarea::make('highlight_quote')->label('Quote')->rows(2)->maxLength(255)->columnSpanFull(),
+                    CopyFields::inline('highlight_title')->label('Title'),
+                    CopyFields::inline('highlight_subtitle')->label('Subtitle'),
+                    CopyFields::inline('highlight_quote')->label('Quote')->columnSpanFull(),
                     SectionImagePicker::make('highlight_image')->label('Image'),
                 ]),
             Section::make('Static hero (no-slides fallback)')
@@ -109,25 +106,22 @@ class HeroSection extends SectionBlueprint
                 ->collapsed()
                 ->columns(2)
                 ->components([
-                    TextInput::make('eyebrow')
+                    CopyFields::inline('eyebrow')
                         ->label('Eyebrow tag')
-                        ->maxLength(120)
                         ->helperText('Small uppercase pill above the headline.')
                         ->columnSpanFull(),
-                    TextInput::make('headline')->maxLength(255)->columnSpanFull(),
-                    TextInput::make('headline_emphasis')
+                    CopyFields::inline('headline')->columnSpanFull(),
+                    CopyFields::inline('headline_emphasis')
                         ->label('Headline accent (italic gold)')
-                        ->maxLength(120)
                         ->helperText('Optional gold italic run rendered after the headline.')
                         ->columnSpanFull(),
-                    Textarea::make('subhead')->rows(2)->maxLength(500)->columnSpanFull(),
+                    CopyFields::inline('subhead')->columnSpanFull(),
                     TextInput::make('primary_cta_label')->maxLength(60),
                     TextInput::make('primary_cta_url')->maxLength(2048),
                     TextInput::make('secondary_cta_label')->maxLength(60),
                     TextInput::make('secondary_cta_url')->maxLength(2048),
-                    TextInput::make('trust_microcopy')
+                    CopyFields::inline('trust_microcopy')
                         ->label('Trust micro-copy under buttons')
-                        ->maxLength(255)
                         ->columnSpanFull(),
                     SectionImagePicker::make('background_image')->label('Background image'),
                     TextInput::make('background_video_url')

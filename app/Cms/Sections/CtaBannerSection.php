@@ -2,10 +2,10 @@
 
 namespace App\Cms\Sections;
 
+use App\Cms\Support\CopyFields;
 use App\Enums\SectionType;
 use App\Filament\Support\SectionImagePicker;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 
@@ -51,9 +51,9 @@ class CtaBannerSection extends SectionBlueprint
         return [
             Section::make('Copy')
                 ->components([
-                    TextInput::make('eyebrow')->maxLength(120),
-                    TextInput::make('heading')->required()->maxLength(255),
-                    Textarea::make('sub')->rows(3)->maxLength(500),
+                    CopyFields::inline('eyebrow'),
+                    CopyFields::inline('heading')->required(),
+                    CopyFields::inline('sub'),
                 ]),
             Section::make('Calls to action')
                 ->columns(2)

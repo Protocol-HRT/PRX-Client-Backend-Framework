@@ -2,11 +2,11 @@
 
 namespace App\Cms\Sections;
 
+use App\Cms\Support\CopyFields;
 use App\Enums\SectionType;
 use App\Models\Content\FaqCategory;
 use App\Services\Cms\FaqInliner;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
@@ -64,13 +64,12 @@ class FaqCategoriesSection extends SectionBlueprint
             Section::make('Header')
                 ->description('All optional — leave empty to render the panels on their own, as the FAQ page design does.')
                 ->components([
-                    TextInput::make('eyebrow')->label('Eyebrow')->maxLength(120),
-                    TextInput::make('heading')->maxLength(255),
-                    TextInput::make('emphasis')
+                    CopyFields::inline('eyebrow')->label('Eyebrow'),
+                    CopyFields::inline('heading'),
+                    CopyFields::inline('emphasis')
                         ->label('Heading accent')
-                        ->maxLength(255)
                         ->helperText('Final word(s) rendered in the accent colour.'),
-                    Textarea::make('description')->rows(2)->maxLength(500),
+                    CopyFields::prose('description'),
                 ]),
             Section::make('Questions')
                 ->description('Content comes from Content → FAQ. Hidden categories and unpublished questions are dropped automatically.')

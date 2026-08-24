@@ -2,12 +2,11 @@
 
 namespace App\Cms\Sections;
 
+use App\Cms\Support\CopyFields;
 use App\Enums\SectionType;
 use App\Models\Catalog\Package;
 use App\Services\Cms\CatalogInliner;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 
 class PackagePricingComparisonSection extends SectionBlueprint
@@ -48,9 +47,9 @@ class PackagePricingComparisonSection extends SectionBlueprint
         return [
             Section::make('Header')
                 ->components([
-                    TextInput::make('eyebrow')->maxLength(120),
-                    TextInput::make('heading')->maxLength(255),
-                    Textarea::make('subhead')->rows(2)->maxLength(500),
+                    CopyFields::inline('eyebrow'),
+                    CopyFields::inline('heading'),
+                    CopyFields::inline('subhead'),
                 ]),
             Section::make('Packages')
                 ->components([

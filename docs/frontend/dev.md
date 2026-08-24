@@ -54,6 +54,40 @@ Each section **envelope** is `{ type, origin, anchor, global, data, schema? }`:
 - `anchor` → element `id`; `type` / `global.slug` → CSS hooks (`section--{slug}`); `global` marks shared blocks.
 - Image kinds arrive resolved as `{ id, url, alt, width, height }`; SVG fields arrive sanitized; unknown types should render a visible placeholder in dev builds, never crash.
 
+### 4a. Authored copy is HTML — never render it as text
+
+Every text field an operator can type into is authored in a rich editor and
+arrives as an **HTML string**. Rendering one as a plain text node escapes the
+markup and prints the tags on the page (`The Operating System&lt;br /&gt;for
+Longevity`). This is the single most common integration bug against this API.
+
+Fields come in two kinds, and the kind tells you what markup you may receive:
+
+| Kind | Example fields | You will receive | Render it as |
+|---|---|---|---|
+| **inline** | `heading`, `headline`, `eyebrow`, `emphasis`, `title`, `label`, `value`, `meta`, `caption`, `badge`, `q`, `name`, `quote`, `text` | Inline markup only — `<b> <strong> <i> <em> <u> <s> <a> <br> <span> <sup> <sub> <small> <code> <mark>` | Inject into an element **you** choose (`<h1>`, `<h2>`, `<li>`, `<span>`) |
+| **prose** | `body`, `content`, `description`, `bio`, `a` (FAQ answer) | Block markup — paragraphs, `<h2>`/`<h3>`, `<ul>`/`<ol>`, `<blockquote>`, plus all inline tags | Inject into a container of its own (a `<div>`) |
+
+**The inline guarantee is load-bearing.** The backend strips block markup from
+inline fields on save, so you can safely put the value inside a heading you
+picked yourself without risking `<h1><h2>…</h2></h1>` and a corrupted document
+outline. In exchange, do not wrap a *prose* value in a `<p>` or `<h2>` — it
+already carries its own blocks, and nesting them is invalid.
+
+Normalization happens on write (`App\Cms\Support\HtmlCopy`), so the payload is
+already in the promised shape — a frontend does not need to sanitize or unwrap.
+Two details worth handling anyway:
+
+- **Legacy plain text.** Values authored before a field became a rich input are
+  stored as plain text with real newlines. Convert `\n` → `<br />` when the
+  value contains no markup, so those keep their line breaks.
+- **Empty means empty.** A field carrying only empty markup normalizes to
+  `null`, so a null check is enough — you will not receive `<p></p>`.
+
+Trust model: this is permission-gated admin HTML from the install's own
+backend, the same path as `custom_head_scripts`. Inject it directly. Never
+route user-generated content through the same path.
+
 Route pattern: a catch-all route mapping URL path → page slug, plus `/` → slug `home`. Per-page `seo` overrides the config defaults; respect `noindex`.
 
 - `GET /layout` — six fixed regions (`top_bar`, `header`, `pre_footer`, `footer`, `sidebar_left`, `sidebar_right`; keys always present). Items are `{kind: "section"|"menu", …}` — sections use the same envelope; menus embed a tree.
@@ -92,5 +126,8 @@ The active checkout path comes from `GET /config` → `checkout.path` (`prx` | `
 1. **No hardcoded branding.** Company name, logos, colors, copy, contact info, tracking IDs — all must come from the API. If you find yourself typing a brand string into a component, it belongs in the admin.
 2. **Own your route patterns** for entity links; the backend only emits `{type, slug}`.
 3. **Render unknown section types visibly in dev** (placeholder), silently skip in production — never crash on a new backend type. Exception either way: a section whose `data` holds no authored content (all nulls / empty arrays) must render **nothing** — empty scaffold sections may never leak onto a page.
-4. **Respect `allow_indexing` and per-page `noindex`.**
-5. **Keep API tokens server-side.**
+4. **Never render an authored string as a text node.** Every operator-editable
+   field is HTML — see 4a. Inline-kind fields go inside an element you choose;
+   prose-kind fields get a container of their own.
+5. **Respect `allow_indexing` and per-page `noindex`.**
+6. **Keep API tokens server-side.**

@@ -2,10 +2,9 @@
 
 namespace App\Cms\Sections;
 
+use App\Cms\Support\CopyFields;
 use App\Enums\SectionType;
-use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 
 class TextBlockSection extends SectionBlueprint
 {
@@ -43,9 +42,9 @@ class TextBlockSection extends SectionBlueprint
     public function formSchema(): array
     {
         return [
-            TextInput::make('eyebrow')->maxLength(120),
-            TextInput::make('heading')->maxLength(255),
-            RichEditor::make('body')->columnSpanFull(),
+            CopyFields::inline('eyebrow'),
+            CopyFields::inline('heading'),
+            CopyFields::prose('body')->columnSpanFull(),
             Select::make('alignment')
                 ->options(['left' => 'Left', 'center' => 'Center'])
                 ->default('left')

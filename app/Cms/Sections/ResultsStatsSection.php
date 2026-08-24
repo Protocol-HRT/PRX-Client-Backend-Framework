@@ -2,11 +2,10 @@
 
 namespace App\Cms\Sections;
 
+use App\Cms\Support\CopyFields;
 use App\Enums\SectionType;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 
 class ResultsStatsSection extends SectionBlueprint
@@ -65,22 +64,20 @@ class ResultsStatsSection extends SectionBlueprint
         return [
             Section::make('Header')
                 ->components([
-                    TextInput::make('eyebrow')->label('Sage eyebrow')->maxLength(120),
-                    TextInput::make('heading')->required()->maxLength(255),
-                    TextInput::make('emphasis')
+                    CopyFields::inline('eyebrow')->label('Sage eyebrow'),
+                    CopyFields::inline('heading')->required(),
+                    CopyFields::inline('emphasis')
                         ->label('Heading accent (italic gold)')
-                        ->maxLength(255)
                         ->helperText('Italic gold run rendered after the heading.'),
                 ]),
             Repeater::make('stats')
                 ->label('Stat blocks (4 typical)')
                 ->schema([
-                    TextInput::make('value')
+                    CopyFields::inline('value')
                         ->required()
-                        ->maxLength(60)
                         ->helperText('Pre-formatted value (e.g. "12,400+", "97%", "50").'),
-                    TextInput::make('label')->required()->maxLength(120),
-                    TextInput::make('sublabel')->maxLength(255),
+                    CopyFields::inline('label')->required(),
+                    CopyFields::inline('sublabel'),
                     Select::make('icon')
                         ->options([
                             'patients' => 'Patients (people group)',
@@ -100,9 +97,8 @@ class ResultsStatsSection extends SectionBlueprint
                 ->itemLabel(fn (array $state): ?string => $state['label'] ?? null),
             Section::make('Footer note')
                 ->components([
-                    Textarea::make('footer_note')
-                        ->rows(2)
-                        ->maxLength(500)
+                    CopyFields::inline('footer_note')
+
                         ->helperText('Tiny mono note rendered below the stat grid.'),
                 ]),
         ];

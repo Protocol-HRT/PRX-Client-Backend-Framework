@@ -3,11 +3,11 @@
 namespace App\Cms\Sections;
 
 use App\Cms\Sections\Concerns\HasCatalogCta;
+use App\Cms\Support\CopyFields;
 use App\Enums\SectionType;
 use App\Filament\Support\SectionImagePicker;
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
@@ -102,9 +102,8 @@ class ImageCalloutBannerSection extends SectionBlueprint
                         ->minValue(16)
                         ->maxValue(600)
                         ->helperText('Rendered width of the icon/logo. Leave empty for the small default.'),
-                    TextInput::make('title')->maxLength(255),
-                    RichEditor::make('content')
-                        ->toolbarButtons(['bold', 'italic', 'link', 'undo', 'redo'])
+                    CopyFields::inline('title'),
+                    CopyFields::prose('content')
                         ->columnSpanFull()
                         ->helperText('Rendered as HTML on the public site — bold/italic/line breaks are honored.'),
                     ...$this->ctaFields(),

@@ -2,10 +2,10 @@
 
 namespace App\Cms\Sections;
 
+use App\Cms\Support\CopyFields;
 use App\Enums\SectionType;
 use App\Filament\Support\SectionImagePicker;
 use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 
@@ -48,18 +48,17 @@ class TestimonialsSection extends SectionBlueprint
             Section::make('Header')
                 ->columns(2)
                 ->components([
-                    TextInput::make('eyebrow')->label('Editorial tag')->maxLength(120),
-                    TextInput::make('heading')->required()->maxLength(255),
-                    TextInput::make('emphasis')
+                    CopyFields::inline('eyebrow')->label('Editorial tag'),
+                    CopyFields::inline('heading')->required(),
+                    CopyFields::inline('emphasis')
                         ->label('Heading accent (italic gold)')
-                        ->maxLength(255)
                         ->columnSpanFull(),
                 ]),
             Repeater::make('rating_stats')
                 ->label('Rating stats (right of header — leave empty to hide)')
                 ->schema([
-                    TextInput::make('value')->required()->maxLength(60),
-                    TextInput::make('label')->required()->maxLength(120),
+                    CopyFields::inline('value')->required(),
+                    CopyFields::inline('label')->required(),
                 ])
                 ->columns(2)
                 ->reorderable()
@@ -68,9 +67,8 @@ class TestimonialsSection extends SectionBlueprint
             Repeater::make('quotes')
                 ->label('Testimonials')
                 ->schema([
-                    TextInput::make('protocol')
+                    CopyFields::inline('protocol')
                         ->label('Protocol tag (mono uppercase)')
-                        ->maxLength(120)
                         ->helperText('e.g. "HORMONE OPTIMIZATION", "PHYSICIAN ENDORSEMENT".'),
                     TextInput::make('stars')
                         ->numeric()
@@ -78,13 +76,13 @@ class TestimonialsSection extends SectionBlueprint
                         ->maxValue(5)
                         ->default(5)
                         ->helperText('0–5 gold stars rendered above the quote.'),
-                    TextInput::make('name')->required()->maxLength(255),
-                    TextInput::make('title')->label('Title / role')->maxLength(255),
+                    CopyFields::inline('name')->required(),
+                    CopyFields::inline('title')->label('Title / role'),
                     SectionImagePicker::make('image')->label('Headshot'),
                     TextInput::make('initials')
                         ->maxLength(4)
                         ->helperText('Fallback when no image is set.'),
-                    Textarea::make('quote')->rows(4)->required()->columnSpanFull(),
+                    CopyFields::inline('quote')->required()->columnSpanFull(),
                 ])
                 ->columns(2)
                 ->reorderable()

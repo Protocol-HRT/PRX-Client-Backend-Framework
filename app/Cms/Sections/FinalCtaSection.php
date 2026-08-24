@@ -2,8 +2,8 @@
 
 namespace App\Cms\Sections;
 
+use App\Cms\Support\CopyFields;
 use App\Enums\SectionType;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 
@@ -43,10 +43,10 @@ class FinalCtaSection extends SectionBlueprint
         return [
             Section::make('Copy')
                 ->components([
-                    TextInput::make('eyebrow')->maxLength(120),
-                    TextInput::make('heading')->required()->maxLength(255),
-                    TextInput::make('emphasis')->maxLength(255)->helperText('Italic run on the second line.'),
-                    Textarea::make('lead')->rows(3)->maxLength(500),
+                    CopyFields::inline('eyebrow'),
+                    CopyFields::inline('heading')->required(),
+                    CopyFields::inline('emphasis')->helperText('Italic run on the second line.'),
+                    CopyFields::inline('lead'),
                 ]),
             Section::make('Calls to action')
                 ->columns(2)

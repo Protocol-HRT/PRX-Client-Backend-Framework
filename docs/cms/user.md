@@ -88,14 +88,35 @@ other and the whole scale can be retuned site-wide without re-editing content.
 
 ## Writing formatted text
 
-Headings and body fields accept basic HTML, so you can control line breaks and emphasis
-without a developer:
+Every text field is now a small editor with a toolbar — you format copy the way you
+would in a document, and no longer need to type HTML by hand.
 
-- `The Operating System<br />for Longevity` — forces the second half onto its own line.
-- `<em>italic</em>`, `<strong>bold</strong>`, `<span class="tx-gold">coloured</span>`
-  (colour classes come from Settings → Theme → text classes).
+There are two toolbars, and which one you get depends on the field:
 
-Plain text works exactly as before — you only need tags when you want the formatting.
+**Headings, eyebrows, titles, labels, quotes** — bold, italic, link.
+These sit inside a heading or label whose size and style the page design owns, so
+there are deliberately no heading buttons here. To break a headline across two
+lines, press **Shift+Enter**:
+
+> The Operating System *(Shift+Enter)* for Longevity
+
+**Body, description, bio, FAQ answers** — the above plus headings (H2/H3), bulleted
+and numbered lists, and quotes. Use these for anything long enough to need
+structure, such as a legal page or a detailed answer.
+
+A few things worth knowing:
+
+- **Paste is cleaned up.** Pasting from Word or another web page keeps your bold,
+  italics and links, and discards the formatting that would fight the site design.
+  In a heading field, pasted headings and lists flatten to plain lines.
+- **Blank lines are not spacing.** Pressing Enter repeatedly to push content down
+  leaves empty paragraphs that are stripped on save. Use the layout controls under
+  **Layout & spacing** instead.
+- **Colour classes** still work through the link/HTML route:
+  `<span class="tx-gold">coloured</span>` (classes come from Settings → Theme →
+  text classes).
+- **There is no character limit** on these fields any more. Keep headings short
+  because the design expects it, not because the form will stop you.
 
 ## Image fields
 
