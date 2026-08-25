@@ -292,6 +292,12 @@ divergence to exactly this key.
 palette-deletion guard especially — has to walk the JSON across `page_sections`,
 `catalog_item_sections` and `global_sections`.
 
+That guard now exists, and is the reference implementation of this walk:
+`App\Cms\Support\PaletteUsage` recurses `SectionChildren::items()` over all three tables
+looking for `style_background_color` / `style_text_color`. Copy its shape for the next such
+audit rather than reaching for a `LIKE` — a query over a colour name cannot tell a child's
+background from the same word appearing in authored copy, and cannot see a child at all.
+
 ## Adding a new sub-block type
 
 1. Create `App\Cms\Blocks\YourBlock` extending `BlockBlueprint`. Implement `type()`,

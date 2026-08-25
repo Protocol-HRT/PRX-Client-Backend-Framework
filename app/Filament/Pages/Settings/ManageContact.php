@@ -12,6 +12,7 @@ use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 /**
@@ -132,6 +133,14 @@ class ManageContact extends BaseSettingsPage
         try {
             $data = ContactSettingsData::validateAndCreate($this->form->getState());
             app(UpdateContactSettingsAction::class)->execute($data);
+        } catch (ValidationException $e) {
+            // Rethrow ahead of the catch-all: a ValidationException knows which
+            // field it belongs to, and converting it into a page-level
+            // notification throws that away, leaving the operator hunting for
+            // the control at fault. Every settings page had this; found via the
+            // palette rule on ManageTheme, which looked inert because its
+            // message was being swallowed here.
+            throw $e;
         } catch (Throwable $e) {
             Notification::make()
                 ->title('Could not save contact settings')

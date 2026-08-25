@@ -4,6 +4,7 @@ namespace App\Filament\Pages\Settings;
 
 use App\Actions\Settings\UpdateThemeSettingsAction;
 use App\Data\Settings\ThemeSettingsData;
+use App\Rules\PaletteColorNotInUse;
 use App\Settings\ThemeSettings;
 use BackedEnum;
 use Filament\Forms\Components\ColorPicker;
@@ -14,6 +15,7 @@ use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 /**
@@ -96,7 +98,12 @@ class ManageTheme extends BaseSettingsPage
                             ->columns(2)
                             ->reorderable()
                             ->defaultItems(0)
-                            ->itemLabel(fn (array $state): ?string => $state['name'] ?? null),
+                            ->itemLabel(fn (array $state): ?string => $state['name'] ?? null)
+                            // Caught here so the error lands on the palette
+                            // itself rather than as a page-level notification,
+                            // and caught again in UpdateThemeSettingsAction for
+                            // every caller that never sees this form.
+                            ->rule(new PaletteColorNotInUse),
                     ]),
                 Section::make('Frontend')
                     ->description('Layout and styling hooks consumed by the decoupled frontend via /api/v1/config.')
@@ -123,6 +130,14 @@ class ManageTheme extends BaseSettingsPage
         try {
             $data = ThemeSettingsData::validateAndCreate($this->form->getState());
             app(UpdateThemeSettingsAction::class)->execute($data);
+        } catch (ValidationException $e) {
+            // Must escape the catch below, or Filament never gets to render it.
+            // A ValidationException knows which field it belongs to; turning it
+            // into a page-level notification throws that away and leaves the
+            // operator hunting for the control at fault. This is what made the
+            // palette rule look inert — it was firing all along, and its
+            // message was being swallowed on the way out.
+            throw $e;
         } catch (Throwable $e) {
             Notification::make()
                 ->title('Could not save theme settings')
