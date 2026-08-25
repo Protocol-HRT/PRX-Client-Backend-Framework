@@ -40,6 +40,27 @@ class HeroSection extends SectionBlueprint
         return [
             'layout' => 'slider',
             'slides' => [],
+            // WHERE the highlight cards sit on the slideshow — a 9-token
+            // anchor, and the ONLY non-null default among the content fields.
+            //
+            // That non-null-ness is load-bearing, not incidental. It is a
+            // presentation key, and DeclaresPresentationKeys classifies any
+            // field whose default is non-null as presentation automatically —
+            // so this needs NO entry in LayoutFields::KEYS, adds nothing to the
+            // shared knob vocabulary, and cannot make a hero carrying only a
+            // position report has_content: true. Setting it to null would
+            // silently reclassify it as authored copy and let an empty hero
+            // reach a live page.
+            //
+            // A BLUEPRINT FIELD RATHER THAN A SHARED KNOB, deliberately.
+            // Positioning a child means something only where the parent owns a
+            // slot to position it IN, and the hero is the only section that
+            // does. A shared knob would have to be offered on all 24 types and
+            // do nothing on 23 of them.
+            //
+            // `middle-right` is today's hardcoded placement, so an existing
+            // hero renders identically until someone changes it.
+            'highlight_position' => 'middle-right',
             // `children` is deliberately NOT stamped here. The Builder
             // creates the key on first save, the transformer tolerates its
             // absence, and a seeded flexible MIRROR of this type genuinely
@@ -104,6 +125,23 @@ class HeroSection extends SectionBlueprint
             SectionFormBuilder::children(['testimonial'])
                 ->label('Highlight cards')
                 ->helperText('Cards overlaid on the slideshow. Add more than one and they become a mini slider. Each card carries its own style and layout settings.'),
+            Select::make('highlight_position')
+                ->label('Highlight card position')
+                ->options([
+                    'top-left' => 'Top left',
+                    'top-center' => 'Top centre',
+                    'top-right' => 'Top right',
+                    'middle-left' => 'Middle left',
+                    'middle-center' => 'Middle centre',
+                    'middle-right' => 'Middle right',
+                    'bottom-left' => 'Bottom left',
+                    'bottom-center' => 'Bottom centre',
+                    'bottom-right' => 'Bottom right',
+                ])
+                ->default('middle-right')
+                ->selectablePlaceholder(false)
+                ->native(false)
+                ->helperText('Where the cards above sit on the slideshow. Hidden on phones, where the cards stack under the slide instead — there is not enough width to overlay them without covering the headline.'),
             Section::make('Highlight card (legacy single card)')
                 ->description('The original one-card fields, kept so nothing authored before highlight cards existed had to be migrated. They are used ONLY when no highlight cards are added above; adding one supersedes them. Re-author here in the blocks above and these can be cleared.')
                 ->collapsed()

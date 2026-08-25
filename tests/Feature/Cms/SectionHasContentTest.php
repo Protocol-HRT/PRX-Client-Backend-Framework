@@ -5,6 +5,7 @@ namespace Tests\Feature\Cms;
 use App\Cms\Support\LayoutFields;
 use App\Models\Page;
 use App\Models\PageSection;
+use App\Services\Cms\SectionRegistry;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
@@ -296,6 +297,69 @@ class SectionHasContentTest extends TestCase
             'extra_padding',
             LayoutFields::KEYS,
             'extra_padding was replaced by style_padding_top / style_padding_bottom.'
+        );
+    }
+
+    /**
+     * Child positioning classifies itself, with no shared-vocabulary entry.
+     *
+     * `highlight_position` is a HERO BLUEPRINT FIELD, not a member of
+     * LayoutFields::KEYS — positioning a child means something only where the
+     * parent owns a slot to position it in, and the hero is the only section
+     * that does. It stays out of has_content's way purely by carrying a
+     * non-null default, which DeclaresPresentationKeys unions in.
+     *
+     * So this test is really asserting the MECHANISM: change the default to
+     * null and an untouched hero starts reporting has_content: true, and an
+     * empty slideshow reaches a live page.
+     */
+    public function test_the_hero_position_field_is_presentation_not_content(): void
+    {
+        $envelope = $this->sectionEnvelope([
+            'layout' => 'slider',
+            'slides' => [],
+            'headline' => null,
+            'highlight_position' => 'bottom-left',
+        ], 'hero');
+
+        $this->assertFalse(
+            $envelope['has_content'],
+            'A hero holding nothing but a highlight position is being counted as authored. '
+            .'The field classifies itself only while its default is non-null.'
+        );
+    }
+
+    /**
+     * The default classifies the key; it does NOT reach the payload.
+     *
+     * Worth stating because it is easy to assume otherwise: only
+     * LayoutFields::applyDefaults() merges anything into served data, and it
+     * merges LayoutDefaults — the shared knobs — not a blueprint's own
+     * defaults(). A blueprint default drives the FORM and the presentation
+     * classification, so a hero saved through the admin carries the key while
+     * one written by a fill script does not.
+     *
+     * The frontend therefore owns the fallback, and must treat an absent or
+     * unrecognised value as `middle-right` — today's hardcoded placement — so
+     * a hero authored before this field existed renders exactly as it did.
+     */
+    public function test_the_position_default_classifies_without_being_served(): void
+    {
+        $definition = app(SectionRegistry::class)->resolve('hero');
+
+        $this->assertContains(
+            'highlight_position',
+            $definition->presentationKeys(),
+            'The position field is not classified as presentation — its default must stay non-null.'
+        );
+
+        $envelope = $this->sectionEnvelope(['headline' => 'Longevity, engineered'], 'hero');
+
+        $this->assertArrayNotHasKey(
+            'highlight_position',
+            $envelope['data'],
+            'A blueprint default is not merged into served data. If this starts passing the '
+            .'merge behaviour changed, and the frontend fallback may no longer be reachable.'
         );
     }
 }
