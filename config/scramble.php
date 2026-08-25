@@ -1,5 +1,7 @@
 <?php
 
+use Dedoc\Scramble\SecurityDocumentation\MiddlewareAuthSecurityStrategy;
+
 return [
     /*
      * Which routes to document. String or array form; use Scramble::routes() for custom selection.
@@ -159,5 +161,5 @@ return [
      *     ],
      * ],
      */
-    'security_strategy' => \Dedoc\Scramble\SecurityDocumentation\MiddlewareAuthSecurityStrategy::class,
+    'security_strategy' => MiddlewareAuthSecurityStrategy::class,
 ];
