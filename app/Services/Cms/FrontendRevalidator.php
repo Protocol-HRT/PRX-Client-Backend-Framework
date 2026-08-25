@@ -60,6 +60,35 @@ class FrontendRevalidator
     }
 
     /**
+     * Queue tags for a write that is NOT an Eloquent model.
+     *
+     * Settings are the reason this exists: they live in the `settings` table
+     * as a spatie payload, never pass through an observer, and so were
+     * invisible to modelChanged(). Every settings save cleared the backend's
+     * own `api.v1.config` cache and told the frontend nothing, which left a
+     * palette or brand edit waiting out the full ISR window while the admin
+     * insisted it had saved.
+     *
+     * Prefer ConfigCache::invalidate() over calling this directly for config
+     * writes — it pairs this with the backend cache clear so the two cannot
+     * drift apart again.
+     */
+    public function tagsChanged(string ...$tags): void
+    {
+        if (! $this->enabled()) {
+            return;
+        }
+
+        foreach ($tags as $tag) {
+            if (filled($tag)) {
+                $this->tags[$tag] = true;
+            }
+        }
+
+        $this->registerFlush();
+    }
+
+    /**
      * Send whatever has accumulated. Safe to call directly (tests, commands).
      */
     public function flush(): void

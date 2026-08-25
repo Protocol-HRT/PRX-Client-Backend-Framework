@@ -3,8 +3,8 @@
 namespace App\Actions\Settings;
 
 use App\Data\Settings\BillingSettingsData;
+use App\Services\Cms\ConfigCache;
 use App\Settings\BillingSettings;
-use Illuminate\Support\Facades\Cache;
 
 class UpdateBillingSettingsAction
 {
@@ -17,9 +17,11 @@ class UpdateBillingSettingsAction
         $this->settings->upsells_limit = $data->upsells_limit;
         $this->settings->save();
 
-        // The public config bundle exposes checkout settings — drop the
-        // cached copy so the frontend sees the change on its next boot call.
-        Cache::forget('api.v1.config');
+        // Invalidates BOTH caches between here and a visitor: this app's
+        // own config entry and the decoupled frontend's fetch cache.
+        // Clearing only the first left an edit invisible for the whole
+        // ISR window — see ConfigCache.
+        ConfigCache::invalidate();
 
         return $this->settings;
     }

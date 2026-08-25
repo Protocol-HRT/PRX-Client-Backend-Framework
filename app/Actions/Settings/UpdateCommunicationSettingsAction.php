@@ -4,8 +4,8 @@ namespace App\Actions\Settings;
 
 use App\Actions\Concerns\Transacts;
 use App\Data\Settings\CommunicationSettingsData;
+use App\Services\Cms\ConfigCache;
 use App\Settings\CommunicationSettings;
-use Illuminate\Support\Facades\Cache;
 
 class UpdateCommunicationSettingsAction
 {
@@ -25,9 +25,11 @@ class UpdateCommunicationSettingsAction
             $this->settings->video_enabled = $data->video_enabled;
             $this->settings->save();
 
-            // Provider capabilities in the public config bundle can depend on
-            // communication toggles — drop the cached copy after every save.
-            Cache::forget('api.v1.config');
+            // Invalidates BOTH caches between here and a visitor: this app's
+            // own config entry and the decoupled frontend's fetch cache.
+            // Clearing only the first left an edit invisible for the whole
+            // ISR window — see ConfigCache.
+            ConfigCache::invalidate();
 
             return $this->settings;
         });

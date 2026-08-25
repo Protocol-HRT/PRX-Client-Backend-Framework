@@ -4,8 +4,8 @@ namespace App\Actions\Settings;
 
 use App\Actions\Concerns\Transacts;
 use App\Data\Settings\ContactSettingsData;
+use App\Services\Cms\ConfigCache;
 use App\Settings\ContactSettings;
-use Illuminate\Support\Facades\Cache;
 
 class UpdateContactSettingsAction
 {
@@ -34,9 +34,11 @@ class UpdateContactSettingsAction
             $this->settings->youtube_url = $data->youtube_url;
             $this->settings->save();
 
-            // The public config bundle exposes these settings — drop the
-            // cached copy so the frontend sees the change on its next boot call.
-            Cache::forget('api.v1.config');
+            // Invalidates BOTH caches between here and a visitor: this app's
+            // own config entry and the decoupled frontend's fetch cache.
+            // Clearing only the first left an edit invisible for the whole
+            // ISR window — see ConfigCache.
+            ConfigCache::invalidate();
 
             return $this->settings;
         });
