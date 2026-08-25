@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Cms\FlexibleSectionTypes\Schemas;
 
 use App\Cms\Support\LayoutFields;
+use App\Cms\Support\SectionChildren;
 use App\Enums\Cms\FlexibleFieldKind;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -22,17 +23,42 @@ class FlexibleSectionTypeForm
 
     /**
      * Top-level field keys are additionally refused if they collide with a
-     * layout/style knob (LayoutFields::KEYS). SectionFormBuilder injects
-     * those panels into EVERY type, flexible ones included, so the two share
-     * one flat `data` payload and a shared key silently becomes two things at
-     * once — the section's authored value stops counting as content and
-     * disappears from the live page. The code blueprints are covered by
-     * LayoutFieldCollisionTest; admin-defined types can only be caught here,
-     * at the point they are typed.
+     * layout/style knob (LayoutFields::KEYS) or with the reserved `children`
+     * key. SectionFormBuilder injects the knob panels into EVERY type,
+     * flexible ones included, so the two share one flat `data` payload and a
+     * shared key silently becomes two things at once — the section's authored
+     * value stops counting as content and disappears from the live page.
+     *
+     * `children` is reserved for a different reason and is NOT in
+     * LayoutFields::KEYS (knobs there are presentation; children are
+     * content). SectionDataTransformer::transformChildren() resolves that key
+     * STRUCTURALLY for every type, and anything there that is not a list of
+     * typed `{type, data}` items is dropped — so an authored field of that
+     * name is not merely shadowed, it is deleted on serve.
+     *
+     * The code blueprints are covered by LayoutFieldCollisionTest, which walks
+     * the registry and therefore cannot see a type an operator creates at
+     * runtime. Admin-defined types can only be caught here, as they are typed.
      *
      * Repeater CHILD keys need no such guard: they live at `parent.child` in
-     * the payload and cannot collide with a top-level knob.
+     * the payload and cannot collide with a top-level knob. Sub-blocks do not
+     * change that — a flexible type cannot author typed children at all.
      */
+    /**
+     * Top-level field keys an admin-defined type may never use, because the
+     * payload already resolves them structurally.
+     *
+     * Named rather than inlined so the invariant is testable: every key the
+     * serve path reads positionally has to be in here, and there is no way to
+     * assert that against a closure buried in a form schema.
+     *
+     * @return list<string>
+     */
+    public static function reservedFieldKeys(): array
+    {
+        return [...LayoutFields::KEYS, SectionChildren::KEY];
+    }
+
     public static function configure(Schema $schema): Schema
     {
         return $schema
@@ -95,9 +121,9 @@ class FlexibleSectionTypeForm
                                         TextInput::make('key')
                                             ->required()
                                             ->regex(self::KEY_PATTERN)
-                                            ->rule(Rule::notIn(LayoutFields::KEYS))
+                                            ->rule(Rule::notIn(self::reservedFieldKeys()))
                                             ->validationMessages([
-                                                'not_in' => 'That key is reserved for a layout or style control. Every section already carries these, and reusing the name would make one key mean two things in the same payload.',
+                                                'not_in' => 'That key is reserved. Every section already carries the layout and style controls, and "children" holds a section\'s content blocks — reusing either name would make one key mean two things in the same payload, and the content stored under it would not survive being served.',
                                             ])
                                             ->maxLength(64)
                                             ->helperText('Snake_case identifier in the API payload. Renaming orphans existing content — avoid changing it once in use.'),

@@ -240,6 +240,73 @@ arrays do not.
 If a blueprint has a structural key with no default, override `presentationKeys()` and
 merge it in — otherwise it reads as content and the section renders when it shouldn't.
 
+### Sub-blocks — typed children inside a section (2026-08-25)
+
+A section's `data` may hold `children`: a repeater of **typed** child blocks, each with its
+own fields and its own copy of the shared Layout & Style knobs. It is what turned the hero's
+one hardcoded highlight card into a repeatable, positionable, slider-capable block.
+
+**No schema migration.** `page_sections` stays flat and children live in the JSON column.
+That is affordable because Filament's `Builder` already persists items as `{type, data}` —
+the exact envelope the frontend wants, with no discriminator to invent and keep in sync. A
+`Repeater` has no per-item type; faking one means a select plus `visible()` on every field of
+every block.
+
+The pieces:
+
+| Piece | Role |
+|---|---|
+| `App\Cms\Blocks\BlockBlueprint` | The block contract — the same shape as `SectionBlueprint`, one level down |
+| `App\Services\Cms\BlockRegistry` | Slug → blueprint. Deliberately NOT part of `SectionRegistry`, whose members are all offered in the section picker |
+| `App\Cms\Support\SectionChildren` | The reserved `children` key, and the served envelope shape |
+| `App\Cms\Support\BlockDefaults` | Per-block design defaults. Separate from `LayoutDefaults`, which is keyed by *section* slug |
+| `SectionFormBuilder::children()` / `::blockFor()` | The Builder, and one Builder block per blueprint carrying the same Style/Layout panels a section gets |
+
+`SectionDataTransformer::transformChildren()` runs each child through the same four steps a
+section gets — field kinds, `resolveData()`, layout defaults, `has_content` — and serves
+`{type, data, has_content}`. It runs **after** the parent's `resolveData()` so a blueprint can
+synthesize children from older flat fields, which is how the hero reads its legacy
+`highlight_*` card without a single row being migrated.
+
+**Three traps, each of which bit during the build:**
+
+1. **`children` must NOT go in `LayoutFields::KEYS`.** Keys there are presentation and are
+   skipped when deciding whether a section was authored. Children are *content*. Putting the
+   key in `KEYS` would make a section holding nothing but children report `has_content: false`.
+2. **`SectionContent` had to learn the envelope shape.** A child arrives as
+   `{type, data, has_content}` whose `type` is always a non-empty string, so a generic walk
+   counts *any* child — including one holding only a background colour — as authored content.
+   That is the empty-scaffold-on-a-live-page regression, one level down;
+   `SectionContent::isEmpty()` now defers to the child's own verdict.
+3. **`MediaResolver::resolve()` had to become idempotent.** A synthesized child receives media
+   that the parent's field-kind pass already resolved, and re-resolving an array used to fall
+   through and return `null` — silently deleting the image.
+
+**Code-only capability.** `FlexibleDefinition` fans one shared child schema across `.*.`, so
+an admin-defined flexible type cannot express heterogeneous typed children. A blueprint that
+owns blocks is therefore not promotable to data-driven until that changes;
+`SectionTypeSeedParityTest` compares code and seed on the shared surface and pins the
+divergence to exactly this key.
+
+**Cost accepted:** children are invisible to SQL. Any "which sections use X" audit — the
+palette-deletion guard especially — has to walk the JSON across `page_sections`,
+`catalog_item_sections` and `global_sections`.
+
+## Adding a new sub-block type
+
+1. Create `App\Cms\Blocks\YourBlock` extending `BlockBlueprint`. Implement `type()`,
+   `label()`, `formSchema()`; optionally `defaults()`, `fieldKinds()`, `icon()`,
+   `description()`, `resolveData()`.
+2. Register the class in `BlockRegistry::BLUEPRINTS`.
+3. Give it design defaults in `App\Cms\Support\BlockDefaults::MAP` if it needs any.
+4. Offer it on a section: add `SectionFormBuilder::children([...])` to that blueprint's
+   `formSchema()`, naming the block slugs it accepts.
+5. No field key may collide with `LayoutFields::KEYS` — the block wears the same shared
+   panels, and `LayoutFieldCollisionTest` will fail if it does. The reserved `children` key is
+   guarded twice, because one guard is blind to the other's types: that test walks the code
+   registry, while `FlexibleSectionTypeForm::reservedFieldKeys()` catches an admin-defined
+   type as its key is typed.
+
 ## Dataset-driven sections
 
 Most blueprints store the content an operator types into them. A second kind stores only a

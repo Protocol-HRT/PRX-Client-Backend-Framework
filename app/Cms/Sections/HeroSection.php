@@ -3,7 +3,10 @@
 namespace App\Cms\Sections;
 
 use App\Cms\Support\CopyFields;
+use App\Cms\Support\SectionChildren;
+use App\Cms\Support\SectionContent;
 use App\Enums\SectionType;
+use App\Filament\Support\SectionFormBuilder;
 use App\Filament\Support\SectionImagePicker;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -37,6 +40,12 @@ class HeroSection extends SectionBlueprint
         return [
             'layout' => 'slider',
             'slides' => [],
+            // `children` is deliberately NOT stamped here. The Builder
+            // creates the key on first save, the transformer tolerates its
+            // absence, and a seeded flexible MIRROR of this type genuinely
+            // cannot hold typed blocks (FlexibleDefinition fans one shared
+            // child schema across `.*.`), so declaring it would make the
+            // shadow row claim a capability it does not have.
             'highlight_title' => null,
             'highlight_subtitle' => null,
             'highlight_quote' => null,
@@ -92,8 +101,12 @@ class HeroSection extends SectionBlueprint
                 ->minItems(0)
                 ->columnSpanFull()
                 ->itemLabel(fn (array $state): ?string => $state['heading'] ?? null),
-            Section::make('Highlight card')
-                ->description('Optional floating card overlaid on the slideshow (product spotlight + short quote). Leave the title empty to hide it.')
+            SectionFormBuilder::children(['testimonial'])
+                ->label('Highlight cards')
+                ->helperText('Cards overlaid on the slideshow. Add more than one and they become a mini slider. Each card carries its own style and layout settings.'),
+            Section::make('Highlight card (legacy single card)')
+                ->description('The original one-card fields, kept so nothing authored before highlight cards existed had to be migrated. They are used ONLY when no highlight cards are added above; adding one supersedes them. Re-author here in the blocks above and these can be cleared.')
+                ->collapsed()
                 ->columns(2)
                 ->components([
                     CopyFields::inline('highlight_title')->label('Title'),
@@ -141,5 +154,54 @@ class HeroSection extends SectionBlueprint
             'highlight_image' => 'image',
             'background_image' => 'image',
         ];
+    }
+
+    /**
+     * Read the pre-blocks highlight card as a one-item sub-block.
+     *
+     * Why serve-time rather than a data migration: exactly one row in this
+     * install held highlight_* content, and synthesizing here keeps the
+     * frontend contract uniform (children are always the shape) while
+     * touching no data. It runs BEFORE has_content is computed
+     * (SectionDataTransformer), so the flag stays correct, and before the
+     * child pipeline, so a synthesized card gets the same knobs and verdict
+     * an authored one gets.
+     *
+     * highlight_image has already been resolved to a media object by the
+     * time this runs; MediaResolver::resolve() is idempotent so passing it
+     * through the child pipeline preserves it.
+     *
+     * Authored children WIN — that is what makes this a migration path and
+     * not a permanent second source of truth. Once an operator re-authors
+     * the card above, the flat fields can be cleared and this becomes dead.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    public function resolveData(array $data): array
+    {
+        if (SectionChildren::items($data) !== []) {
+            return $data;
+        }
+
+        $card = [
+            'title' => $data['highlight_title'] ?? null,
+            'subtitle' => $data['highlight_subtitle'] ?? null,
+            'quote' => $data['highlight_quote'] ?? null,
+            'image' => $data['highlight_image'] ?? null,
+        ];
+
+        // Same emptiness rule the rest of the CMS uses, rather than a second
+        // hand-rolled one that could disagree with it.
+        if (! SectionContent::hasContent($card, [])) {
+            return $data;
+        }
+
+        $data[SectionChildren::KEY] = [[
+            'type' => 'testimonial',
+            'data' => $card,
+        ]];
+
+        return $data;
     }
 }

@@ -45,6 +45,15 @@ class MediaResolver
             return null;
         }
 
+        // Already resolved. A blueprint's resolveData() may lift a resolved
+        // media object into a synthesized sub-block, which then runs the
+        // child pipeline and arrives here a second time. Without this the
+        // value would fall through to the null at the bottom and the image
+        // would silently disappear.
+        if (is_array($value)) {
+            return array_key_exists('url', $value) ? $value : null;
+        }
+
         if (is_numeric($value)) {
             $media = $this->primed[(int) $value] ?? Media::query()->find((int) $value);
 

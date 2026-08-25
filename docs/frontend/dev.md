@@ -61,6 +61,7 @@ Each section **envelope** is `{ type, origin, anchor, global, has_content, data,
 - **`has_content: bool` — render nothing when this is `false`.** A section an editor added but never filled in still carries its blueprint's structural flags (`theme: "light"`, `alignment: "left"`, `mode: "manual"`), so a naive "is every value empty?" check judges it authored and an empty scaffold reaches the live page. The backend knows which of its own keys are presentation and does that classification for you — it is computed after catalog inlining, so a slider whose query returned nothing is correctly `false`. Do not reimplement this by guessing which keys look like flags.
 - `anchor` → element `id`; `type` / `global.slug` → CSS hooks (`section--{slug}`); `global` marks shared blocks.
 - Image kinds arrive resolved as `{ id, url, alt, width, height }`; SVG fields arrive sanitized; unknown types should render a visible placeholder in dev builds, never crash.
+- `data` may carry a **`children`** array of typed sub-blocks — see §4c. It is absent unless the section holds blocks, so ignoring it keeps a consumer working exactly as before.
 
 ### 4b. Presentation knobs every section carries
 
@@ -85,6 +86,57 @@ Four rules that make these safe to consume:
 4. **Style keys are namespaced `style_*`, deliberately.** `background_image` is already an *authored content* field on `hero`, `cta-banner` and `image-callout-banner`. An unprefixed knob collides with it in the flat payload — which both reclassifies those sections' real images as presentation (so `has_content` goes false and the section vanishes) and paints the content image a second time as a backdrop. `LayoutFieldCollisionTest` enforces the prefix; do not strip it.
 
 None of these keys count as authored content: a section carrying nothing but style knobs still reports `has_content: false` and must render nothing.
+
+### 4c. Sub-blocks — typed children inside a section
+
+A section's `data` may carry a `children` array of **typed child blocks**. It is present only
+when the section actually holds blocks; a section without them serves exactly what it served
+before sub-blocks existed, so this is additive and no consumer has to change to keep working.
+
+Each child is a mini-envelope:
+
+```json
+"children": [
+  {
+    "type": "testimonial",
+    "has_content": true,
+    "data": { "title": "…", "subtitle": "…", "quote": "<p>…</p>", "image": { "url": "…" },
+              "content_width": "full", "style_background_color": "sand" }
+  }
+]
+```
+
+- **`type`** is the block slug — dispatch on it exactly as you dispatch a section on its own
+  `type`. Block slugs live in their own namespace and never collide with section slugs.
+- **`has_content`** obeys the same rule as a section's: **render nothing when it is `false`.**
+  It is computed per child against that block type's own presentation keys, so a child holding
+  nothing but knobs is correctly empty — and a section whose only children are empty reports
+  `has_content: false` itself and must not reach the page.
+- **`data`** carries the block's own fields **plus the same knobs from §4b**, with the same
+  meanings and the same "unset means keep the design" rule. A block's knobs are the operator's
+  way of positioning and colouring the child *within* its parent.
+- Image kinds inside a child arrive resolved just as they do on a section.
+- A child whose block type no longer resolves is **dropped server-side**, not served raw. You
+  never need a placeholder for an unknown child type the way you do for an unknown section
+  type.
+
+Two constraints worth stating because they are easy to get wrong:
+
+1. **`children` is a reserved key.** It is resolved structurally — anything stored there that
+   is not a list of typed `{type, data}` items is **dropped on serve**, not merely shadowed —
+   so no section or block type may declare an authored field of that name. Same discipline as
+   the `style_*` prefix, and guarded the same two ways: `LayoutFieldCollisionTest` for code
+   blueprints, and `FlexibleSectionTypeForm::reservedFieldKeys()` at the point an operator
+   types a key, which is the only place a type created at runtime can be caught.
+2. **Nesting a child's knobs is not the same as nesting a section's.** If your knob CSS is
+   written with descendant selectors scoped to a page-level band, a nested child will inherit
+   its parent's inset/width/align and bleed out of the parent's column. Give children their
+   own class vocabulary, or scope with child combinators — do not simply reuse the section
+   classes on a child.
+
+Sub-blocks are a **code-blueprint capability**. Admin-defined flexible types fan one shared
+child schema across a repeater and cannot express heterogeneous typed children, so a flexible
+type never serves this key.
 
 ### 4a. Authored copy is HTML — never render it as text
 

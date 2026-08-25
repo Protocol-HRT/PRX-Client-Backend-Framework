@@ -18,6 +18,7 @@ use App\Models\Page;
 use App\Models\PageSection;
 use App\Observers\CmsCacheObserver;
 use App\Observers\PageSectionObserver;
+use App\Services\Cms\BlockRegistry;
 use App\Services\Cms\FrontendRevalidator;
 use App\Services\Cms\PageRevisionService;
 use App\Services\Cms\SectionRegistry;
@@ -50,6 +51,7 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->singleton(PaymentGatewayManager::class);
         $this->app->singleton(SectionRegistry::class);
+        $this->app->singleton(BlockRegistry::class);
         $this->app->singleton(PageRevisionService::class);
     }
 

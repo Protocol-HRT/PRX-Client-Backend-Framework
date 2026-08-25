@@ -4,6 +4,7 @@ namespace Tests\Feature\Cms;
 
 use App\Actions\Cms\SetFlexibleSectionTypeModeAction;
 use App\Cms\FlexibleDefinition;
+use App\Cms\Support\SectionChildren;
 use App\Enums\Cms\SectionTypeMode;
 use App\Models\Catalog\Category;
 use App\Models\Catalog\Package;
@@ -782,11 +783,32 @@ class SectionTypeSeedParityTest extends TestCase
         ksort($seedKinds);
         $this->assertSame($codeKinds, $seedKinds, "fieldKinds diverge for {$slug}.");
 
+        // SUB-BLOCKS ARE A CODE-ONLY CAPABILITY, and this is the seam where
+        // that surfaces. A flexible type fans ONE shared child schema across
+        // `.*.` (FlexibleDefinition::collectFieldKinds), so it cannot express
+        // heterogeneous TYPED children at all: a seeded mirror will never
+        // carry the block container, and a code blueprint that owns blocks is
+        // not promotable to data-driven until FlexibleDefinition grows that
+        // capability. Comparing on the shared surface keeps parity meaningful
+        // for the other 29 types instead of fudging a difference that is real
+        // — and the two assertions below pin the divergence to exactly this
+        // key, so anything else still fails.
         $codeFieldNames = array_column($inspector->fields($codeDefinition), 'name');
         $seedFieldNames = array_column($inspector->fields($seededDefinition), 'name');
+        $ownsBlocks = in_array(SectionChildren::KEY, $codeFieldNames, true);
+
+        if ($ownsBlocks) {
+            $this->assertNotContains(
+                SectionChildren::KEY,
+                $seedFieldNames,
+                "Seed for {$slug} claims a block container a flexible type cannot express."
+            );
+            $codeFieldNames = array_diff($codeFieldNames, [SectionChildren::KEY]);
+        }
+
         sort($codeFieldNames);
         sort($seedFieldNames);
-        $this->assertSame($codeFieldNames, $seedFieldNames, "Field inventory diverges for {$slug}.");
+        $this->assertSame(array_values($codeFieldNames), array_values($seedFieldNames), "Field inventory diverges for {$slug}.");
 
         $codeEnvelope = $transformer->envelopeFor($slug, $fixture);
         $this->assertSame('code', $codeEnvelope['origin']);
@@ -795,7 +817,18 @@ class SectionTypeSeedParityTest extends TestCase
 
         $seededEnvelope = $transformer->envelopeFor($slug, $fixture);
         $this->assertSame('flexible', $seededEnvelope['origin']);
-        $this->assertSame($codeEnvelope['data'], $seededEnvelope['data'], "API payload diverges for {$slug}.");
+
+        $codeData = $codeEnvelope['data'];
+        $seededData = $seededEnvelope['data'];
+
+        // Same reason as the inventory above: only the block surface may
+        // differ, so it is compared separately rather than waived.
+        if ($ownsBlocks) {
+            $this->assertArrayNotHasKey(SectionChildren::KEY, $seededData);
+            unset($codeData[SectionChildren::KEY]);
+        }
+
+        $this->assertSame($codeData, $seededData, "API payload diverges for {$slug}.");
 
         app(SetFlexibleSectionTypeModeAction::class)->execute($row->fresh(), SectionTypeMode::Shadow);
 

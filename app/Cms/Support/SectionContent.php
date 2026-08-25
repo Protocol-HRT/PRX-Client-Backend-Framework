@@ -49,6 +49,17 @@ final class SectionContent
             return true;
         }
 
+        // A served sub-block carries its OWN verdict, and it is the only
+        // thing worth asking. Walking one generically would find its `type`
+        // discriminator — always a non-empty string — and call the child
+        // authored, so a section holding nothing but empty children would
+        // report has_content: true and leak an empty scaffold onto a live
+        // page. That is the regression this class exists to prevent, one
+        // level down.
+        if (SectionChildren::isEnvelope($value)) {
+            return $value['has_content'] === false;
+        }
+
         if (is_array($value)) {
             foreach ($value as $item) {
                 if (! self::isEmpty($item)) {

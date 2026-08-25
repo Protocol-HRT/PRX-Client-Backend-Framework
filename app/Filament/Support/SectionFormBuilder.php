@@ -2,8 +2,13 @@
 
 namespace App\Filament\Support;
 
+use App\Cms\Blocks\BlockBlueprint;
+use App\Cms\Support\SectionChildren;
+use App\Services\Cms\BlockRegistry;
 use App\Services\Cms\SectionRegistry;
 use App\Settings\ThemeSettings;
+use Filament\Forms\Components\Builder;
+use Filament\Forms\Components\Builder\Block;
 use Filament\Forms\Components\Select;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
@@ -73,7 +78,7 @@ class SectionFormBuilder
      * section keeps its own stylesheet background rather than being reset to
      * transparent.
      */
-    private static function styleSection(): Section
+    public static function styleSection(): Section
     {
         return Section::make('Style')
             ->description('Colours and imagery for this section. Leave everything unset to keep the section type\'s own design.')
@@ -137,7 +142,7 @@ class SectionFormBuilder
             : $base;
     }
 
-    private static function layoutSection(): Section
+    public static function layoutSection(): Section
     {
         return Section::make('Layout & spacing')
             ->description('How this section sits on the page. Leave everything unset for the design default.')
@@ -201,5 +206,59 @@ class SectionFormBuilder
                     ->native(false)
                     ->helperText('How this section\'s image or video is framed. Leave unset to use this section type\'s design default.'),
             ]);
+    }
+
+    /**
+     * The "Content blocks" Builder a section uses to hold typed children.
+     *
+     * Filament's Builder is used rather than a Repeater with a type select
+     * because its persisted item shape is ALREADY `{type, data}` — the exact
+     * child envelope the frontend consumes, with no discriminator to invent
+     * and keep in sync. A Repeater has no per-item type; faking one means a
+     * select plus visible() on every field of every block.
+     *
+     * Blocks state-path relative to their own item, so the shared knob
+     * panels appended by blockFor() land at
+     * `children.{i}.data.style_background_color` with no statePath work.
+     *
+     * The key is fixed, not a parameter: SectionDataTransformer resolves
+     * children positionally at SectionChildren::KEY, so a Builder stored
+     * anywhere else would serve raw `{type, data}` items with unresolved
+     * media, and their `type` strings would count as authored content.
+     *
+     * @param  list<string>|null  $only  Restrict to these block slugs.
+     */
+    public static function children(?array $only = null): Builder
+    {
+        return Builder::make(SectionChildren::KEY)
+            ->label('Content blocks')
+            ->helperText('Repeatable pieces inside this section. Each one carries its own style and layout settings.')
+            ->blocks(app(BlockRegistry::class)->builderBlocks($only))
+            ->collapsible()
+            ->collapsed()
+            ->reorderable()
+            ->addActionLabel('Add block')
+            ->columnSpanFull();
+    }
+
+    /**
+     * One Builder block for a block blueprint: its own fields, then the same
+     * Style and Layout panels every section gets.
+     *
+     * Reusing styleSection()/layoutSection() verbatim is deliberate — a knob
+     * that means one thing on a section and another on a child would be the
+     * "control that lies to the operator" shape this system keeps fixing.
+     */
+    public static function blockFor(BlockBlueprint $blueprint): Block
+    {
+        return Block::make($blueprint->type())
+            ->label($blueprint->label())
+            ->icon($blueprint->icon())
+            ->schema([
+                ...$blueprint->formSchema(),
+                self::styleSection(),
+                self::layoutSection(),
+            ])
+            ->columns(2);
     }
 }

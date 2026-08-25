@@ -2,8 +2,10 @@
 
 namespace App\Services\Cms;
 
+use App\Cms\Blocks\BlockBlueprint;
 use App\Cms\FlexibleDefinition;
 use App\Cms\Support\LayoutFields;
+use App\Cms\Support\SectionChildren;
 use App\Cms\Support\SectionContent;
 use App\Contracts\Cms\SectionDefinition;
 use App\Models\Catalog\CatalogItemSection;
@@ -29,6 +31,7 @@ class SectionDataTransformer
         private readonly SectionRegistry $registry,
         private readonly MediaResolver $media,
         private readonly CatalogInliner $catalog,
+        private readonly BlockRegistry $blocks,
     ) {}
 
     /**
@@ -79,6 +82,12 @@ class SectionDataTransformer
             }
 
             $data = $row['definition']->resolveData($data);
+
+            // AFTER resolveData, deliberately: a blueprint may synthesize
+            // children from older flat fields (HeroSection does, which is why
+            // no row needed migrating), and a synthesized child must run the
+            // same pipeline an authored one does.
+            $data = $this->transformChildren($data);
 
             // Layout defaults fill only knobs the operator left unset, and
             // only keys in LayoutFields::KEYS, so has_content below is
@@ -142,6 +151,8 @@ class SectionDataTransformer
 
         $data = $definition->resolveData($data);
 
+        $data = $this->transformChildren($data);
+
         $data = LayoutFields::applyDefaults($data, $definition->layoutDefaults());
 
         $envelope = [
@@ -173,19 +184,43 @@ class SectionDataTransformer
     {
         $ids = [];
 
+        $collect = function (mixed $value) use (&$ids): mixed {
+            if (is_numeric($value)) {
+                $ids[] = (int) $value;
+            }
+
+            return $value;
+        };
+
         foreach ($prepared as $row) {
             foreach ($this->fieldKinds($row['definition']) as $path => $kind) {
                 if ($kind !== 'image') {
                     continue;
                 }
 
-                $this->walk($row['data'], explode('.', $path), function (mixed $value) use (&$ids): mixed {
-                    if (is_numeric($value)) {
-                        $ids[] = (int) $value;
+                $this->walk($row['data'], explode('.', $path), $collect);
+            }
+
+            // Sub-block images, one level down. Each child declares its own
+            // field kinds, so this cannot be expressed as another dot path on
+            // the parent: `children.*.data.image` means something different
+            // per child type.
+            foreach (SectionChildren::items($row['data']) as $item) {
+                $blueprint = $this->blocks->resolve($item['type']);
+
+                if ($blueprint === null) {
+                    continue;
+                }
+
+                $childData = is_array($item['data'] ?? null) ? $item['data'] : [];
+
+                foreach ($this->blockFieldKinds($blueprint) as $path => $kind) {
+                    if ($kind !== 'image') {
+                        continue;
                     }
 
-                    return $value;
-                });
+                    $this->walk($childData, explode('.', $path), $collect);
+                }
             }
         }
 
@@ -205,6 +240,82 @@ class SectionDataTransformer
     private function fieldKinds(SectionDefinition $definition): array
     {
         return $definition->fieldKinds() + array_fill_keys(LayoutFields::IMAGE_KEYS, 'image');
+    }
+
+    /**
+     * Run every typed child through the same four steps a section gets:
+     * field-kind transformation, resolveData(), layout defaults, and its own
+     * emptiness verdict.
+     *
+     * Served shape per child is `{type, data, has_content}` — Filament
+     * Builder's native `{type, data}` plus the verdict. has_content is
+     * computed HERE rather than left to the frontend for the same reason it
+     * is for sections: one implementation, not one per consumer.
+     *
+     * A child whose block type no longer resolves is dropped rather than
+     * served raw. An unknown SECTION type renders visibly in dev so a missing
+     * component is obvious, but a child has no such affordance — it would
+     * appear as a hole inside an otherwise correct section — and the operator
+     * still sees the block in the admin, which is where it can be fixed.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function transformChildren(array $data): array
+    {
+        $children = [];
+
+        foreach (SectionChildren::items($data) as $item) {
+            $blueprint = $this->blocks->resolve($item['type']);
+
+            if ($blueprint === null) {
+                continue;
+            }
+
+            $childData = is_array($item['data'] ?? null) ? $item['data'] : [];
+
+            foreach ($this->blockFieldKinds($blueprint) as $path => $kind) {
+                $this->walk($childData, explode('.', $path), fn (mixed $value): mixed => $this->transformValue($kind, $value));
+            }
+
+            $childData = $blueprint->resolveData($childData);
+
+            $childData = LayoutFields::applyDefaults($childData, $blueprint->layoutDefaults());
+
+            $children[] = [
+                'type' => $blueprint->type(),
+                'data' => $childData,
+                'has_content' => SectionContent::hasContent($childData, $blueprint->presentationKeys()),
+            ];
+        }
+
+        if ($children === []) {
+            // Leave the key off entirely rather than serving an empty list,
+            // so a section nobody has usable children on is byte-identical to
+            // what it served before sub-blocks existed. Reached three ways:
+            // nothing authored, every item still untyped, or every item's
+            // block type retired — all of which mean the same thing to a
+            // consumer.
+            unset($data[SectionChildren::KEY]);
+
+            return $data;
+        }
+
+        $data[SectionChildren::KEY] = $children;
+
+        return $data;
+    }
+
+    /**
+     * A block's field kinds, plus the layout knobs holding a media id — the
+     * same union sections get, because blocks wear the same Style panel and
+     * so can carry a style_background_image of their own.
+     *
+     * @return array<string, string>
+     */
+    private function blockFieldKinds(BlockBlueprint $blueprint): array
+    {
+        return $blueprint->fieldKinds() + array_fill_keys(LayoutFields::IMAGE_KEYS, 'image');
     }
 
     private function transformValue(string $kind, mixed $value): mixed
