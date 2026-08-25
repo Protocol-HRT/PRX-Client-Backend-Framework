@@ -37,6 +37,12 @@ final class LayoutFields
         'style_background_color',
         'style_background_image',
         'style_text_color',
+        // Accents and CTAs. Separate from style_text_color on purpose: copy,
+        // brand accents and button fills are three different jobs, and one
+        // knob driving all three cannot express the design a section already
+        // has — today's buttons are ink-on-white while its accents are gold.
+        'style_accent_color',
+        'style_button_color',
     ];
 
     /**

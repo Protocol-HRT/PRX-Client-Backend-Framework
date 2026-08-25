@@ -99,6 +99,20 @@ class SectionFormBuilder
                     ->native(false)
                     ->helperText(fn (): string => self::paletteHelp('Sets the colour copy inherits. Elements this section styles explicitly keep their own colour.')),
 
+                Select::make('style_accent_color')
+                    ->label('Accent colour')
+                    ->options(fn (): array => self::paletteOptions())
+                    ->placeholder('Section default')
+                    ->native(false)
+                    ->helperText(fn (): string => self::paletteHelp('Eyebrows, emphasised words and stat figures. Kept separate from the text colour so the accent still stands out against it.')),
+
+                Select::make('style_button_color')
+                    ->label('Button colour')
+                    ->options(fn (): array => self::paletteOptions())
+                    ->placeholder('Section default')
+                    ->native(false)
+                    ->helperText(fn (): string => self::paletteHelp('Fills this section\'s buttons. The label colour is worked out for you — black or white, whichever stays readable on the colour you pick — so a button can never come out unreadable.')),
+
                 SectionImagePicker::make('style_background_image')
                     ->label('Background image')
                     ->helperText('Sits behind the section, covering the band. Pair it with a background colour so text stays readable while the image loads.')

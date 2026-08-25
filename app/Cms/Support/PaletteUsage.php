@@ -50,6 +50,8 @@ final class PaletteUsage
     public const KEYS = [
         'style_background_color',
         'style_text_color',
+        'style_accent_color',
+        'style_button_color',
     ];
 
     /**
