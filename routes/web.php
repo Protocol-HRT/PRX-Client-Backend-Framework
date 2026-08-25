@@ -9,6 +9,18 @@ use App\Settings\IntegrationSettings;
 use Illuminate\Support\Facades\Route;
 
 // ---------------------------------------------------------------------------
+// Bare domain → the Filament panel. This app is headless apart from the panel
+// and the embed page below, so the root would otherwise 404 for an operator
+// who typed the hostname without /admin.
+//
+// NOT scoped to a domain, deliberately: prx-backend ships to more than one
+// deployment and a hardcoded host would simply never match on any other one.
+// Filament owns what happens next — an unauthenticated visitor is sent to the
+// panel's login page, so this adds no auth surface of its own.
+// ---------------------------------------------------------------------------
+Route::redirect('/', '/admin')->name('home');
+
+// ---------------------------------------------------------------------------
 // Prescribe-RX checkout handoff — server-rendered embed page.
 // This is the only server-rendered public page in the application; everything
 // else is served by the decoupled React frontend consuming /api/v1/* routes.
