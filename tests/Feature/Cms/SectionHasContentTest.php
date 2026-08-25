@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Cms;
 
+use App\Cms\Support\LayoutFields;
 use App\Models\Page;
 use App\Models\PageSection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -74,7 +75,7 @@ class SectionHasContentTest extends TestCase
             'theme' => 'dark',
             'alignment' => 'center',
             'content_width' => 'narrow',
-            'extra_padding' => 'lg',
+            'style_padding_top' => 'lg',
         ]);
 
         $this->assertFalse($envelope['has_content']);
@@ -159,5 +160,142 @@ class SectionHasContentTest extends TestCase
         ]);
 
         $this->assertSame('narrow', $envelope['data']['content_width']);
+    }
+
+    /**
+     * THE STAGE-2 FALSIFIER, written before the fields existed.
+     *
+     * Per-breakpoint overrides are stored as flat suffixed keys
+     * (`content_align_md`) rather than nested under the base key, and this is
+     * the test that says the shape was right. SectionContent::hasContent()
+     * skips presentation keys BY NAME, never by value shape, so a suffixed
+     * key is presentation for exactly one reason: it is listed in
+     * LayoutFields::KEYS. One line per key, no classifier change.
+     *
+     * The brief was explicit that if making this pass took more than that,
+     * the payload shape was wrong and the work should stop and re-scope. It
+     * did not — which is the evidence for flat-over-nested, since a nested
+     * shape would have needed hasContent() to learn to walk INTO a value it
+     * currently only name-checks.
+     *
+     * A section holding nothing but overrides is an untouched scaffold whose
+     * operator nudged a tablet alignment. It must still vanish from a live
+     * page.
+     */
+    public function test_setting_only_responsive_overrides_is_not_content(): void
+    {
+        $envelope = $this->sectionEnvelope([
+            'heading' => null,
+            'body' => null,
+            'theme' => 'light',
+            'alignment' => 'left',
+            'content_align_md' => 'center',
+            'content_align_lg' => 'right',
+            'content_inset_md' => 'md',
+            'content_inset_lg' => 'lg',
+            'style_padding_top_md' => 'lg',
+            'style_padding_bottom_lg' => 'sm',
+        ]);
+
+        $this->assertFalse($envelope['has_content']);
+    }
+
+    /**
+     * The stage-1-pass-2 half of the same guard: the frame knobs that replace
+     * `extra_padding` and add border/radius are presentation too.
+     *
+     * `style_border_color` is the one that also has to reach PaletteUsage::KEYS
+     * in this same commit — it stores a palette NAME, so deleting that colour
+     * must be blocked exactly as it is for a background. The subset relation is
+     * pinned separately by PaletteDeletionGuardTest.
+     */
+    public function test_setting_only_frame_knobs_is_not_content(): void
+    {
+        $envelope = $this->sectionEnvelope([
+            'heading' => null,
+            'body' => null,
+            'theme' => 'light',
+            'alignment' => 'left',
+            'style_padding_top' => 'lg',
+            'style_padding_bottom' => 'sm',
+            'style_border_color' => 'ink',
+            'style_border_width' => 'md',
+            'style_radius' => 'lg',
+        ]);
+
+        $this->assertFalse($envelope['has_content']);
+    }
+
+    /**
+     * `flush` is a categorical override, not a size — it counter-bleeds the
+     * page gutter so content reaches the viewport edge. It is still a knob,
+     * and an operator who set only that authored nothing.
+     */
+    public function test_setting_only_a_flush_inset_is_not_content(): void
+    {
+        $envelope = $this->sectionEnvelope([
+            'heading' => null,
+            'body' => null,
+            'theme' => 'light',
+            'alignment' => 'left',
+            'content_inset' => 'flush',
+            'content_inset_md' => 'md',
+        ]);
+
+        $this->assertFalse($envelope['has_content']);
+    }
+
+    /**
+     * A RETIRED knob's stored value is still presentation, not copy.
+     *
+     * Found by measurement, not by reasoning: retiring `extra_padding` left it
+     * in 13 rows of stored JSON, and dropping it from LayoutFields::KEYS made
+     * hasContent() count it as authored. One real section — the deliberately
+     * empty scaffold on the /test-page bench — flipped false to true, meaning
+     * an empty band would have rendered on a live page.
+     *
+     * The section below is an untouched scaffold whose operator once nudged
+     * the padding. It has no copy. It must not render.
+     */
+    public function test_a_retired_knobs_stored_value_is_still_not_content(): void
+    {
+        $envelope = $this->sectionEnvelope([
+            'heading' => null,
+            'body' => null,
+            'theme' => 'light',
+            'alignment' => 'left',
+            'extra_padding' => 'lg',
+        ]);
+
+        $this->assertFalse(
+            $envelope['has_content'],
+            'A retired layout knob left in stored data is being counted as authored content, '
+            .'so an empty scaffold section will render onto a live page. Add the key to '
+            .'LayoutFields::RETIRED_KEYS when its control is removed.'
+        );
+    }
+
+    /**
+     * The rule behind the test above, stated so a future retirement inherits
+     * it: a retired key may never quietly become a live key again, and the two
+     * lists may never overlap — an entry in both is a contradiction about
+     * whether the control exists.
+     */
+    public function test_retired_and_live_knob_vocabularies_do_not_overlap(): void
+    {
+        $this->assertSame(
+            [],
+            array_values(array_intersect(
+                LayoutFields::KEYS,
+                LayoutFields::RETIRED_KEYS,
+            )),
+            'A key is listed as both a live knob and a retired one.'
+        );
+
+        $this->assertNotContains(
+            'extra_padding',
+            LayoutFields::KEYS,
+            'extra_padding was replaced by style_padding_top / style_padding_bottom.'
+        );
     }
 }

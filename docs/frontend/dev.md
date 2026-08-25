@@ -69,14 +69,57 @@ Each section **envelope** is `{ type, origin, anchor, global, has_content, data,
 
 | Key | Values | What it controls |
 |---|---|---|
-| `extra_padding` | `sm` `md` `lg` | Extra vertical breathing room |
-| `content_inset` | `sm` `md` `lg` `xl` | Horizontal inset of the section's **content** (backgrounds stay full-bleed) |
+| `content_inset` | `flush` `none` `sm` `md` `lg` `xl` | Horizontal inset of the section's **content** (backgrounds stay full-bleed). `flush` counter-bleeds the page gutter so content reaches the viewport edge — **sections only, see §4c** |
 | `content_width` | `narrow` `medium` `wide` `xwide` `full` | Max-width cap on the content column, centred |
 | `content_align` | `left` `center` `right` | Text and grid/flex item alignment |
 | `media_width` | `contained` `full` | Whether the section's media escapes the content column |
+| `style_padding_top` | `none` `sm` `md` `lg` | Vertical padding above the section band |
+| `style_padding_bottom` | `none` `sm` `md` `lg` | Vertical padding below the section band |
+| `style_border_color` | a `palette` entry **name** | Border colour of the section band |
+| `style_border_width` | `none` `sm` `md` `lg` | Border thickness; inert without a colour |
+| `style_radius` | `none` `sm` `md` `lg` | Corner radius of the section band. A rounded band is a CARD: it stops running edge to edge and comes to rest inside the page gutter, because a radius at the viewport edge reads as a curve cut out of the page. `none` is not the same as unset — it explicitly keeps the band full-bleed |
 | `style_background_color` | a `palette` entry **name** | Background colour of the section band |
 | `style_text_color` | a `palette` entry **name** | Colour copy inherits within the section |
+| `style_accent_color` | a `palette` entry **name** | Eyebrows, emphasised words, stat figures |
+| `style_button_color` | a `palette` entry **name** | Button fill; the label colour is derived, not stored |
 | `style_background_image` | resolved `{id, url, alt, …}` | Image behind the section band |
+
+**`extra_padding` is retired.** It was one token driving both vertical edges at once;
+`style_padding_top` / `style_padding_bottom` replace it. It was set on no live row — only on
+the Atlas `/test-page` bench — so there is no compatibility shim and a consumer should treat
+the key as unknown.
+
+**There is deliberately no `style_padding_left` / `_right`.** The horizontal edges belong to
+`content_inset`, which acts on the content column. Padding on the knob wrapper narrows the
+containing block of the section band, and the band's own bleed is a fixed
+`-1 * --page-gutter` that recovers the gutter but not the knob — so a horizontal padding knob
+leaves every self-painting section inset from the viewport edge by exactly the padding chosen.
+One pair of horizontal controls, on the box that can move safely.
+
+#### Per-breakpoint overrides
+
+Four of these knobs may also arrive **suffixed** with a breakpoint tier:
+
+| Base key | Also | Applies from |
+|---|---|---|
+| `content_inset` | `content_inset_md`, `content_inset_lg` | 768px, 992px |
+| `content_align` | `content_align_md`, `content_align_lg` | 768px, 992px |
+| `style_padding_top` | `style_padding_top_md`, `style_padding_top_lg` | 768px, 992px |
+| `style_padding_bottom` | `style_padding_bottom_md`, `style_padding_bottom_lg` | 768px, 992px |
+
+- **The base key is the value at every width**, so it is the MOBILE value. A payload with no
+  suffixed keys behaves exactly as it did before they existed — this is additive, and a
+  consumer that ignores the suffix keeps working.
+- **A suffixed key holding `null` means "inherit the width below", not "reset".** That is why
+  every size scale carries an explicit `none`: without it an operator could add padding on
+  mobile with no way to remove it on desktop.
+- **Suffixes are flat, never nested.** They are ordinary sibling keys in the same `data`
+  payload, which is what keeps `has_content` a name-check — see the rules below.
+- `content_width` takes no override: a max-width cap is inert below the cap, so a narrower
+  override is a no-op. Colours take none either — the form would be unusable and it would drag
+  the palette-deletion guard into suffix matching.
+- The tier names are Bootstrap 5.3's, matching the frontend's own breakpoint scale. A third
+  tier is one key per field and needs no shape change.
 
 Four rules that make these safe to consume:
 
@@ -114,7 +157,12 @@ Each child is a mini-envelope:
   `has_content: false` itself and must not reach the page.
 - **`data`** carries the block's own fields **plus the same knobs from §4b**, with the same
   meanings and the same "unset means keep the design" rule. A block's knobs are the operator's
-  way of positioning and colouring the child *within* its parent.
+  way of positioning and colouring the child *within* its parent. That includes the
+  per-breakpoint suffixes — a child may carry `content_align_md` exactly as a section does.
+- **One exception: `content_inset: flush` is never served on a child.** `flush` cancels the
+  page gutter, and a child sits inside its parent's content column rather than against the
+  viewport edge, so the value would have nothing to cancel. The admin does not offer it on a
+  block; a consumer should not build a child-level rule for it.
 - Image kinds inside a child arrive resolved just as they do on a section.
 - A child whose block type no longer resolves is **dropped server-side**, not served raw. You
   never need a placeholder for an unknown child type the way you do for an unknown section

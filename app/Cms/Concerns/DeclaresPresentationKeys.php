@@ -35,6 +35,15 @@ trait DeclaresPresentationKeys
             static fn (mixed $default): bool => $default !== null && $default !== '' && $default !== [],
         ));
 
-        return array_values(array_unique([...LayoutFields::KEYS, ...$flagged]));
+        // RETIRED_KEYS is unioned in as well: a knob that has lost its control
+        // still has its value sitting in stored JSON, and a key that stops
+        // being presentation starts counting as authored copy — which turns an
+        // untouched scaffold into a section that renders. See the note on that
+        // constant; it was found flipping a real row, not theorised.
+        return array_values(array_unique([
+            ...LayoutFields::KEYS,
+            ...LayoutFields::RETIRED_KEYS,
+            ...$flagged,
+        ]));
     }
 }

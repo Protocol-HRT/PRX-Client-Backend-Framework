@@ -39,9 +39,9 @@ final class PaletteUsage
      * The layout knobs whose value is a palette colour NAME.
      *
      * A subset of LayoutFields::KEYS: `style_background_image` is a media id
-     * and `extra_padding` and friends are tokens, so neither can hold a
-     * palette name. Adding a name-valued knob means adding it here too, or
-     * the guard goes blind to it — PaletteDeletionGuardTest's
+     * and the spacing, width and radius knobs are tokens, so none of them can
+     * hold a palette name. Adding a name-valued knob means adding it here too,
+     * or the guard goes blind to it — PaletteDeletionGuardTest's
      * test_palette_keys_stay_a_subset_of_the_layout_vocabulary pins the two
      * lists together so they cannot drift apart.
      *
@@ -52,6 +52,14 @@ final class PaletteUsage
         'style_text_color',
         'style_accent_color',
         'style_button_color',
+        // Landed with the border knob itself, in one commit, deliberately. A
+        // border colour fails the same invisible way a background does: the
+        // frontend emits `--sx-border-color: var(--palette-{name})` behind a
+        // marker class, so deleting the palette row leaves the class claiming
+        // a colour was chosen while the declaration computes to `unset`. The
+        // difference is that a vanished BORDER is easier to miss than a
+        // vanished band, not that it is less broken.
+        'style_border_color',
     ];
 
     /**

@@ -61,19 +61,46 @@ class LayoutDefaultsTest extends TestCase
      */
     public function test_every_declared_default_names_a_real_knob_and_a_real_token(): void
     {
+        $sizes = ['none', 'sm', 'md', 'lg'];
+
         $vocabulary = [
             'content_width' => ['narrow', 'medium', 'wide', 'xwide', 'full'],
             'media_width' => ['contained', 'full'],
-            'extra_padding' => ['sm', 'md', 'lg'],
-            'content_inset' => ['sm', 'md', 'lg', 'xl'],
+            // `flush` is a categorical override rather than a size: it
+            // counter-bleeds the page gutter so content reaches the viewport
+            // edge. `none` is NOT redundant with leaving the knob null — see
+            // the tier note below.
+            'content_inset' => ['flush', 'none', 'sm', 'md', 'lg', 'xl'],
             'content_align' => ['left', 'center', 'right'],
+            'style_padding_top' => $sizes,
+            'style_padding_bottom' => $sizes,
+            'style_border_width' => $sizes,
+            'style_radius' => $sizes,
         ];
+
+        // A TIER SHARES ITS BASE KEY'S VOCABULARY. Null at a tier means
+        // "inherit the width below", never "reset" — which is exactly why
+        // every size scale above carries an explicit `none`. Without it an
+        // operator could add padding on mobile and have no way to take it
+        // away again on desktop.
+        foreach (['content_inset', 'content_align', 'style_padding_top', 'style_padding_bottom'] as $key) {
+            $vocabulary["{$key}_md"] = $vocabulary[$key];
+            $vocabulary["{$key}_lg"] = $vocabulary[$key];
+        }
 
         $this->assertNotEmpty(LayoutDefaults::all());
 
         foreach (LayoutDefaults::all() as $type => $defaults) {
             foreach ($defaults as $key => $value) {
                 $this->assertContains($key, LayoutFields::KEYS, "{$type} declares an unknown knob '{$key}'.");
+                // Explicitly, rather than letting $vocabulary[$key] raise an
+                // undefined-index warning: a knob added to KEYS but not to the
+                // map above should fail this test by NAME, saying what to do.
+                $this->assertArrayHasKey(
+                    $key,
+                    $vocabulary,
+                    "'{$key}' has no vocabulary listed in this test — add its tokens here when the knob lands.",
+                );
                 $this->assertContains(
                     $value,
                     $vocabulary[$key],

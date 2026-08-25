@@ -163,6 +163,21 @@ class LayoutFieldCollisionTest extends TestCase
             $this->assertContains($key, $reserved, "Layout knob '{$key}' is not refused as a flexible field key.");
         }
 
+        // A RETIRED knob is still read positionally, so it is still reserved.
+        // Dropping a key from KEYS unreserves the NAME while RETIRED_KEYS keeps
+        // it classified as presentation — so without this, an operator could
+        // key a flexible field after a retired knob, author into it, and have
+        // hasContent() skip it and drop the whole section. Found in review, one
+        // commit after the first retirement made it possible.
+        foreach (LayoutFields::RETIRED_KEYS as $key) {
+            $this->assertContains(
+                $key,
+                $reserved,
+                "Retired layout knob '{$key}' is not refused as a flexible field key. It is still "
+                .'skipped by hasContent(), so a field of that name would have its content dropped.'
+            );
+        }
+
         $this->assertContains(
             SectionChildren::KEY,
             $reserved,

@@ -52,11 +52,26 @@ class FlexibleSectionTypeForm
      * serve path reads positionally has to be in here, and there is no way to
      * assert that against a closure buried in a form schema.
      *
+     * RETIRED KNOBS STAY RESERVED, and forgetting that opened a real hole for
+     * the length of one review. Retiring `extra_padding` took it out of KEYS —
+     * unreserving the NAME — while LayoutFields::RETIRED_KEYS kept it
+     * classified as presentation forever, which is what stops a stale stored
+     * value reading as copy. The two together mean an operator could create a
+     * flexible field keyed `extra_padding`, author into it as the section's
+     * only content, and watch hasContent() skip it by name and drop the
+     * section from the live page. That is the `background_image` collision
+     * exactly, arriving from the opposite direction: not a knob shadowing a
+     * field, but a field shadowing the ghost of a knob.
+     *
      * @return list<string>
      */
     public static function reservedFieldKeys(): array
     {
-        return [...LayoutFields::KEYS, SectionChildren::KEY];
+        return [
+            ...LayoutFields::KEYS,
+            ...LayoutFields::RETIRED_KEYS,
+            SectionChildren::KEY,
+        ];
     }
 
     public static function configure(Schema $schema): Schema

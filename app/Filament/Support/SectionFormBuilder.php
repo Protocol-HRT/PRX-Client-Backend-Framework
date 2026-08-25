@@ -10,8 +10,10 @@ use App\Settings\ThemeSettings;
 use Filament\Forms\Components\Builder;
 use Filament\Forms\Components\Builder\Block;
 use Filament\Forms\Components\Select;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Utilities\Get;
 use Illuminate\Support\Str;
 
@@ -113,6 +115,27 @@ class SectionFormBuilder
                     ->native(false)
                     ->helperText(fn (): string => self::paletteHelp('Fills this section\'s buttons. The label colour is worked out for you — black or white, whichever stays readable on the colour you pick — so a button can never come out unreadable.')),
 
+                Select::make('style_border_color')
+                    ->label('Border colour')
+                    ->options(fn (): array => self::paletteOptions())
+                    ->placeholder('No border')
+                    ->native(false)
+                    ->helperText(fn (): string => self::paletteHelp('Draws a border around the section band. Pick a width beside it, or the border stays hairline.')),
+
+                Select::make('style_border_width')
+                    ->label('Border width')
+                    ->options(self::SIZES)
+                    ->placeholder('None (default)')
+                    ->native(false)
+                    ->helperText('Only visible once a border colour is chosen.'),
+
+                Select::make('style_radius')
+                    ->label('Corner radius')
+                    ->options(self::SIZES)
+                    ->placeholder('Square — band runs edge to edge')
+                    ->native(false)
+                    ->helperText('Rounds the section band into a card, pulling it in from the screen edges so the corners are visible. Choose "Square" to keep the band running edge to edge.'),
+
                 SectionImagePicker::make('style_background_image')
                     ->label('Background image')
                     ->helperText('Sits behind the section, covering the band. Pair it with a background colour so text stays readable while the image loads.')
@@ -156,36 +179,65 @@ class SectionFormBuilder
             : $base;
     }
 
-    public static function layoutSection(): Section
+    /**
+     * The size scale shared by every spacing knob.
+     *
+     * `none` is NOT redundant with leaving the knob unset, and that is the
+     * whole reason it exists. A tier holding null means "inherit the width
+     * below", never "reset" — so without an explicit zero an operator could
+     * add padding on mobile and have no way to take it away again on desktop.
+     *
+     * @var array<string, string>
+     */
+    private const SIZES = [
+        'none' => 'None',
+        'sm' => 'Small',
+        'md' => 'Medium',
+        'lg' => 'Large',
+    ];
+
+    /** @var array<string, string> */
+    private const ALIGNMENTS = [
+        'left' => 'Left',
+        'center' => 'Centre',
+        'right' => 'Right',
+    ];
+
+    /**
+     * Layout knobs every section type gets, stored alongside the
+     * type-specific fields in the same `data` payload.
+     *
+     * Deliberately a fixed vocabulary of sizes rather than free-form pixel
+     * values: the frontend maps each to a CSS custom property, so pages stay
+     * visually consistent, operators stay out of inline styling, and the
+     * scale can be retuned globally without touching content.
+     *
+     * WHY VERTICAL PADDING LIVES HERE while its keys are named `style_*`:
+     * the prefix exists to stop a knob colliding with an authored field in
+     * the flat `data` payload (see LayoutFields::KEYS), and "padding" is
+     * exactly the sort of word a blueprint would reach for. It says nothing
+     * about which panel the control belongs in, and spacing belongs next to
+     * the other spacing controls.
+     *
+     * THERE IS NO LEFT/RIGHT PADDING, deliberately. The horizontal edges are
+     * owned by `content_inset`, which acts on the CONTENT COLUMN. A padding
+     * knob would act on the knob wrapper instead, narrowing the containing
+     * block of the section band — and the band's own bleed is a fixed
+     * `-1 * --page-gutter` that recovers the gutter but not the knob, so
+     * every self-painting section, the stats marquee and the hero stage would
+     * end up inset from the viewport edge by exactly the padding chosen. One
+     * pair of horizontal controls, on the box that can actually move safely.
+     *
+     * @param  bool  $nested  True when this panel is being built for a typed
+     *                        child block rather than a top-level section.
+     */
+    public static function layoutSection(bool $nested = false): Section
     {
         return Section::make('Layout & spacing')
             ->description('How this section sits on the page. Leave everything unset for the design default.')
             ->collapsed()
             ->columns(2)
             ->components([
-                Select::make('extra_padding')
-                    ->label('Extra vertical padding')
-                    ->options([
-                        'sm' => 'Small',
-                        'md' => 'Medium',
-                        'lg' => 'Large',
-                    ])
-                    ->placeholder('None (default)')
-                    ->native(false)
-                    ->helperText('Additional breathing room above and below the section.'),
-
-                Select::make('content_inset')
-                    ->label('Horizontal inset')
-                    ->options([
-                        'sm' => 'Small',
-                        'md' => 'Medium',
-                        'lg' => 'Large',
-                        'xl' => 'Extra large',
-                    ])
-                    ->placeholder('None (default)')
-                    ->native(false)
-                    ->helperText('Pulls text and buttons in from the left and right edges. Background images stay full width.'),
-
                 Select::make('content_width')
                     ->label('Content width')
                     ->options([
@@ -199,17 +251,6 @@ class SectionFormBuilder
                     ->native(false)
                     ->helperText('Caps how wide the content runs, centred within the section. Leave unset to use this section type\'s design default.'),
 
-                Select::make('content_align')
-                    ->label('Content alignment')
-                    ->options([
-                        'left' => 'Left',
-                        'center' => 'Centre',
-                        'right' => 'Right',
-                    ])
-                    ->placeholder('Design default')
-                    ->native(false)
-                    ->helperText('Aligns headings, copy and buttons within the section.'),
-
                 Select::make('media_width')
                     ->label('Media width')
                     ->options([
@@ -219,6 +260,143 @@ class SectionFormBuilder
                     ->placeholder('Design default')
                     ->native(false)
                     ->helperText('How this section\'s image or video is framed. Leave unset to use this section type\'s design default.'),
+
+                self::insetField($nested),
+
+                Select::make('content_align')
+                    ->label('Content alignment')
+                    ->options(self::ALIGNMENTS)
+                    ->placeholder('Design default')
+                    ->native(false)
+                    ->helperText('Aligns headings, copy and buttons within the section.'),
+
+                self::paddingBox(),
+
+                // Overrides only. The controls above are the value at EVERY
+                // width; these two tabs change it from a breakpoint upwards,
+                // so an unset tab field genuinely means "carry on from the
+                // width below" rather than "no padding". Mobile is the base
+                // because it is the majority of this site's traffic — and
+                // because a phone usually wants LESS of everything, which is
+                // easier to express by adding upward than by subtracting.
+                Tabs::make('Responsive overrides')
+                    ->tabs([
+                        self::overrideTab('Tablet up', 'md', '768px', $nested),
+                        self::overrideTab('Desktop up', 'lg', '992px', $nested),
+                    ])
+                    ->columnSpanFull(),
+            ]);
+    }
+
+    /**
+     * Horizontal inset, with the `flush` option only where it means anything.
+     *
+     * `flush` counter-bleeds `--page-gutter` so content reaches the viewport
+     * edge — the one thing the old scale could not express, because its
+     * smallest token still clamped to 12px and the section band re-pads the
+     * gutter underneath it regardless. A CHILD BLOCK is not adjacent to the
+     * page edge; its inset is scoped inside its parent's column, so offering
+     * `flush` there would be a control that does nothing. Hence the flag.
+     */
+    private static function insetField(bool $nested): Select
+    {
+        $options = [
+            'none' => 'None',
+            'sm' => 'Small',
+            'md' => 'Medium',
+            'lg' => 'Large',
+            'xl' => 'Extra large',
+        ];
+
+        if (! $nested) {
+            $options = ['flush' => 'Flush — content touches the screen edge'] + $options;
+        }
+
+        return Select::make('content_inset')
+            ->label('Horizontal inset')
+            ->options($options)
+            ->placeholder('None (default)')
+            ->native(false)
+            ->helperText($nested
+                ? 'Pulls this block\'s text and buttons in from its left and right edges.'
+                : 'Pulls text and buttons in from the left and right edges — this is the section\'s left/right padding. Background images stay full width. "Flush" removes the page margin entirely so content runs to the screen edge; pair it with a tablet override to keep that on phones only.');
+    }
+
+    /**
+     * Top and bottom padding as one box row, the shape an operator coming
+     * from any other page builder expects.
+     *
+     * This REPLACES `extra_padding`, which was a single token driving both
+     * edges at once — so "generous above, tight below" was unsayable. The old
+     * key is retired rather than kept as an alias: it was set on no live row,
+     * only on the /test-page bench, which is rewritten in the same change.
+     */
+    private static function paddingBox(): Grid
+    {
+        return Grid::make(2)
+            ->components([
+                Select::make('style_padding_top')
+                    ->label('Padding top')
+                    ->options(self::SIZES)
+                    ->placeholder('None (default)')
+                    ->native(false),
+
+                Select::make('style_padding_bottom')
+                    ->label('Padding bottom')
+                    ->options(self::SIZES)
+                    ->placeholder('None (default)')
+                    ->native(false),
+            ])
+            ->columnSpanFull();
+    }
+
+    /**
+     * One breakpoint tab: the same four knobs, suffixed.
+     *
+     * The suffix is flat (`content_align_md`), not nested, because
+     * SectionContent::hasContent() skips presentation keys BY NAME — so a
+     * suffixed key becomes presentation by being listed in LayoutFields::KEYS
+     * and nothing else has to learn the shape. Filament needs no statePath
+     * work for the same reason: it is an ordinary sibling key in `data`.
+     *
+     * Only the knobs that can meaningfully differ by width are here.
+     * `content_width` is a max-width CAP and is inert below the cap, so a
+     * mobile override of it is a no-op by physics; `media_width` and the
+     * colours have no per-width reading an operator would want.
+     */
+    private static function overrideTab(string $label, string $suffix, string $from, bool $nested): Tabs\Tab
+    {
+        $placeholder = 'Same as narrower screens';
+
+        $inset = self::insetField($nested);
+
+        return Tabs\Tab::make($label)
+            ->badge($from)
+            ->columns(2)
+            ->components([
+                Select::make("content_inset_{$suffix}")
+                    ->label('Horizontal inset')
+                    ->options($inset->getOptions())
+                    ->placeholder($placeholder)
+                    ->native(false),
+
+                Select::make("content_align_{$suffix}")
+                    ->label('Content alignment')
+                    ->options(self::ALIGNMENTS)
+                    ->placeholder($placeholder)
+                    ->native(false),
+
+                Select::make("style_padding_top_{$suffix}")
+                    ->label('Padding top')
+                    ->options(self::SIZES)
+                    ->placeholder($placeholder)
+                    ->native(false),
+
+                Select::make("style_padding_bottom_{$suffix}")
+                    ->label('Padding bottom')
+                    ->options(self::SIZES)
+                    ->placeholder($placeholder)
+                    ->native(false),
             ]);
     }
 
@@ -259,9 +437,13 @@ class SectionFormBuilder
      * One Builder block for a block blueprint: its own fields, then the same
      * Style and Layout panels every section gets.
      *
-     * Reusing styleSection()/layoutSection() verbatim is deliberate — a knob
-     * that means one thing on a section and another on a child would be the
-     * "control that lies to the operator" shape this system keeps fixing.
+     * Reusing styleSection()/layoutSection() is deliberate — a knob that means
+     * one thing on a section and another on a child would be the "control that
+     * lies to the operator" shape this system keeps fixing. It is no longer
+     * VERBATIM: `nested: true` withholds the inset's `flush` option, for the
+     * reason given at the call below. That is the same principle, not an
+     * exception to it — the option is dropped precisely because it could not
+     * mean the same thing here.
      */
     public static function blockFor(BlockBlueprint $blueprint): Block
     {
@@ -271,7 +453,15 @@ class SectionFormBuilder
             ->schema([
                 ...$blueprint->formSchema(),
                 self::styleSection(),
-                self::layoutSection(),
+                // NESTED. The panels are otherwise identical at both levels on
+                // purpose — a knob meaning one thing on a section and another
+                // on a child is the "control that lies to the operator" shape
+                // this system keeps removing. The single exception is the
+                // inset's `flush` value, which is defined against the PAGE
+                // gutter: a child sits inside its parent's column and is not
+                // adjacent to the screen edge, so the option would do nothing
+                // there and is withheld rather than shipped inert.
+                self::layoutSection(nested: true),
             ])
             ->columns(2);
     }
