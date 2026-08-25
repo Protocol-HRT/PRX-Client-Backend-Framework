@@ -657,6 +657,14 @@ class SectionTypeSeeder extends Seeder
                             ['field' => 'mode', 'operator' => 'not_equals', 'value' => 'manual'],
                         ]],
                         ['key' => 'autoplay', 'kind' => 'boolean', 'default' => false, 'help' => 'Layout hint for the frontend carousel.'],
+                        // Card copy. Null defaults, deliberately: these are the
+                        // operator's words, and a content-free blueprint must
+                        // not ship any. The frontend omits what it is not given.
+                        ['key' => 'price_intro_label', 'kind' => 'text', 'default' => null, 'help' => 'Precedes the introductory price, e.g. "First month". Omitted when empty.'],
+                        ['key' => 'price_recurring_label', 'kind' => 'text', 'default' => null, 'help' => 'Precedes the recurring price, e.g. "Recurring". Omitted when empty.'],
+                        ['key' => 'cta_label', 'kind' => 'text', 'default' => null, 'help' => 'Use {package} for the package name. The button is hidden when empty.'],
+                        ['key' => 'cta_url', 'kind' => 'text', 'default' => null, 'help' => 'Where every card button goes, e.g. /checkout.'],
+                        ['key' => 'range_aria_label', 'kind' => 'text', 'default' => null, 'help' => 'Accessible name for the carousel scrubber.'],
                     ],
                     'resolvers' => [
                         ['op' => 'packages_by_mode', 'output' => 'packages'],

@@ -46,6 +46,16 @@ class PackageSliderSection extends SectionBlueprint
             'category_id' => null,
             'limit' => 8,
             'autoplay' => false,
+            // Card copy. NULL, not a default string: this is operator-facing
+            // wording and prx-backend ships content-free blueprints, so the
+            // words belong in each install's database. The frontend omits a
+            // label it is not given rather than substituting its own — the
+            // whole point of moving these off the component.
+            'price_intro_label' => null,
+            'price_recurring_label' => null,
+            'cta_label' => null,
+            'cta_url' => null,
+            'range_aria_label' => null,
         ];
     }
 
@@ -91,6 +101,27 @@ class PackageSliderSection extends SectionBlueprint
                         ->visible(fn (Get $get): bool => $get('mode') !== 'manual'),
                     Toggle::make('autoplay')
                         ->helperText('Layout hint for the frontend carousel.'),
+                ]),
+            Section::make('Card copy')
+                ->description('Wording on each package card. Leave a label empty to omit it — the price still shows.')
+                ->components([
+                    CopyFields::inline('price_intro_label')
+                        ->label('Introductory price label')
+                        ->helperText('Precedes the introductory price, e.g. "First month". Omitted when empty.'),
+                    CopyFields::inline('price_recurring_label')
+                        ->label('Recurring price label')
+                        ->helperText('Precedes the recurring price, e.g. "Recurring". Omitted when empty.'),
+                    CopyFields::inline('cta_label')
+                        ->label('Card button label')
+                        ->helperText('Use {package} for the package name, e.g. "Start my {package}". The button is hidden when empty.'),
+                    TextInput::make('cta_url')
+                        ->label('Card button link')
+                        ->helperText('Where every card button goes, e.g. /checkout or #get-started.')
+                        ->maxLength(2048),
+                    TextInput::make('range_aria_label')
+                        ->label('Scrollbar accessible name')
+                        ->helperText('Describes the carousel scrubber to screen readers. Falls back to a generic name when empty.')
+                        ->maxLength(255),
                 ]),
         ];
     }
