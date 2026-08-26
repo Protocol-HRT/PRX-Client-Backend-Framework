@@ -15,6 +15,7 @@ use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Str;
 
 /**
@@ -80,26 +81,33 @@ class SectionFormBuilder
      * section keeps its own stylesheet background rather than being reset to
      * transparent.
      */
-    public static function styleSection(): Section
+    public static function styleSection(bool $nested = false): Section
     {
+        $thing = $nested ? 'block' : 'section';
+
         return Section::make('Style')
-            ->description('Colours and imagery for this section. Leave everything unset to keep the section type\'s own design.')
+            ->description('Colours and imagery for this '.$thing.'. Leave everything unset to keep its own design.')
             ->collapsed()
             ->columns(2)
             ->components([
+                // The colour placeholders deliberately stay "Section default"
+                // at BOTH levels, unlike the radius above. An unset colour on a
+                // block genuinely inherits the section's choice, so "Section
+                // default" is what is actually happening; radius inherits
+                // nothing, so there it would be a lie. Not an oversight.
                 Select::make('style_background_color')
                     ->label('Background colour')
                     ->options(fn (): array => self::paletteOptions())
                     ->placeholder('Section default')
                     ->native(false)
-                    ->helperText(fn (): string => self::paletteHelp('Fills the section band edge to edge. Panels and cards inside keep their own styling.')),
+                    ->helperText(fn (): string => self::paletteHelp('Fills the '.$thing.' edge to edge. Panels and cards inside keep their own styling.')),
 
                 Select::make('style_text_color')
                     ->label('Text colour')
                     ->options(fn (): array => self::paletteOptions())
                     ->placeholder('Section default')
                     ->native(false)
-                    ->helperText(fn (): string => self::paletteHelp('Sets the colour copy inherits. Elements this section styles explicitly keep their own colour.')),
+                    ->helperText(fn (): string => self::paletteHelp('Sets the colour copy inherits. Elements this '.$thing.' styles explicitly keep their own colour.')),
 
                 Select::make('style_accent_color')
                     ->label('Accent colour')
@@ -113,32 +121,60 @@ class SectionFormBuilder
                     ->options(fn (): array => self::paletteOptions())
                     ->placeholder('Section default')
                     ->native(false)
-                    ->helperText(fn (): string => self::paletteHelp('Fills this section\'s buttons. The label colour is worked out for you — black or white, whichever stays readable on the colour you pick — so a button can never come out unreadable.')),
+                    ->helperText(fn (): string => self::paletteHelp('Fills this '.$thing.'\'s buttons.'))
+                    ->hintIcon(Heroicon::InformationCircle, 'You do not choose the label colour and there is no control for it. It is worked out from the fill you pick — black or white, whichever stays readable — so a button can never come out unreadable. Pick the fill you want and trust the label.'),
 
                 Select::make('style_border_color')
                     ->label('Border colour')
                     ->options(fn (): array => self::paletteOptions())
                     ->placeholder('No border')
                     ->native(false)
-                    ->helperText(fn (): string => self::paletteHelp('Draws a border around the section band. Pick a width beside it, or the border stays hairline.')),
+                    ->helperText(fn (): string => self::paletteHelp('Draws a border around the '.$thing.'. Pick a width beside it, or the border stays hairline.')),
 
                 Select::make('style_border_width')
                     ->label('Border width')
                     ->options(self::SIZES)
                     ->placeholder('None (default)')
                     ->native(false)
-                    ->helperText('Only visible once a border colour is chosen.'),
+                    // The old text ("Only visible once a border colour is
+                    // chosen") read as a promise about THIS CONTROL, which is
+                    // always shown. It was describing the border. Kept visible
+                    // deliberately rather than gated behind the colour: hiding
+                    // it would put a stored width out of reach on any section
+                    // that has one and no colour.
+                    ->helperText('How thick the border is.')
+                    ->hintIcon(Heroicon::InformationCircle, 'A width on its own draws nothing — the border appears only once you pick a border colour beside it. The reverse pairing does have a fallback: choose a colour and leave this unset and you get a hairline.'),
 
                 Select::make('style_radius')
+                    // NOT self::SIZES. Every other size scale reads
+                    // None/Small/Medium/Large, but "None" for a radius reads as
+                    // "no setting" rather than "square corners", which is what
+                    // the value actually means — and the helper text used to
+                    // tell operators to choose a "Square" option that did not
+                    // exist. The STORED VALUE IS STILL `none`: this is a label,
+                    // so no data changes and no token is added.
                     ->label('Corner radius')
-                    ->options(self::SIZES)
-                    ->placeholder('Square — band runs edge to edge')
+                    ->options(['none' => 'Square'] + self::SIZES)
+                    ->placeholder($nested ? 'Block default' : 'Section default')
                     ->native(false)
-                    ->helperText('Rounds the section band into a card, pulling it in from the screen edges so the corners are visible. Choose "Square" to keep the band running edge to edge.'),
+                    // The two levels do NOT behave alike here, so the copy must
+                    // not either. A section's radius cancels its own full-bleed
+                    // and visibly narrows the band (`radius-tokens()` in
+                    // _layout-frame.scss); a block has no bleed to cancel —
+                    // `.sxb-radius--*` sets `border-radius` and nothing else —
+                    // so its width is identical at every token. Telling a block
+                    // operator that Square "keeps it full width" would describe
+                    // a distinction that does not exist one level down.
+                    ->helperText($nested
+                        ? 'Rounds this block\'s corners.'
+                        : 'Rounds the section into a card, pulling it in from the screen edges so the corners are visible.')
+                    ->hintIcon(Heroicon::InformationCircle, $nested
+                        ? 'Corners only. Unlike on a section, a radius here does not change the block\'s width — it already sits inside its section\'s column rather than against the screen edge. "Square" simply means no rounding.'
+                        : 'A radius stops the section running edge to edge — that is the control working, not a bug. "Square" is an explicit choice that KEEPS it full width, which is not the same as leaving this unset: unset means "use the design default", and a default could round it.'),
 
                 SectionImagePicker::make('style_background_image')
                     ->label('Background image')
-                    ->helperText('Sits behind the section, covering the band. Pair it with a background colour so text stays readable while the image loads.')
+                    ->helperText('Sits behind the '.$thing.', covering it. Pair it with a background colour so text stays readable while the image loads.')
                     ->columnSpanFull(),
             ]);
     }
@@ -233,8 +269,10 @@ class SectionFormBuilder
      */
     public static function layoutSection(bool $nested = false): Section
     {
+        $thing = $nested ? 'block' : 'section';
+
         return Section::make('Layout & spacing')
-            ->description('How this section sits on the page. Leave everything unset for the design default.')
+            ->description('How this '.($nested ? 'block sits inside its section' : 'section sits on the page').'. Leave everything unset for the design default.')
             ->collapsed()
             ->columns(2)
             ->components([
@@ -249,7 +287,11 @@ class SectionFormBuilder
                     ])
                     ->placeholder('Design default')
                     ->native(false)
-                    ->helperText('Caps how wide the content runs, centred within the section. Leave unset to use this section type\'s design default.'),
+                    ->helperText('Caps how wide the content runs, centred. Leave unset to use the design default.')
+                    // Was "the only setting here with no per-screen override",
+                    // which is false — media width has none either, and an
+                    // operator who opens the tabs sees that immediately.
+                    ->hintIcon(Heroicon::InformationCircle, 'This has no per-screen override, and cannot usefully have one: a width cap does nothing on a screen narrower than the cap, so a mobile override could not have an effect. Media width has no override either, by choice rather than by physics.'),
 
                 Select::make('media_width')
                     ->label('Media width')
@@ -259,7 +301,7 @@ class SectionFormBuilder
                     ])
                     ->placeholder('Design default')
                     ->native(false)
-                    ->helperText('How this section\'s image or video is framed. Leave unset to use this section type\'s design default.'),
+                    ->helperText('How this '.$thing.'\'s image or video is framed. Leave unset to use the design default.'),
 
                 self::insetField($nested),
 
@@ -268,9 +310,9 @@ class SectionFormBuilder
                     ->options(self::ALIGNMENTS)
                     ->placeholder('Design default')
                     ->native(false)
-                    ->helperText('Aligns headings, copy and buttons within the section.'),
+                    ->helperText('Aligns headings, copy and buttons within the '.$thing.'.'),
 
-                self::paddingBox(),
+                self::paddingBox($nested),
 
                 // Overrides only. The controls above are the value at EVERY
                 // width; these two tabs change it from a breakpoint upwards,
@@ -319,7 +361,13 @@ class SectionFormBuilder
             ->native(false)
             ->helperText($nested
                 ? 'Pulls this block\'s text and buttons in from its left and right edges.'
-                : 'Pulls text and buttons in from the left and right edges — this is the section\'s left/right padding. Background images stay full width. "Flush" removes the page margin entirely so content runs to the screen edge; pair it with a tablet override to keep that on phones only.');
+                : 'Pulls text and buttons in from the left and right edges — this is the section\'s left/right padding. Background images stay full width.')
+            ->hintIcon(Heroicon::InformationCircle, $nested
+                // An operator who used `flush` on a section WILL look for it
+                // here. Saying why it is absent is cheaper than letting them
+                // conclude the form is inconsistent.
+                ? 'There is no "Flush" option on a block, unlike on a section. Flush works by cancelling the page margin, and a block sits inside its section\'s column rather than against the screen edge — so the option would have nothing to cancel and is left out rather than shipped doing nothing.'
+                : '"Flush" is the one value that SUBTRACTS: it removes the page margin entirely so content runs right to the screen edge. Pair it with a tablet override to keep that on phones only. It is not offered on cards inside a section, which are not next to the screen edge.');
     }
 
     /**
@@ -331,21 +379,35 @@ class SectionFormBuilder
      * key is retired rather than kept as an alias: it was set on no live row,
      * only on the /test-page bench, which is rewritten in the same change.
      */
-    private static function paddingBox(): Grid
+    private static function paddingBox(bool $nested = false): Grid
     {
+        $thing = $nested ? 'block' : 'section';
+
         return Grid::make(2)
             ->components([
                 Select::make('style_padding_top')
                     ->label('Padding top')
                     ->options(self::SIZES)
                     ->placeholder('None (default)')
-                    ->native(false),
+                    ->native(false)
+                    // The distinction an operator worked out unaided, and the
+                    // reason this whole hint pass exists.
+                    ->hintIcon(Heroicon::InformationCircle, '"None" is not the same as leaving this empty. Empty means "use this '.$thing.'\'s design default"; None forces zero and overrides that default. They often look identical today, which is exactly why it is worth knowing before one of them changes under you.'),
 
                 Select::make('style_padding_bottom')
                     ->label('Padding bottom')
                     ->options(self::SIZES)
                     ->placeholder('None (default)')
-                    ->native(false),
+                    ->native(false)
+                    // The ADVICE is the same at both levels; the REASON is
+                    // not. A section's band bleeds to the viewport edge, so
+                    // horizontal padding on the wrapper would strand it inset
+                    // by exactly the padding chosen. A block has no bleed and
+                    // is nowhere near the screen edge, so that consequence
+                    // cannot happen and claiming it would be inventing physics.
+                    ->hintIcon(Heroicon::InformationCircle, $nested
+                        ? 'There is no left or right padding here, and it is deliberate rather than missing: the horizontal edges belong to "Horizontal inset" above, which is the control that moves them correctly inside the section\'s column.'
+                        : 'There is no left or right padding here, and it is deliberate rather than missing: the horizontal edges belong to "Horizontal inset" above. A left/right padding control would act on the outer band instead, and would leave every section that paints its own background pulled in from the screen edge by exactly the amount chosen.'),
             ])
             ->columnSpanFull();
     }
@@ -378,7 +440,10 @@ class SectionFormBuilder
                     ->label('Horizontal inset')
                     ->options($inset->getOptions())
                     ->placeholder($placeholder)
-                    ->native(false),
+                    ->native(false)
+                    // Stated once per tab, on the first control, because Tabs
+                    // itself carries no hint or description in Filament 4.
+                    ->hintIcon(Heroicon::InformationCircle, 'These override UPWARD. The settings above the tabs are the value at every width — so they are the PHONE value — and this tab changes them from '.$from.' up. Left as "'.$placeholder.'", a field here genuinely inherits; it does not mean "none". To remove something on wider screens that you set on phones, choose "None" explicitly.'),
 
                 Select::make("content_align_{$suffix}")
                     ->label('Content alignment')
@@ -452,7 +517,7 @@ class SectionFormBuilder
             ->icon($blueprint->icon())
             ->schema([
                 ...$blueprint->formSchema(),
-                self::styleSection(),
+                self::styleSection(nested: true),
                 // NESTED. The panels are otherwise identical at both levels on
                 // purpose — a knob meaning one thing on a section and another
                 // on a child is the "control that lies to the operator" shape

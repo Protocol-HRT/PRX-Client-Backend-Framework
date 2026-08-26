@@ -86,6 +86,10 @@ re-editing content.
 | **Content alignment** | Left / centre / right for headings, copy and buttons. |
 | **Padding top** / **Padding bottom** | Breathing room above and below, set independently — "generous above, tight below" is sayable. |
 
+Controls carrying an **ⓘ** icon have something behind them worth reading — the icons are on
+the handful of settings that genuinely surprise people, not on every field, so they are worth
+opening when you see one.
+
 ### Three things about these controls that will not be obvious
 
 **Leaving a control unset is not the same as choosing "None".** Unset means *use this
@@ -140,7 +144,7 @@ unset to keep the section type's own design — an untouched section is not rese
 | **Accent colour** | Eyebrows, emphasised words, stat figures. Separate from text colour so the accent still stands out against it. |
 | **Button colour** | Fills this section's buttons. |
 | **Border colour** | Draws a border around the section band. |
-| **Border width** | How thick the border is. The border is only drawn once a colour is chosen. |
+| **Border width** | How thick the border is. Always available; the border itself is only drawn once a colour is chosen. |
 | **Corner radius** | Rounds the band into a card. |
 | **Background image** | Sits behind the section, covering the band. |
 
@@ -160,18 +164,14 @@ panel and it is deliberate.
 
 **Border width does nothing on its own.** With no border colour there is **no border at all** —
 not a thin one. The reverse pairing is the one that falls back: choose a colour and leave the
-width unset and you get a hairline. (The width control stays visible either way; it is the
-border that is conditional.)
+width unset and you get a hairline. The width control stays on screen either way; it is the
+border that is conditional, not the control.
 
 **A corner radius turns the band into a card.** It stops the section running edge to edge and
-pulls it in from the screen edges so the corners are visible. That is the control working,
-not a bug. To force square corners and *keep* the band full width, choose **None** — the same
-"explicit zero" idea as the spacing controls.
-
-Be aware of a wrinkle in the form here: when the radius is unset the dropdown displays
-*"Square — band runs edge to edge"*, and the help text tells you to choose "Square". **There is
-no Square option** — the choices are None, Small, Medium and Large. Unset and None both give
-you square corners today, so nothing renders wrongly; it is the wording that misleads.
+pulls it in from the screen edges so the corners are visible. That is the control working, not
+a bug. To force square corners and *keep* the band full width, choose **Square** — the same
+"explicit zero" idea as the spacing controls, which is why this one control says Square where
+the others say None.
 
 **Pair a background image with a background colour.** The colour shows while the image loads,
 so text stays readable in the meantime.
@@ -194,8 +194,13 @@ the generic label *Content blocks* unless it renames the panel, as the hero does
   that a phone visitor needs to see**; most of this site's traffic is on one.
 - The hero also keeps a collapsed **Highlight card (legacy single card)** panel. Those fields
   are used **only** when no content blocks are added; adding one supersedes them.
-- A card's own panels read the same as a section's, with one exception: **Flush** is not
-  offered on a card's horizontal inset, because a card is not next to the screen edge.
+- A card's own panels read the same as a section's, with two differences, both because a card
+  sits inside its section's column rather than against the screen edge:
+  - **Flush** is not offered on a card's horizontal inset — there is no page margin there for
+    it to cancel.
+  - **A corner radius on a card rounds its corners and nothing else.** On a section a radius
+    also pulls the band in from the screen edges; a card's width does not change, so *Square*
+    and *Large* are the same width. The controls carry hints saying so.
 
 ## Writing formatted text
 
