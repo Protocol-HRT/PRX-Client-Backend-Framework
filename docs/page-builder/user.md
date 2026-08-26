@@ -42,6 +42,35 @@ Four section types pull live product data from the Catalog:
 Only **published** catalog items ever appear on the site; unpublished picks are
 skipped automatically.
 
+## How a section looks — layout, style, responsive
+
+Every section, of every type, carries two collapsed panels at the bottom of its edit form:
+**Layout & spacing** (content width, media width, horizontal inset, alignment, top and bottom
+padding, plus per-breakpoint overrides) and **Style** (background, text, accent, button and
+border colours, border width, corner radius, background image).
+
+**Use these instead of asking a developer for a padding or colour tweak.** They are how the
+design is meant to be adjusted, and every control is a dropdown from a fixed scale — nobody
+types a pixel value or a colour code.
+
+The full guide, including the parts that will surprise you, is in **[CMS — User
+Guide](../cms/user.md#layout--spacing-every-section)**. The short version:
+
+- **Unset ≠ None.** Unset uses the section type's design default; None forces zero.
+- **Colours come from the palette by name** (Settings → Theme → Colour palette), never as a
+  colour code — so a rebrand is one edit, and a colour in use cannot be deleted or renamed.
+- **The base values are the phone values**; the two override tabs change them upward from
+  768px and 992px. Resize the browser to check — a screenshot at one width cannot show you.
+- **There is no left/right padding**, deliberately. Horizontal inset owns those edges.
+
+**On a global block, these settings travel with the block** — the same as its content. If one
+page needs the same block with different padding, detach a copy there rather than nudging the
+shared one.
+
+Some sections also hold **content blocks** — repeating cards with their own layout and style
+panels. Today the Hero is the only type that does; see the CMS guide's *Cards inside a
+section*.
+
 ## Custom section types
 
 **Content → Custom Section Types.** When the built-in types don't fit, define

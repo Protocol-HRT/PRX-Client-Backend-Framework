@@ -148,6 +148,116 @@ as `__PHP_Incomplete_Class` on cache hits). Regression-tested in
 - All new Filament resources have Shield policies (`app/Policies/Cms/`); the
   usual ritual applies after adding any resource.
 
+## Presentation knobs, style knobs and sub-blocks
+
+Every section carries a shared vocabulary of layout and style settings that no blueprint
+declares. `SectionFormBuilder` injects the same two panels into every type, so the keys land
+in `data` alongside the type's own fields. Frontend contract: `docs/frontend/dev.md` §4;
+operator guide: `docs/cms/user.md`.
+
+### The registry is `App\Cms\Support\LayoutFields`
+
+| Constant | Holds | Why it exists |
+|---|---|---|
+| `KEYS` | the live knob vocabulary | `presentationKeys()` unions it in, and `SectionContent` counts anything **not** a presentation key as authored content |
+| `RETIRED_KEYS` | knobs whose control is gone | a stored value outlives its control — see below |
+| `IMAGE_KEYS` | knobs holding a media id | `SectionDataTransformer` unions it in, or the value serves as a bare integer instead of a resolved image |
+
+**Responsive overrides are flat suffixed keys** (`content_inset_md`, `style_padding_top_lg`),
+not a nested shape. The base key **is** the mobile value, so existing rows needed no migration
+and there is no serve-time shim. `hasContent()` skips presentation keys **by name, never by
+value shape** — which is the property that made flat cheaper than nested, and is why listing a
+key in `KEYS` is the whole of making it presentation. The suffix scale is `_breakpoints.scss`'s
+(Bootstrap 5.3: `md` 768, `lg` 992); do not invent another.
+
+**Style keys are namespaced `style_*`, and that is load-bearing.** `background_image` was tried
+bare and collided head-on with a real content field of the same name on `hero`, `cta-banner`
+and `image-callout-banner`: those sections' actual background images were reclassified as
+presentation, and a hero carrying only a background image would have reported
+`has_content: false` and vanished from a live page. `LayoutFieldCollisionTest` enforces the
+prefix. Note that the panel a control appears in is unrelated to its key prefix — vertical
+padding is `style_padding_top` but lives in **Layout & spacing**, because that is where an
+operator looks for it.
+
+**There is no `style_padding_left` / `_right`, and it is a correctness decision rather than a
+scope cut.** Padding on the knob wrapper narrows `.sx-section`'s containing block, and the
+section's bleed is a fixed `-1 * --page-gutter` that recovers the gutter but not the knob — so
+horizontal padding would leave every self-painting band inset from the viewport edge by exactly
+the amount chosen. The horizontal edges belong to `content_inset`, which acts inside
+`.sx-section` and cannot do that.
+
+### Two defaults mechanisms, and only one of them reaches the payload
+
+- **`LayoutFields::applyDefaults()`** merges a definition's `layoutDefaults()` at serve time,
+  and merges **only** keys in `KEYS` — a definition cannot smuggle content into a payload
+  through it.
+- **A blueprint's own `defaults()` are NOT merged into served data.** They drive the admin form
+  and the presentation classification, nothing else. **So the frontend owns the fallback for
+  any defaulted blueprint field**: a section saved through the admin carries the key and one
+  written by a fill script does not, and both must render identically.
+
+That asymmetry is invisible and easy to assume away — it is pinned by a test asserting the key
+is **absent** from a served, untouched hero, which fails loudly if the merge behaviour ever
+changes and makes a frontend fallback unreachable. Keep such a test whenever a blueprint field
+gains a non-null default.
+
+### Presentation classification is automatic for defaulted fields
+
+`DeclaresPresentationKeys::presentationKeys()` unions `KEYS` + `RETIRED_KEYS` + **every
+blueprint field with a non-empty default** — the filter excludes `null`, `''` **and** `[]`, so
+an empty string or empty array default does *not* classify the field as presentation. It leans on an invariant the CMS already enforces
+— `defaults()` contains no copy, only nulls, empty arrays and structural flags — so a key with
+a non-null default *is* a structural flag and classifies itself.
+
+**Consequence worth knowing before you add a per-type presentation field:** give it a non-empty
+default — a real token, not `''` or `[]` — and it needs no `KEYS` entry, no new shared surface, and carries none of the retired-key
+hazards. `hero.highlight_position` is the worked example. Set that default to `null` and an
+untouched hero starts reporting `has_content: true`.
+
+A blueprint with a structural key that has **no** default must override the trait and merge its
+own.
+
+### Palette-valued knobs must be declared twice
+
+`PaletteUsage::KEYS` is the subset of `LayoutFields::KEYS` whose value is a palette **name**.
+Deleting — or **renaming**, since sections store the name and not an id — a colour still in use
+cannot be recovered from on the frontend: `--sx-bg` resolves to an undefined custom property,
+the declaration computes to `unset`, and the band renders transparent while its marker class
+still claims a colour was chosen. So the guard has to run before the save.
+
+Add a name-valued knob to `KEYS` without adding it to `PaletteUsage::KEYS` and the guard goes
+blind to it. `PaletteDeletionGuardTest` pins the two as a subset relation.
+
+The usage walk is **PHP, not SQL**, deliberately: a child block's knobs live inside the parent's
+`data` JSON, so a `LIKE '%sand%'` cannot tell a card's background from the word appearing in
+authored copy. Do not optimise it into one.
+
+### Typed sub-blocks
+
+A section's `data` may hold `children` — a repeater of `{type, data}` items, served as
+`{type, data, has_content}`. Filament's `Builder` is used rather than a Repeater with a type
+select because its persisted shape **is** the child envelope, so there is no discriminator to
+invent and keep in sync.
+
+- **`SectionChildren::KEY` is reserved, not a layout key.** Children are **content**: the key
+  must stay countable by `hasContent()`, and each child is judged by its own verdict. Putting
+  it in `LayoutFields::KEYS` would make a section holding nothing but children render as empty.
+- It is guarded twice, like the style prefix: `LayoutFieldCollisionTest` asserts no code
+  blueprint declares it, and `FlexibleSectionTypeForm::reservedFieldKeys()` refuses it as an
+  operator types it — the only place a runtime-created flexible type can be caught.
+- **The knob panels are reused verbatim for children** via `blockFor()`, with a `$nested` flag
+  for the differences. Today that flag drops `flush` from a child's horizontal inset, because a
+  child is not adjacent to the page edge and the option would be inert. Anything else that
+  reads differently at the two levels — help text especially — needs the same treatment.
+- Today: one block type (`TestimonialBlock`), one section that holds children (`HeroSection`).
+
+### A blueprint field also has to reach the seeded mirror
+
+Several code types have a seeded **flexible mirror** row, and `SectionTypeSeedParityTest` pins
+the two together — **adding a blueprint field without adding it to `SectionTypeSeeder` fails
+the suite**, with a bare array diff for a failure message. It is not obvious from the blueprint
+you are editing, so check it whenever you add a field.
+
 ## Gotchas
 
 - `PageSection.type` is a **plain string** now. `SectionType` enum still exists as
@@ -183,6 +293,24 @@ as `__PHP_Incomplete_Class` on cache hits). Regression-tested in
 
 **New region**: add a `Region` case — ships together with the frontend component
 that renders it.
+
+**New layout/style knob**: add the control to `SectionFormBuilder` **and** the key to
+`LayoutFields::KEYS` *in the same commit* → if it holds a palette name, add it to
+`PaletteUsage::KEYS` → if it holds a media id, add it to `LayoutFields::IMAGE_KEYS` → if it
+should differ by breakpoint, add the `_md` / `_lg` keys too → emit the class and custom
+property in the frontend's `lib/sectionKnobs.js` and read it in `_layout-frame.scss` /
+`_sub-blocks.scss`. A knob in the form but missing from `KEYS` makes an untouched scaffold
+look authored the moment an operator nudges it, and the empty section leaks onto a live page.
+
+**Retiring a layout knob**: removing it from `KEYS` is **not** enough, and this is written down
+because the assumption was caught doing damage. A stored value outlives its control, so the key
+must (1) move to `LayoutFields::RETIRED_KEYS` — or `hasContent()` starts counting it as authored
+copy and an empty scaffold renders on a live page — and (2) stay in
+`FlexibleSectionTypeForm::reservedFieldKeys()`, or an operator can create a flexible field with
+that name and have the content silently dropped. Retiring `extra_padding` left values in 13 rows
+of stored JSON and flipped a deliberately-empty bench section from `has_content: false` to
+`true`. A retired key stays listed permanently, or until the values are cleaned out of every
+row.
 
 ## Data-driven section types (code → DB migration)
 

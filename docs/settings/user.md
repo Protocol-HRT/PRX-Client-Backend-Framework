@@ -42,6 +42,28 @@ Colors must be hex codes (`#0d0d0d`, `#c19a4b`). The five color tokens map onto 
 
 Font names should be the family name as used by `@font-face`. The actual font files live under `public/fonts/` and aren't editable from this UI yet.
 
+#### Colour palette
+
+Below Typography is the **Color palette** panel (spelt that way on screen) — a list of
+`{name, colour}` rows that is the site's named colour vocabulary. Names must be lowercase
+slugs: `sand`, `ink`, `deep-gold`. It is what the section **Style** panel offers: when an
+operator sets a section's background, text, accent, button or border colour, they pick a
+**name** from this list, and the section stores the name rather than the colour.
+
+That indirection is the point. Retune `sand` here and every section using it moves in one
+edit, at the next save — no page has to be re-opened. It also means the palette is the one
+place a rebrand happens.
+
+**A colour that sections are using cannot be deleted — or renamed.** Try either and the save
+is refused, with a list of the sections still holding it. This is a guard, not an
+inconvenience: a section stores the name, so a rename breaks it exactly as a delete would,
+and neither can be recovered from on the website side — the band would render **transparent**
+while still claiming a colour was chosen. Retire a colour by pointing those sections
+somewhere else first, then removing the row.
+
+The check looks inside cards nested within sections as well as sections themselves, so a
+colour used only by a hero highlight card is still protected.
+
 ### Contact
 
 Email and URL fields are validated. Country code is the ISO 3166-1 alpha-2 code (US, CA, GB, …). Social URLs that you leave blank are skipped in the rendered footer/nav.
