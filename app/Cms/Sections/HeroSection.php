@@ -141,7 +141,7 @@ class HeroSection extends SectionBlueprint
                 ->default('middle-right')
                 ->selectablePlaceholder(false)
                 ->native(false)
-                ->helperText('Where the cards above sit on the slideshow. Hidden on phones, where the cards stack under the slide instead — there is not enough width to overlay them without covering the headline.'),
+                ->helperText('Where the cards above sit on the slideshow. NOT SHOWN ON PHONES AT ALL (below 576px) — there is not enough width to overlay a card without covering the headline, and there is no phone fallback, so never put content here that a phone visitor needs to see.'),
             Section::make('Highlight card (legacy single card)')
                 ->description('The original one-card fields, kept so nothing authored before highlight cards existed had to be migrated. They are used ONLY when no highlight cards are added above; adding one supersedes them. Re-author here in the blocks above and these can be cleared.')
                 ->collapsed()
