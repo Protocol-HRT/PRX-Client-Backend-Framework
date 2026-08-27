@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\V1\Content\FaqController;
 use App\Http\Controllers\Api\V1\Content\ProfileController;
 use App\Http\Controllers\Api\V1\Intake\IntakeSchemaController;
 use App\Http\Controllers\Api\V1\Kb\CompoundController;
+use App\Http\Controllers\Api\V1\Kb\HealthGoalController;
 use App\Http\Controllers\Api\V1\Leads\LeadController;
 use App\Http\Controllers\Api\V1\Orders\OrderController;
 use App\Http\Controllers\Api\V1\Patient\AuthController as PatientAuthController;
@@ -56,6 +57,7 @@ use Illuminate\Support\Facades\Route;
 |   GET  /api/v1/blog/posts/{slug}           Single blog post.
 |   GET  /api/v1/blog/categories             Blog categories.
 |   GET  /api/v1/blog/tags                   Blog tags.
+|   GET  /api/v1/health-goals               Intake quiz choices (active + offered by default).
 |   GET  /api/v1/kb/compounds                Published compound monographs (peptides by default).
 |   GET  /api/v1/kb/compounds/{slug}         Single monograph with its full prose sections.
 |   GET  /api/v1/cart                        View cart (X-Cart-Token header).
@@ -122,6 +124,13 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
     // requires a regulatory status, so a monograph without one 404s here even
     // with its published flag set. A clinician reviewer is NOT required — see
     // the model for why requiring one would manufacture bylines.
+
+    // Health goals sit OUTSIDE the kb prefix: they are the intake quiz's
+    // vocabulary and drive commerce recommendations, not knowledge-base
+    // content. Nesting them under /kb would say the opposite.
+    Route::get('health-goals', [HealthGoalController::class, 'index'])
+        ->name('health-goals.index')
+        ->middleware('throttle:api');
 
     Route::prefix('kb')->name('kb.')->middleware('throttle:api')->group(function (): void {
         Route::get('compounds', [CompoundController::class, 'index'])->name('compounds.index');

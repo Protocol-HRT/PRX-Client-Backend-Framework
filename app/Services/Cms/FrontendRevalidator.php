@@ -8,6 +8,7 @@ use App\Models\Cms\MenuItem;
 use App\Models\Content\FaqCategory;
 use App\Models\Content\FaqItem;
 use App\Models\Kb\Compound;
+use App\Models\Kb\HealthGoal;
 use App\Models\Page;
 use App\Models\PageSection;
 use Illuminate\Contracts\Foundation\Application;
@@ -147,6 +148,10 @@ class FrontendRevalidator
             // monograph itself. Both are sent because publishing a compound
             // changes the listing as well as the detail page, and the frontend
             // caches them under separate tags.
+            // The quiz reads one list of goals, so a change to any of them
+            // invalidates that list; there is no per-goal page to tag.
+            $model instanceof HealthGoal => [self::TAG_ALL, 'health-goals'],
+
             $model instanceof Compound => array_values(array_filter([
                 self::TAG_ALL,
                 'kb',

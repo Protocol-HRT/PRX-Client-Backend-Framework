@@ -128,6 +128,68 @@ leave a stale date for the sitemap to emit.
 
 ---
 
+## 2b. Health goals, and the two edges
+
+A goal is what a visitor picks in the quiz. Everything the quiz can recommend is derived from
+it — through the **catalog**, not through the knowledge base:
+
+```
+goal ──> ingredient ──> product ──> package/stack
+         (weighted)     (exists)    (exists)
+```
+
+**Why the ingredient and not the compound.** An ingredient is what a product actually
+*contains*, with a concentration, via the `ingredient_product` pivot that was already there.
+A compound is an editorial document that may correspond to nothing this install sells — 95 of
+102 imported compounds match no ingredient. Recommending through the catalog means a
+recommendation cannot point at something you do not stock.
+
+**Packages are never mapped.** A stack surfaces because it contains a product containing a
+matching ingredient, so it cannot drift out of step with its own contents. `health_goal_product`
+is the override for pinning a product to a goal regardless of its ingredient list; if you find
+yourself pinning most products by hand, the ingredient mappings are what is actually missing.
+
+**`compound_health_goal` is a second edge doing a different job.** It answers "which goals does
+this peptide align with" on a monograph. It teaches; it does not sell, and it is separate for
+the reason above — deriving a monograph's goals from the commercial edge would leave almost
+every knowledge-base page showing none.
+
+### `is_active` vs `show_in_quiz`
+
+Two flags, two questions, and conflating them is the mistake this pair exists to prevent.
+`is_active` hides the goal everywhere, including from surfaces that merely *name* it.
+`show_in_quiz` withdraws it from intake while leaving every mapping intact — which is what an
+operator retiring a goal almost always means. `HealthGoal::forQuiz()` is `active()` plus the
+second flag; `GET /health-goals?all=1` relaxes to `active()` alone, for consumers that name a
+goal rather than offering it.
+
+### `position` is respected on create
+
+`HealthGoal` overrides Spatie's `setHighestOrderNumber()` (aliased, because `SortableTrait` is
+a trait and `parent::` would reach `Model`). Spatie assigns unconditionally, so a seeder
+passing `position` silently gets creation order instead. Product and Package live with that
+because their order is only ever set by dragging rows; a goal's position **is** the order the
+quiz offers it in, which is exactly the thing someone writes down. With no position supplied
+it appends, exactly as the catalog models do.
+
+### The mappings never leave the building
+
+`HealthGoalResource` emits no ingredient, product or compound edges, and a test pins that.
+Deriving a recommendation is server-side: the weighted mapping is what a clinician built and a
+competitor would copy, and shipping it would also tell a visitor which products they are about
+to be steered toward.
+
+### API
+
+| Endpoint | Notes |
+|---|---|
+| `GET /api/v1/health-goals` | Unpaginated. `all=1` includes goals withdrawn from the quiz; `tree=1` nests children under their parent |
+
+Unpaginated on purpose — a goal list is a dozen or so choices on one screen, and paginating it
+would make the frontend fetch twice to render once. Cache tags: `cms`, `health-goals`.
+
+---
+
 ## 3. `RegulatoryStatus`
 
 `App\Enums\Kb\RegulatoryStatus`, string-backed, surfaced on every public page and mapped into

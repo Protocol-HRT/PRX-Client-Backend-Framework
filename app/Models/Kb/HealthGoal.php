@@ -40,7 +40,13 @@ use Spatie\Sluggable\SlugOptions;
  */
 class HealthGoal extends Model implements Sortable
 {
-    use HasFactory, HasSlug, SoftDeletes, SortableTrait;
+    use HasFactory, HasSlug, SoftDeletes;
+
+    // Aliased rather than overridden: SortableTrait is a trait, so `parent::`
+    // reaches Model and not the implementation being wrapped.
+    use SortableTrait {
+        setHighestOrderNumber as private appendToEndOfOrder;
+    }
 
     public function getSlugOptions(): SlugOptions
     {
@@ -86,6 +92,27 @@ class HealthGoal extends Model implements Sortable
             'is_active' => 'boolean',
             'show_in_quiz' => 'boolean',
         ];
+    }
+
+    /**
+     * Respects a position that was set explicitly, instead of always appending.
+     *
+     * Spatie's `setHighestOrderNumber()` assigns unconditionally on create, so
+     * a seeder or import passing `position` silently gets creation order
+     * instead. Product and Package live with that because their position is
+     * only ever set by dragging rows; a goal's position IS the order the quiz
+     * offers it in, which is exactly the thing someone writes down.
+     *
+     * Divergence from the catalog models, on purpose — but only in the case
+     * they never hit: with no position supplied, this appends exactly as they do.
+     */
+    public function setHighestOrderNumber(): void
+    {
+        if ($this->position !== null && $this->position > 0) {
+            return;
+        }
+
+        $this->appendToEndOfOrder();
     }
 
     /** Active goals only — the baseline every public read starts from. */
