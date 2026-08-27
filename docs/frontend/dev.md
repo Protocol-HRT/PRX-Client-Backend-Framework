@@ -261,6 +261,26 @@ published monograph is a real URL.
 
 Cache tags: `kb` (broad) and `kb:{slug}`. Both are pushed on every save.
 
+### 5b. The `quiz` section type
+
+`quiz` mounts the intake wizard **inside a CMS page**. It is distinct from `quiz-cta`, which
+is the ingress and only links to it — a funnel usually wants the ingress on the home page and
+the quiz on one dedicated page.
+
+`data`: `eyebrow`, `heading`, `heading_level` (`h1|h2`), `body`, `goals` (list of goal slugs).
+
+Two things a frontend must get right:
+
+- **It renders with an entirely empty payload.** The blueprint declares
+  `hasIntrinsicContent()`, so the envelope arrives with `has_content: true` even when every
+  copy field is null. Do not add a local "no heading → render nothing" guard, which is the
+  usual and correct pattern for editorial sections: here it would delete a working quiz.
+  The one thing that legitimately renders nothing is having no goals to offer.
+- **`goals` empty means ALL quiz goals**, not none. Fetch `/health-goals` and filter by the
+  slugs only when the list is non-empty, so a goal the operator adds later appears without an
+  edit to every page carrying a quiz — and a goal they withdraw from intake disappears from
+  both, because it stops appearing in `/health-goals` at all.
+
 ### 5a. Protocol preview — resolving a goal for a visitor
 
 `POST /protocol/preview` — body `{goals: string[], sex?: string|null, age?: int|null}`.

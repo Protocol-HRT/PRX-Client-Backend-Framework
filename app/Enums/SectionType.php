@@ -22,6 +22,7 @@ use App\Cms\Sections\PhysiciansSection;
 use App\Cms\Sections\PricingTiersSection;
 use App\Cms\Sections\HtmlBlockSection;
 use App\Cms\Sections\QuizCtaSection;
+use App\Cms\Sections\QuizSection;
 use App\Cms\Sections\ProductCalloutSection;
 use App\Cms\Sections\ProductGridSection;
 use App\Cms\Sections\ProductSliderSection;
@@ -57,6 +58,10 @@ enum SectionType: string
     case ImageTextSplit = 'image-text-split';
     case CtaBanner = 'cta-banner';
     case QuizCta = 'quiz-cta';
+
+    // Functional, not editorial: this one MOUNTS the quiz rather than linking
+    // to it, and renders with no authored copy. See QuizSection.
+    case Quiz = 'quiz';
     case HtmlBlock = 'html-block';
     case FeaturesGrid = 'features-grid';
     case VideoEmbed = 'video-embed';
@@ -96,6 +101,7 @@ enum SectionType: string
             self::ImageTextSplit => app(ImageTextSplitSection::class),
             self::CtaBanner => app(CtaBannerSection::class),
             self::QuizCta => app(QuizCtaSection::class),
+            self::Quiz => app(QuizSection::class),
             self::HtmlBlock => app(HtmlBlockSection::class),
             self::FeaturesGrid => app(FeaturesGridSection::class),
             self::VideoEmbed => app(VideoEmbedSection::class),

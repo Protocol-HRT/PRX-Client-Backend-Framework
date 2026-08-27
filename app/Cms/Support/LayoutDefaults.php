@@ -73,6 +73,10 @@ final class LayoutDefaults
 
         // Narrower editorial columns.
         'text-block' => ['content_width' => 'wide'],
+        // A form, not an article. Capped narrower than editorial copy because
+        // a question row stretched across 1400px is harder to scan, not
+        // easier, and the controls have their own max-widths anyway.
+        'quiz' => ['content_width' => 'medium'],
         'faq-categories' => ['content_width' => 'wide'],
         'highlight-banner' => ['content_width' => 'medium'],
         'benefits-diagram' => ['content_width' => 'medium'],

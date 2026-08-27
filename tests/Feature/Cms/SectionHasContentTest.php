@@ -39,6 +39,46 @@ class SectionHasContentTest extends TestCase
             ->json('data.sections.0');
     }
 
+    /**
+     * A FUNCTIONAL section renders on its own, so an empty payload is not an
+     * empty section.
+     *
+     * The quiz section mounts the intake wizard; the copy above it is
+     * optional decoration. Judged by authored content alone it would report
+     * has_content: false and be dropped, and an operator who added it and
+     * wrote no heading would watch it silently vanish — the least debuggable
+     * failure this CMS has. `hasIntrinsicContent()` is the explicit claim
+     * that the component renders something without help.
+     */
+    public function test_a_functional_section_reports_content_with_an_empty_payload(): void
+    {
+        $envelope = $this->sectionEnvelope([
+            'eyebrow' => null,
+            'heading' => null,
+            'heading_level' => 'h2',
+            'body' => null,
+            'goals' => [],
+        ], 'quiz');
+
+        $this->assertTrue($envelope['has_content']);
+    }
+
+    /**
+     * The flag must not be a blanket exemption. An editorial section with the
+     * same empty payload still reports nothing, which is what stops an empty
+     * scaffold reaching a live page.
+     */
+    public function test_the_intrinsic_flag_does_not_leak_to_editorial_sections(): void
+    {
+        $envelope = $this->sectionEnvelope([
+            'heading' => null,
+            'body' => null,
+            'theme' => 'light',
+        ], 'text-block');
+
+        $this->assertFalse($envelope['has_content']);
+    }
+
     public function test_an_authored_section_reports_content(): void
     {
         $envelope = $this->sectionEnvelope([

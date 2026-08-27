@@ -38,6 +38,11 @@ class BlueprintDefinition implements SectionDefinition
         return $this->blueprint->defaults();
     }
 
+    public function hasIntrinsicContent(): bool
+    {
+        return $this->blueprint->hasIntrinsicContent();
+    }
+
     /**
      * @return array<string, string>
      */

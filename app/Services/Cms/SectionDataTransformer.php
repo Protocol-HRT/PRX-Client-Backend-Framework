@@ -106,7 +106,8 @@ class SectionDataTransformer
                 // Computed after resolveData() so inlined catalog results count
                 // as the content they are. Consumers render nothing when false
                 // rather than each reimplementing the walk.
-                'has_content' => SectionContent::hasContent($data, $row['definition']->presentationKeys()),
+                'has_content' => $row['definition']->hasIntrinsicContent()
+                    || SectionContent::hasContent($data, $row['definition']->presentationKeys()),
                 'data' => $data,
             ];
 
@@ -164,7 +165,8 @@ class SectionDataTransformer
                 'slug' => $global->slug,
                 'name' => $global->name,
             ] : null,
-            'has_content' => SectionContent::hasContent($data, $definition->presentationKeys()),
+            'has_content' => $definition->hasIntrinsicContent()
+                || SectionContent::hasContent($data, $definition->presentationKeys()),
             'data' => $data,
         ];
 

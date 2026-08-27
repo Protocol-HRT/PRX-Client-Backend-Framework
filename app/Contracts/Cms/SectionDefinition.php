@@ -74,5 +74,22 @@ interface SectionDefinition
     public function presentationKeys(): array;
 
     /** True when the definition is DB-backed (admin-created), not code-backed. */
+    /**
+     * Whether this type renders something even with no authored copy.
+     *
+     * `has_content` normally asks "did an operator put anything here", and a
+     * section that answers no is dropped so an empty scaffold cannot reach a
+     * live page. That is right for every editorial type, and wrong for a
+     * FUNCTIONAL one: the quiz section's content is the wizard it mounts, not
+     * the heading above it, so an operator who drops it in and writes no
+     * copy still gets exactly what they asked for. Without this the section
+     * would silently vanish, which is the least debuggable failure the CMS
+     * has.
+     *
+     * True is a claim that the COMPONENT renders something on its own. Never
+     * set it to dodge a has_content bug on an editorial type.
+     */
+    public function hasIntrinsicContent(): bool;
+
     public function isFlexible(): bool;
 }

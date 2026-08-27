@@ -48,13 +48,37 @@ around building a blueprint for something the site does repeatedly.
 ### The `SectionDefinition` contract (`app/Contracts/Cms/SectionDefinition.php`)
 
 Everything the builder can render implements it:
-- `BlueprintDefinition` (`app/Cms/`) adapts code `SectionBlueprint`s (28 types in `app/Cms/Sections/`, registered in the `SectionType` enum).
+- `BlueprintDefinition` (`app/Cms/`) adapts code `SectionBlueprint`s (29 types in `app/Cms/Sections/`, registered in the `SectionType` enum).
 - `FlexibleDefinition` (`app/Cms/`) adapts admin-created `FlexibleSectionType` rows.
 
 Key methods: `type()` (string stored in `page_sections.type`), `formSchema()` (Filament
 components), `defaults()`, `fieldKinds()` (dot-path → kind map driving API-side value
 transformation; `*` fans over repeater items, e.g. `quotes.*.image`), `resolveData()`
-(section-level hook — product blueprints run their query modes here), `isFlexible()`.
+(section-level hook — product blueprints run their query modes here), `isFlexible()`,
+`hasIntrinsicContent()`.
+
+#### Functional sections — `hasIntrinsicContent()`
+
+Added 2026-08-28 with the `quiz` type, and the only implementor so far.
+
+`has_content` normally asks *"did an operator author anything here"*, and a section that
+answers no is dropped so an empty scaffold cannot reach a live page. That is right for every
+editorial type and wrong for a **functional** one. The `quiz` section's content is the wizard it
+mounts; the heading above it is optional decoration. Judged on authored copy alone it reports
+`has_content: false`, gets dropped, and an operator who added it and wrote no heading watches
+the section silently vanish — the least debuggable failure this CMS has.
+
+So a blueprint may declare `hasIntrinsicContent(): true`, and the transformer ORs it with the
+authored-content walk at both call sites in `SectionDataTransformer`.
+
+**It is a claim that the COMPONENT renders something on its own.** Never set it to work around
+an empty-payload bug on an editorial type — that re-opens the exact hole `SectionContent`
+exists to close. `FlexibleDefinition` returns `false` unconditionally and cannot opt in: a
+flexible type is a field list an operator assembled, with no component behind it, so "content"
+there can only mean what they typed.
+
+Pinned by `SectionHasContentTest::test_a_functional_section_reports_content_with_an_empty_payload`
+and its companion asserting the flag does not leak to editorial types.
 
 **Code wins on slug collision**; flexible slugs are validated against
 `SectionRegistry::reservedSlugs()` at authoring time (belt + suspenders).

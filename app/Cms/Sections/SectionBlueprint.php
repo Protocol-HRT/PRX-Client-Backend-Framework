@@ -87,6 +87,15 @@ abstract class SectionBlueprint
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */
+    /**
+     * See SectionDefinition::hasIntrinsicContent(). False for every editorial
+     * section, which is almost all of them.
+     */
+    public function hasIntrinsicContent(): bool
+    {
+        return false;
+    }
+
     public function resolveData(array $data): array
     {
         return $data;

@@ -54,6 +54,16 @@ class FlexibleDefinition implements SectionDefinition
      *
      * @return list<string>
      */
+    /**
+     * Always false. A flexible type is a field list an operator assembled in
+     * the admin; there is no component behind it that could render anything
+     * on its own, so "content" can only mean what they typed.
+     */
+    public function hasIntrinsicContent(): bool
+    {
+        return false;
+    }
+
     public function presentationKeys(): array
     {
         $booleans = array_column(
