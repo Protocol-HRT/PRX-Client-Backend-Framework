@@ -22,6 +22,7 @@ use App\Http\Controllers\Api\V1\Content\ProfileController;
 use App\Http\Controllers\Api\V1\Intake\IntakeSchemaController;
 use App\Http\Controllers\Api\V1\Kb\CompoundController;
 use App\Http\Controllers\Api\V1\Kb\HealthGoalController;
+use App\Http\Controllers\Api\V1\Recommendations\ProtocolPreviewController;
 use App\Http\Controllers\Api\V1\Leads\LeadController;
 use App\Http\Controllers\Api\V1\Orders\OrderController;
 use App\Http\Controllers\Api\V1\Patient\AuthController as PatientAuthController;
@@ -130,6 +131,15 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
     // content. Nesting them under /kb would say the opposite.
     Route::get('health-goals', [HealthGoalController::class, 'index'])
         ->name('health-goals.index')
+        ->middleware('throttle:api');
+
+    // What the quiz may offer a visitor, given the goals they picked and what
+    // they told us about themselves. POST because a GET would log the pairing
+    // of a health goal with a sex and an age against an IP; see the controller.
+    // Stores nothing — a preview must not create a record about someone who
+    // then closes the tab.
+    Route::post('protocol/preview', [ProtocolPreviewController::class, 'store'])
+        ->name('protocol.preview')
         ->middleware('throttle:api');
 
     Route::prefix('kb')->name('kb.')->middleware('throttle:api')->group(function (): void {

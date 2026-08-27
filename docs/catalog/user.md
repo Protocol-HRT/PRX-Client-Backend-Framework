@@ -198,3 +198,70 @@ Before setting a product or package to **Published**:
 ## Display pricing vs transaction pricing
 
 Prices in this admin are **display prices** — what customers see on the storefront. The actual transaction amount is determined by the provider (PrescribeRx) at checkout time based on the `provider_product_ids` and `provider_plan_id` you configure on each plan. If local checkout via NMI/Authorize.net is configured instead, the `sale_price ?? retail_price` is used as the transaction amount.
+
+---
+
+## Ingredient eligibility — who each substance may be offered to
+
+**This is the safety gate the intake quiz applies before it ranks anything.** Relevance
+weights (Health Goals → Recommends) order options that are *all acceptable*. Eligibility
+decides which are acceptable at all. A weight of 100 on testosterone will not float it past a
+female visitor — the gate runs first.
+
+Edit it under **Shop → Ingredients → (an ingredient) → Eligibility**.
+
+| Field | What it does |
+|---|---|
+| **Who can be offered this** | `Anyone` (default), `Male only`, `Female only` |
+| **Minimum age** / **Maximum age** | Blank on either side means no bound in that direction |
+| **Why — shown in the protocol** | Your sentence explaining the rules above. Quoted in the generated protocol and PDF |
+
+### It is set on the ingredient, not the product — on purpose
+
+A product inherits the rules of everything it contains. Mark Testosterone Cypionate as
+*Male only* once, and every product containing it — including products you add next year —
+is male-only automatically. There is no per-product checkbox to forget.
+
+Two consequences worth knowing:
+
+- **A combination product is as restrictive as its strictest ingredient.** A blend containing
+  one male-only ingredient is a male-only product, whatever else is in it.
+- **A stack is withheld if any product in it is unsuitable**, because a customer buys a stack
+  whole and cannot decline one item in it.
+
+### Everything defaults to "Anyone", and that is deliberate
+
+A new ingredient is offered to everyone until you say otherwise. The failure direction is
+chosen: an unset field **over**-offers a safe substance rather than **under**-offering it,
+because you will notice a product that should not have appeared and you will never notice one
+that silently stopped appearing.
+
+That means **classification is a job you have to do**, not something the system infers. The
+Ingredients list shows an **Offered to** column and an **Age** column precisely so you can see
+at a glance which substances nobody has classified yet — an unclassified male-only ingredient
+looks exactly like a correctly unisex one until you set it.
+
+### Blank age is not 18
+
+Leaving **Minimum age** blank means "no lower bound", not "18 and over". If a substance really
+does have a floor, type it. A bound nobody set must never start filtering people out.
+
+### What a visitor sees when nothing is suitable
+
+If every ingredient for a goal is filtered out, the visitor is told honestly that you do not
+currently stock something appropriate for them, and is pointed at a clinician. They are **not**
+shown an empty page, and they are not shown something unrelated instead.
+
+This is worth checking after you classify: if your catalogue has no female-indicated
+ingredients mapped to a goal, every woman choosing that goal reaches that message. That is the
+correct behaviour, and it is also a signal to stock the other side of the shelf.
+
+### Sex here means physiological applicability
+
+The field records what a substance is clinically appropriate for, not how a person describes
+themselves. The wording the visitor actually reads in the quiz is separate authored copy — you
+can change the question without touching any ingredient.
+
+An answer the system does not recognise as male or female filters **nothing** rather than being
+guessed into a bucket. Someone who self-describes sees the full range rather than a narrowed
+set that a string comparison picked for them.

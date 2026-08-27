@@ -261,6 +261,46 @@ published monograph is a real URL.
 
 Cache tags: `kb` (broad) and `kb:{slug}`. Both are pushed on every save.
 
+### 5a. Protocol preview — resolving a goal for a visitor
+
+`POST /protocol/preview` — body `{goals: string[], sex?: string|null, age?: int|null}`.
+
+Turns the goals a visitor picked into what they may actually be offered, filtering on sex and
+age eligibility before ranking. This is the endpoint the intake quiz calls after its questions.
+
+**It is a POST and it must stay one.** As a GET, `?goal=sexual-wellness&sex=male&age=62` lands
+in every access log, proxy log and analytics row between the browser and the origin — a health
+inference about an IP address. The response is per-visitor and uncacheable, so a GET buys
+nothing. **Do not cache the response**, and do not put the answers in a URL, browser history, or
+any analytics payload.
+
+**It stores nothing.** A preview creates no record. Answers become data only when a lead is
+submitted, which is a separate, consented step.
+
+Each entry in `data` carries an `outcome` — the three states a funnel must tell apart:
+
+| `outcome` | Meaning | What to render |
+|---|---|---|
+| `matched` | Something is suitable | The `products` and `packages` |
+| `restricted` | Something exists, but not for this visitor | An honest message + a route to a clinician. **Not** an error, and not "nothing found" |
+| `unmapped` | Nobody has built this goal out yet | "we're still building this out". An operator problem, never a rejection |
+
+`restricted` and `unmapped` both come back with zero products and need completely different
+copy. Do not infer the state from `products.length` — read `outcome`.
+
+`meta.filtered` says whether any filtering was actually applied. Use it to decide between
+"based on what you told us" and a neutral heading; claiming personalisation you did not perform
+is worse than not claiming it.
+
+**Omitting `sex`/`age` filters nothing.** Null means "not asked", not "answered nothing" — a
+visitor who skipped the questions gets the unfiltered shelf. Never send a guessed value to
+"fill in" a missing answer; an unrecognised free-text answer is also treated as no answer rather
+than being mapped into a bucket.
+
+`excluded_count` is a **count, not a list**, deliberately. Which ingredients were excluded is
+not returned, because it would let anyone enumerate the sex- and age-gated substances by varying
+the request.
+
 ## 6. Commerce flow
 
 The active checkout path comes from `GET /config` → `checkout.path` (`prx` | `local`). Branch the whole flow on it — never assume one.

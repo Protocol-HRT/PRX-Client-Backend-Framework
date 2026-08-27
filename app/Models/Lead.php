@@ -24,6 +24,7 @@ class Lead extends Model
         'email',
         'phone',
         'date_of_birth',
+        'age',
         'gender',
         'address_line1',
         'address_line2',
@@ -60,6 +61,7 @@ class Lead extends Model
             'status' => LeadStatus::class,
             'checkout_path' => CheckoutPath::class,
             'date_of_birth' => 'date',
+            'age' => 'integer',
             'consent_given_at' => 'datetime',
             'handed_off_at' => 'datetime',
             'completed_at' => 'datetime',
@@ -96,5 +98,19 @@ class Lead extends Model
     public function encounters(): HasMany
     {
         return $this->hasMany(Encounter::class);
+    }
+
+    /**
+     * The visitor's age, from the best source this lead actually has.
+     *
+     * `date_of_birth` wins when present because it is what a completed
+     * clinical intake captured and it stays correct as time passes; `age` is
+     * what the marketing quiz captured and is a snapshot of the day it was
+     * answered. Returns null when neither exists — which the recommendation
+     * resolver reads as "not asked", not as "no restriction applies".
+     */
+    public function effectiveAge(): ?int
+    {
+        return $this->date_of_birth?->age ?? $this->age;
     }
 }

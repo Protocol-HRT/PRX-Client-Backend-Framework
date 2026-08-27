@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\Catalog\Ingredients\Schemas;
 
+use App\Enums\Catalog\SexEligibility;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -56,6 +58,50 @@ class IngredientForm
                                     ->hintIcon(Heroicon::InformationCircle, 'Controls display order in lists. Lower numbers appear first.'),
                                 Toggle::make('is_active')
                                     ->default(true),
+                            ]),
+
+                        // ── Eligibility ───────────────────────────────
+                        // The gate the intake quiz applies BEFORE ranking.
+                        // Relevance orders things that are all acceptable;
+                        // this decides what is acceptable at all.
+                        Tab::make('Eligibility')
+                            ->icon(Heroicon::ShieldCheck)
+                            ->columns(2)
+                            ->schema([
+                                Select::make('sex_eligibility')
+                                    ->label('Who can be offered this')
+                                    ->options(SexEligibility::options())
+                                    ->default(SexEligibility::Any->value)
+                                    ->required()
+                                    ->native(false)
+                                    ->live()
+                                    ->columnSpanFull()
+                                    ->helperText(fn (?string $state): string => SexEligibility::tryFrom($state ?? '')?->description()
+                                        ?? 'Controls whether the intake quiz may recommend this to a visitor.')
+                                    ->hintIcon(Heroicon::InformationCircle, 'Physiological applicability, not gender identity. The quiz question wording is authored separately, so this does not decide what the visitor is asked — only which answers this ingredient is suitable for.'),
+
+                                TextInput::make('min_age')
+                                    ->label('Minimum age')
+                                    ->numeric()
+                                    ->minValue(0)
+                                    ->maxValue(120)
+                                    ->placeholder('No minimum')
+                                    ->hintIcon(Heroicon::InformationCircle, 'Leave blank for no lower bound. Blank is not 18 — a bound nobody set must not start filtering people out.'),
+
+                                TextInput::make('max_age')
+                                    ->label('Maximum age')
+                                    ->numeric()
+                                    ->minValue(0)
+                                    ->maxValue(120)
+                                    ->placeholder('No maximum')
+                                    ->gte('min_age')
+                                    ->hintIcon(Heroicon::InformationCircle, 'Leave blank for no upper bound.'),
+
+                                Textarea::make('eligibility_note')
+                                    ->label('Why — shown in the protocol')
+                                    ->rows(3)
+                                    ->columnSpanFull()
+                                    ->helperText('Optional. The reason, in your words, for the rules above — "not recommended over 65 due to cardiovascular risk". This is quoted in the generated protocol and PDF; the age numbers alone cannot explain themselves.'),
                             ]),
 
                         // ── Integrations ──────────────────────────────

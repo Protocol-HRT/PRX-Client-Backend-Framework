@@ -287,3 +287,102 @@ or `php artisan prescribe-rx:sync-catalog`. Per run:
 
 `tests/Feature/Api/V1/Catalog/` — endpoint coverage: status filtering, category/tag/featured/search filters, class/type/form/ingredient filters, sort whitelist, facets, highlights normalization, price_range computation, per_page cap, plan billing fields, package-product relationship, classification/ingredients/COA/detail_sections exposure, cost-never-leaked regression, related/pairs_with published-only.
 `tests/Feature/Catalog/` — `SyncPrescribeRxCatalogTest` (mocked Client: classification upsert, ingredient parsing, curated-content preservation, endpoint-404 tolerance), `PrxMappingTest` (suggestion scoring, map/unmap, import shells, page render), `ProductActionFieldsTest` (DTO→Action full field round-trip regression).
+
+---
+
+## Sex & age eligibility
+
+Added 2026-08-28. The gate the recommendation chain applies **before** ranking.
+
+### Schema
+
+`ingredients` gains four columns (`2026_08_28_090000_add_eligibility_to_ingredients_table`):
+
+| Column | Type | Notes |
+|---|---|---|
+| `sex_eligibility` | `string(16)`, default `any`, indexed | Cast to `App\Enums\Catalog\SexEligibility` (`any\|male\|female`) |
+| `min_age` / `max_age` | `unsignedTinyInteger` nullable | Null = unbounded on that side. **Null is not 18** |
+| `eligibility_note` | `text` nullable | Operator-authored rationale, quoted in the protocol/PDF |
+
+`leads` gains `age` (`unsignedTinyInteger`, nullable). It coexists with `date_of_birth` rather
+than replacing it: the quiz asks an age, a clinical intake captures a birth date, and
+back-computing one from the other would fabricate a birthday nobody gave us.
+`Lead::effectiveAge()` encodes the precedence (`date_of_birth` wins).
+
+### Why the ingredient and not the product
+
+The same argument the health-goals migration makes for recommendations. An ingredient is what a
+product *contains*, and one ingredient backs several SKUs. Stated on the substance the rule is
+written once and inherited by products that do not exist yet; stated on the product it is
+restated per SKU and drifts the first time a new testosterone item ships with the flag
+forgotten.
+
+Measured before choosing: 10 of 11 products had ingredients attached. The eleventh was
+`testosterone-cypionate`, whose pivot row was simply missing — a data gap, not a case against.
+
+**There is deliberately no product-level override column.** `health_goal_product` has 0 rows,
+so there is no demand, and a second place to state one clinical fact fails silently when the two
+disagree. If a combination product ever needs looser eligibility than its strictest ingredient,
+that is one migration adding an explicit nullable column where null keeps meaning "derive".
+
+### Resolution
+
+`App\Services\Recommendations\GoalRecommendationResolver`, with
+`VisitorProfile(?sex, ?age)` as the input.
+
+| Method | Reading | Use |
+|---|---|---|
+| `ingredientsFor` | Eligible only, ranked `is_first_line` then `relevance_weight` | The first hop |
+| `productsFor` | Permissive — surfaces on ANY eligible ingredient | Browsing surfaces |
+| `strictProductsFor` | Conservative — EVERY ingredient must pass | Anything reading as advice |
+| `productIsSafe` | Safety only, goal-independent | Stack membership |
+| `packagesFor` | ≥1 relevant product, ALL products safe | Stacks |
+| `resolve` | All of the above plus `mapped_count`, `excluded_count` and `outcome` | The endpoint |
+
+Three rules that are load-bearing:
+
+- **A null answer is permissive.** `null` means "not asked", not "answered nothing". A visitor
+  who never took the quiz sees the whole shelf. Narrowing on an absent answer would hide
+  products from people who told us nothing, and nobody would notice.
+- **A product with no ingredients is ineligible, not unrestricted.** It cannot be reached
+  through the chain anyway, so saying it costs nothing and closes the bypass.
+- **Safety ≠ relevance.** A stack is judged relevant by one product and safe by all of them.
+  Conflating the two rejected every package in the catalogue — see the regression test.
+
+### Endpoint
+
+`POST /api/v1/protocol/preview` — `{goals: string[], sex?: string, age?: int}`.
+
+**POST, not GET, deliberately.** A GET would write
+`?goal=sexual-wellness&sex=male&age=62` into every access and proxy log — a health inference
+about an IP. The response is per-visitor and uncacheable, so GET buys nothing either.
+
+**Stores nothing.** Answers become a record only at lead submission, a separate consented step.
+
+Each goal returns an `outcome` naming the three states the funnel must tell apart:
+
+| `outcome` | Meaning | Frontend copy |
+|---|---|---|
+| `matched` | We have something | The products/stacks |
+| `restricted` | We had something; not for this visitor | "we don't currently stock something appropriate" |
+| `unmapped` | Nobody has built this goal out | "we're still building out our options" |
+
+**`outcome` cannot be derived from `excluded_count`.** That counts INGREDIENT-level exclusions
+only, and a goal can restrict at the PRODUCT level instead: map a unisex ingredient A, stock one
+product holding both A and male-only B, and a female visitor gets an eligible ingredient, an
+`excluded_count` of 0, and no products. So `resolve()` compares against an **unfiltered
+baseline** — what this goal would offer someone we know nothing about. Empty baseline means
+nobody built it (`unmapped`); non-empty baseline with an empty result means this visitor was
+filtered out (`restricted`). The extra resolve runs only when the result is already empty.
+
+`excluded_count` is a **count, not a list** — returning the names would let anyone enumerate
+which substances are gated by varying the request body.
+
+### Tests
+
+`tests/Feature/Recommendations/` — 17 tests.
+`GoalRecommendationResolverTest` covers the gate; `ProtocolPreviewEndpointTest` covers the HTTP
+layer and exists because the resolver tests all passed while the endpoint 500'd: the resolver
+returned `collect()` (a `Support\Collection`, no `->loadMissing()`) from its empty paths, so the
+controller threw on the first genuinely `restricted` result — the exact outcome the feature was
+built to produce. Frontend smoke check: `atlas-protocol-web/scripts/quiz-flow-check.mjs`.
