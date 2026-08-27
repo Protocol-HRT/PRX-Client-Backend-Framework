@@ -16,6 +16,7 @@ use App\Models\Content\FaqCategory;
 use App\Models\Content\FaqItem;
 use App\Models\Page;
 use App\Models\PageSection;
+use App\Models\Kb\Compound;
 use App\Observers\CmsCacheObserver;
 use App\Observers\PageSectionObserver;
 use App\Services\Cms\BlockRegistry;
@@ -142,6 +143,10 @@ class AppServiceProvider extends ServiceProvider
         // page payloads, so an FAQ edit is a CMS content write like any other.
         FaqCategory::observe(CmsCacheObserver::class);
         FaqItem::observe(CmsCacheObserver::class);
+
+        // Knowledge-base monographs invalidate the frontend the same way CMS
+        // content does — see FrontendRevalidator::tagsFor() for the tags.
+        Compound::observe(CmsCacheObserver::class);
 
         // Menu items reference linkable entities by short alias so DB rows
         // don't couple to class names. Non-enforcing: other morphs (tags,

@@ -235,6 +235,30 @@ Route pattern: a catch-all route mapping URL path → page slug, plus `/` → sl
 | `GET /blog/posts` (+`/{slug}`), `/blog/categories`, `/blog/tags` | `content` only on show route |
 | `GET /faq`, `/faq/categories` (+`/{slug}`) | Central FAQ dataset |
 | `GET /profiles` (+`/{slug}`) | People (doctors, executives, team) with typed roles |
+| `GET /kb/compounds` (+`/{slug}`) | Compound monographs. Paginated; filters: `search`, `peptides_only` (**defaults true**), `regulatory_status`, `sort`, `per_page` (1–100, default 24). The eight prose sections, `clinical_references`, `seo` and `provenance` are on the show route only — roughly 28,000 characters per compound |
+
+**Knowledge base, two things a frontend must get right:**
+
+- **A monograph is public only when it is published AND has a regulatory status.** Both routes
+  enforce it; an incomplete compound is a **404**, not a 403 — the existence of an unpublished
+  draft is not public information. Treat `null` from the show route as "not public", not "does
+  not exist". A clinician reviewer is **optional**: `reviewed_by` is often null and the page
+  must render without it.
+- **`provenance` is a trust signal, not a disclaimer, and it ships on both routes.**
+  `provenance.source_count` is how many clinical sources the monograph was summarised from —
+  surface it. It is null when the source did not record one; render nothing rather than "0".
+- **`regulatory` is an object, not a string**: `{value, label, description,
+  is_approved_for_human_use}`. Render `label` and `description` as given rather than mapping
+  `value` to your own copy — a status added here would otherwise render as unstyled text — and
+  show a visible not-approved notice whenever `is_approved_for_human_use` is false. It is the
+  most consequential fact on the page and it should not be buried in the prose.
+
+`peptides_only` defaults **on**, because the library is largely antibiotics, vitamins and
+topicals and the default answer to "what is in the knowledge base" is the peptide wiki. Pass
+`peptides_only=0` anywhere you need the full library — a sitemap in particular, since every
+published monograph is a real URL.
+
+Cache tags: `kb` (broad) and `kb:{slug}`. Both are pushed on every save.
 
 ## 6. Commerce flow
 

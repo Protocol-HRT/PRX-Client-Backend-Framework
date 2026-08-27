@@ -29,7 +29,7 @@ class BaseRolesSeeder extends Seeder
 
     private const BLOG_MODELS = ['BlogPost', 'BlogCategory'];
 
-    private const CONTENT_MODELS = ['FaqItem', 'FaqCategory', 'Profile'];
+    private const CONTENT_MODELS = ['FaqItem', 'FaqCategory', 'Profile', 'Compound'];
 
     private const CATALOG_MODELS = ['Product', 'Package', 'Plan', 'Category', 'Tag'];
 

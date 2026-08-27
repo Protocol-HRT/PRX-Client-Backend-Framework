@@ -6,6 +6,7 @@ use App\Jobs\Cms\RevalidateFrontendJob;
 use App\Models\Cms\Menu;
 use App\Models\Cms\MenuItem;
 use App\Models\Content\FaqCategory;
+use App\Models\Kb\Compound;
 use App\Models\Page;
 use App\Models\PageSection;
 use App\Services\Cms\FrontendRevalidator;
@@ -183,5 +184,25 @@ class FrontendRevalidationTest extends TestCase
         $this->expectException(RequestException::class);
 
         (new RevalidateFrontendJob(['cms']))->handle();
+    }
+
+    /**
+     * Knowledge-base monographs ride the same invalidation path as CMS
+     * content. Without `kb`, publishing a compound leaves the index page
+     * stale for the full ISR window with nothing to notice it by.
+     */
+    public function test_a_compound_save_purges_the_kb_tags(): void
+    {
+        Queue::fake();
+
+        Compound::factory()->create(['slug' => 'bpc-157']);
+
+        $this->revalidator()->flush();
+
+        $tags = $this->tagsFromDispatchedJob();
+
+        $this->assertContains('cms', $tags);
+        $this->assertContains('kb', $tags);
+        $this->assertContains('kb:bpc-157', $tags);
     }
 }

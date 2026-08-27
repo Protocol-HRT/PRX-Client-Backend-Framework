@@ -7,6 +7,7 @@ use App\Models\Cms\Menu;
 use App\Models\Cms\MenuItem;
 use App\Models\Content\FaqCategory;
 use App\Models\Content\FaqItem;
+use App\Models\Kb\Compound;
 use App\Models\Page;
 use App\Models\PageSection;
 use Illuminate\Contracts\Foundation\Application;
@@ -141,6 +142,16 @@ class FrontendRevalidator
 
             $model instanceof FaqCategory,
             $model instanceof FaqItem => [self::TAG_ALL],
+
+            // `kb` is the broad tag the index page carries; `kb:{slug}` is the
+            // monograph itself. Both are sent because publishing a compound
+            // changes the listing as well as the detail page, and the frontend
+            // caches them under separate tags.
+            $model instanceof Compound => array_values(array_filter([
+                self::TAG_ALL,
+                'kb',
+                $model->slug ? 'kb:'.$model->slug : null,
+            ])),
 
             default => [self::TAG_ALL],
         };

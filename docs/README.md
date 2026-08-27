@@ -13,6 +13,7 @@ Per-module documentation: `user.md` = admin operator guide, `dev.md` = architect
 | Page builder | Section registry, flexible types, globals, menus, regions, revisions, envelope contract | [`page-builder/dev.md`](page-builder/dev.md) · [`page-builder/user.md`](page-builder/user.md) |
 | Catalog | Products, packages, plans, provider mapping, catalog API | [`catalog/dev.md`](catalog/dev.md) · [`catalog/user.md`](catalog/user.md) |
 | Blog | Posts, categories, tags, blog API | [`blog/dev.md`](blog/dev.md) · [`blog/user.md`](blog/user.md) |
+| Knowledge base | Compound monographs, the clinical review gate, regulatory status, the compound import | [`knowledge-base/dev.md`](knowledge-base/dev.md) · [`knowledge-base/user.md`](knowledge-base/user.md) |
 | Cart | Token-based cart API | [`cart/dev.md`](cart/dev.md) · [`cart/user.md`](cart/user.md) |
 | Checkout | prx-embed vs local gateway flow, gateway config endpoint | [`checkout/dev.md`](checkout/dev.md) |
 | Orders | Order shells, webhook sync, shipments | [`orders/dev.md`](orders/dev.md) · [`orders/user.md`](orders/user.md) |

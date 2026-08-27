@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\V1\ConfigController;
 use App\Http\Controllers\Api\V1\Content\FaqController;
 use App\Http\Controllers\Api\V1\Content\ProfileController;
 use App\Http\Controllers\Api\V1\Intake\IntakeSchemaController;
+use App\Http\Controllers\Api\V1\Kb\CompoundController;
 use App\Http\Controllers\Api\V1\Leads\LeadController;
 use App\Http\Controllers\Api\V1\Orders\OrderController;
 use App\Http\Controllers\Api\V1\Patient\AuthController as PatientAuthController;
@@ -55,6 +56,8 @@ use Illuminate\Support\Facades\Route;
 |   GET  /api/v1/blog/posts/{slug}           Single blog post.
 |   GET  /api/v1/blog/categories             Blog categories.
 |   GET  /api/v1/blog/tags                   Blog tags.
+|   GET  /api/v1/kb/compounds                Published compound monographs (peptides by default).
+|   GET  /api/v1/kb/compounds/{slug}         Single monograph with its full prose sections.
 |   GET  /api/v1/cart                        View cart (X-Cart-Token header).
 |   POST /api/v1/cart/items                  Add item to cart.
 |   POST /api/v1/leads                       Create lead at checkout start.
@@ -112,6 +115,16 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
         Route::get('categories', [BlogCategoryController::class, 'index'])->name('categories.index');
         Route::get('categories/{blogCategory:slug}', [BlogCategoryController::class, 'show'])->name('categories.show');
         Route::get('tags', [BlogTagController::class, 'index'])->name('tags.index');
+    });
+
+    // ── Knowledge base ───────────────────────────────────────────────────
+    // Fully public, and narrower than it looks: Compound::published() also
+    // requires a named reviewer, so an unreviewed monograph 404s here even
+    // with its published flag set.
+
+    Route::prefix('kb')->name('kb.')->middleware('throttle:api')->group(function (): void {
+        Route::get('compounds', [CompoundController::class, 'index'])->name('compounds.index');
+        Route::get('compounds/{compound:slug}', [CompoundController::class, 'show'])->name('compounds.show');
     });
 
     // ── Leads ────────────────────────────────────────────────────────────
