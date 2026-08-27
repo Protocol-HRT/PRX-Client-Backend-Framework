@@ -152,9 +152,8 @@ class Compound extends Model implements Sortable
     }
 
     /**
-     * The only definition of "publicly visible". See the class docblock — the
-     * reviewer requirement is deliberate and belongs here rather than in each
-     * controller.
+     * The only definition of "publicly visible". See the class docblock for
+     * why the regulatory status is in the query and why a reviewer is not.
      */
     public function scopePublished(Builder $query): Builder
     {

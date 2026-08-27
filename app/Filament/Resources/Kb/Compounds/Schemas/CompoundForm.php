@@ -228,7 +228,7 @@ class CompoundForm
                                                 return $blockers === []
                                                     ? 'Live on the public knowledge base.'
                                                     : 'Not publishable yet — '.implode(' and ', $blockers)
-                                                        .'. The public API hides a monograph missing either, even when this is on.';
+                                                        .'. The public API hides a monograph without one, even when this is on.';
                                             }),
                                     ]),
                                 Section::make('Provenance')

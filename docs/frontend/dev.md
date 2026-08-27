@@ -235,7 +235,7 @@ Route pattern: a catch-all route mapping URL path → page slug, plus `/` → sl
 | `GET /blog/posts` (+`/{slug}`), `/blog/categories`, `/blog/tags` | `content` only on show route |
 | `GET /faq`, `/faq/categories` (+`/{slug}`) | Central FAQ dataset |
 | `GET /profiles` (+`/{slug}`) | People (doctors, executives, team) with typed roles |
-| `GET /kb/compounds` (+`/{slug}`) | Compound monographs. Paginated; filters: `search`, `peptides_only` (**defaults true**), `regulatory_status`, `sort`, `per_page` (1–100, default 24). The eight prose sections, `clinical_references`, `seo` and `provenance` are on the show route only — roughly 28,000 characters per compound |
+| `GET /kb/compounds` (+`/{slug}`) | Compound monographs. Paginated; filters: `search`, `peptides_only` (**defaults true**), `regulatory_status`, `sort`, `per_page` (1–100, default 24). The eight prose sections, `clinical_references` and `seo` are on the show route only — roughly 28,000 characters per compound. `provenance` ships on BOTH routes |
 
 **Knowledge base, two things a frontend must get right:**
 

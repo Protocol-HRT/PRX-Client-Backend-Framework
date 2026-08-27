@@ -104,10 +104,10 @@ class ImportCompoundsCommand extends Command
                 ->where('source_ref', $attributes['source_ref'])
                 ->first();
 
-            // A reviewer is the marker of human work on a page. It is optional for
-        // publication now, but where one exists it means somebody read the
-        // monograph — and a re-import must not silently discard that.
-        if ($existing?->reviewed_by_profile_id !== null && ! $this->option('force')) {
+            // A reviewer is the marker of human work on a page. It is optional
+            // for publication now, but where one exists it means somebody read
+            // the monograph — and a re-import must not silently discard that.
+            if ($existing?->reviewed_by_profile_id !== null && ! $this->option('force')) {
                 $stats['skipped']++;
                 $skippedNames[] = $existing->name;
 

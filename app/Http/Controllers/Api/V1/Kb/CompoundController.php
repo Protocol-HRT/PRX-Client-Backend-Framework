@@ -15,10 +15,13 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
  * GET /api/v1/kb/compounds
  * GET /api/v1/kb/compounds/{slug}
  *
- * Both routes serve `Compound::published()` only, which requires a named
- * reviewer AND a regulatory status as well as the published flag — see the
- * model for why each. An incomplete monograph is a 404 here, not a 403: the
- * existence of an unreviewed draft is not public information.
+ * Both routes serve `Compound::published()` only, which requires a regulatory
+ * status as well as the published flag — see the model for why. A monograph
+ * missing either is a 404 here, not a 403: the existence of an unpublished
+ * draft is not public information.
+ *
+ * A clinician reviewer is deliberately NOT part of the gate, so `reviewed_by`
+ * is null on most rows and consumers must render without it.
  *
  * `peptides_only` defaults to TRUE. The seed formulary is roughly two thirds
  * antibiotics, topicals and vitamins, and the default answer to "what is in
@@ -88,7 +91,7 @@ class CompoundController extends ApiController
     public function show(Compound $compound): JsonResponse
     {
         // Route-model binding resolves by slug regardless of publication, so
-        // the gate has to be re-applied here. Same three conditions as the
+        // the gate has to be re-applied here. Same two conditions as the
         // model's published() scope — keep them in step.
         abort_if(! $compound->is_published || ! $compound->isPublishable(), 404);
 

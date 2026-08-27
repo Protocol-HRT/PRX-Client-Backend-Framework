@@ -32,11 +32,11 @@ class ImportCompoundsCommandTest extends TestCase
         // Two INSERT statements, one carrying two rows — the shape that makes a
         // naive tuple-count regex report more rows than the dump contains.
         file_put_contents($this->dump, <<<'SQL'
-INSERT INTO `protocol_compounds` (`id`, `generic_name`, `compound_class`, `overview`, `brand_names`, `synonyms`, `description`, `content_model`, `evidence_tier`, `evidence_score`) VALUES
-('uuid-1', 'bpc-157', 'Healing Peptide', '## What it is\n\nA **pentadecapeptide**.\n\n| Week | Dose |\n|------|------|\n| 1-4 | 250 mcg |\n', '["BPC-157"]', '["BPC157"]', 'A synthetic peptide.', 'test-model', NULL, NULL),
-('uuid-2', 'aod 9604', 'Peptide', '## Overview\n\nA fragment.', '[]', '["AOD 9604"]', 'A fragment of hGH.', 'test-model', NULL, NULL);
-INSERT INTO `protocol_compounds` (`id`, `generic_name`, `compound_class`, `overview`, `brand_names`, `synonyms`, `description`, `content_model`, `evidence_tier`, `evidence_score`) VALUES
-('uuid-3', 'aod-9604', 'Anti-Obesity Peptide', '## Overview\n\nDuplicate row.', '["AOD-9604","AOD9604"]', '["AOD 9604"]', 'Duplicate.', 'test-model', NULL, NULL);
+INSERT INTO `protocol_compounds` (`id`, `generic_name`, `compound_class`, `overview`, `brand_names`, `synonyms`, `description`, `content_model`, `source_document_count`, `source_dosing_count`, `evidence_tier`, `evidence_score`) VALUES
+('uuid-1', 'bpc-157', 'Healing Peptide', '## What it is\n\nA **pentadecapeptide**.\n\n| Week | Dose |\n|------|------|\n| 1-4 | 250 mcg |\n', '["BPC-157"]', '["BPC157"]', 'A synthetic peptide.', 'test-model', 43, 22, NULL, NULL),
+('uuid-2', 'aod 9604', 'Peptide', '## Overview\n\nA fragment.', '[]', '["AOD 9604"]', 'A fragment of hGH.', 'test-model', 0, 0, NULL, NULL);
+INSERT INTO `protocol_compounds` (`id`, `generic_name`, `compound_class`, `overview`, `brand_names`, `synonyms`, `description`, `content_model`, `source_document_count`, `source_dosing_count`, `evidence_tier`, `evidence_score`) VALUES
+('uuid-3', 'aod-9604', 'Anti-Obesity Peptide', '## Overview\n\nDuplicate row.', '["AOD-9604","AOD9604"]', '["AOD 9604"]', 'Duplicate.', 'test-model', 5, 5, NULL, NULL);
 SQL);
 
         file_put_contents($this->curation, json_encode([
@@ -140,6 +140,43 @@ SQL);
         $this->assertSame(RegulatoryStatus::ResearchOnly, $bpc->regulatory_status);
         $this->assertSame('test-source', $bpc->source_system);
         $this->assertSame('uuid-1', $bpc->source_ref);
+    }
+
+    /**
+     * The provider's id is what an API sync will key on once prescribe-rx
+     * exposes compounds. Backfilling it from the dump now means the sync does
+     * not need a second pass to work out which local row is which.
+     */
+    public function test_it_backfills_the_provider_id_from_the_dump(): void
+    {
+        $this->import()->assertSuccessful();
+
+        $bpc = Compound::where('slug', 'bpc-157')->firstOrFail();
+
+        $this->assertSame('uuid-1', $bpc->provider_compound_id);
+        // Same value as source_ref today; they answer different questions and
+        // diverge the moment a second content source exists.
+        $this->assertSame($bpc->source_ref, $bpc->provider_compound_id);
+    }
+
+    /**
+     * The retrieval counts are what the public page's provenance block leads
+     * with. A ZERO must import as null, not 0 — "0 sources" reads as a
+     * failure, and "unrecorded" is what actually happened.
+     */
+    public function test_it_imports_the_source_counts_and_maps_zero_to_null(): void
+    {
+        $this->import()->assertSuccessful();
+
+        $bpc = Compound::where('slug', 'bpc-157')->firstOrFail();
+        $this->assertSame(43, $bpc->source_document_count);
+        $this->assertSame(22, $bpc->source_dosing_count);
+
+        // The surviving row of the merge pair carries 0 in the dump.
+        $aod = Compound::where('slug', 'aod-9604')->firstOrFail();
+        $this->assertNull($aod->source_document_count);
+        $this->assertNull($aod->source_dosing_count);
+        $this->assertNull($aod->sourceCount());
     }
 
     public function test_a_second_run_updates_rather_than_duplicating(): void

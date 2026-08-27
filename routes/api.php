@@ -119,8 +119,9 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
 
     // ── Knowledge base ───────────────────────────────────────────────────
     // Fully public, and narrower than it looks: Compound::published() also
-    // requires a named reviewer, so an unreviewed monograph 404s here even
-    // with its published flag set.
+    // requires a regulatory status, so a monograph without one 404s here even
+    // with its published flag set. A clinician reviewer is NOT required — see
+    // the model for why requiring one would manufacture bylines.
 
     Route::prefix('kb')->name('kb.')->middleware('throttle:api')->group(function (): void {
         Route::get('compounds', [CompoundController::class, 'index'])->name('compounds.index');

@@ -1,7 +1,8 @@
 # Knowledge Base — Developer Guide
 
-Compound monographs: long-form, clinician-reviewed reference pages, served to the frontend
-as public content and linked to the catalog by ingredient.
+Compound monographs: long-form reference pages summarised from the operator's clinical
+literature corpus, served to the frontend as public content and linked to the catalog by
+ingredient. A clinician byline is optional and usually absent — see §2.
 
 This is phase 1 of the goals-to-protocol module. It ships alone and depends on nothing: the
 health-goal taxonomy, the goal↔compound index, protocols and the plan report are later
@@ -147,7 +148,7 @@ set would let an operator publish a monograph claiming both "approved" and "not 
 use". The rule for picking: describe the compound **as this pharmacy supplies it**.
 
 `null` is "nobody has decided yet", which is why `published()` refuses it and the admin's
-*Needs review* filter includes it.
+*Needs a regulatory status* filter and *Needs a status* tab both surface it.
 
 `isApprovedForHumanUse()` drives two things on the public page: a warning notice above the
 prose, and the `warning` property in the structured data. Both are emitted only when it is
@@ -238,7 +239,7 @@ Public, unauthenticated, `throttle:api`.
 | Endpoint | Notes |
 |---|---|
 | `GET /api/v1/kb/compounds` | Paginated (`{data, links, meta}`). Filters: `search`, `peptides_only`, `regulatory_status`, `sort`, `per_page` (1–100, default 24) |
-| `GET /api/v1/kb/compounds/{slug}` | Full monograph. 404 unless published **and** reviewed |
+| `GET /api/v1/kb/compounds/{slug}` | Full monograph. 404 unless published **and** carrying a regulatory status |
 
 **`peptides_only` defaults to TRUE.** The seed formulary is roughly two thirds antibiotics,
 topicals and vitamins; the default answer to "what is in this knowledge base" should be the
@@ -268,7 +269,9 @@ new KB endpoint without a tag goes stale for the full ISR window.
 ## 6. Admin
 
 `App\Filament\Resources\Kb\Compounds\CompoundResource` — navigation group **Content**, labelled
-*Knowledge base*, with a warning badge counting monographs that still have no reviewer.
+*Knowledge base*, with a warning badge counting monographs that still have no regulatory
+status — the same condition `published()` enforces, so the badge cannot point at work the
+publish toggle would accept.
 
 List tabs lead with **Needs a status** deliberately: after an import this list is a hundred
 summarised monographs nobody has looked at, and the first thing an operator needs is what is

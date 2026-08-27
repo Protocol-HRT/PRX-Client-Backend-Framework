@@ -41,7 +41,9 @@ class CompoundsTable
                     ->sortable(),
                 TextColumn::make('reviewedBy.name')
                     ->label('Reviewed by')
-                    ->placeholder('— awaiting review')
+                    // Optional, so the placeholder must not imply a pending
+                    // requirement — nothing is waiting on it.
+                    ->placeholder('—')
                     ->description(fn (Compound $record): ?string => $record->reviewed_at?->toFormattedDateString()),
                 IconColumn::make('is_published')
                     ->label('Live')
