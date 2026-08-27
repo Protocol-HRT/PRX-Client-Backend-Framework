@@ -7,6 +7,24 @@ hybrid section registry (code + admin-defined types), Curator media, product-awa
 sections, global reusable blocks, menus, fixed layout regions, and page revisions.
 The frontend owns 100% of presentation; this backend serves typed data payloads.
 
+## Custom HTML — the escape hatch
+
+`html-block` renders an operator's markup **verbatim and unsanitised**.
+
+It exists because the rich-text fields cannot do this and should not try. A rich editor treats
+pasted markup as TEXT: TipTap wraps each line in a paragraph and escapes the angle brackets, so
+an operator who pastes a custom layout gets a page displaying its own source. That is not a
+frontend rendering bug — the frontend is faithfully showing what got stored.
+
+**Trust model:** identical to `custom_css` and `custom_head_scripts`. Permission-gated content
+from this install's own admin, injected as-is. With this block available, `Update:Page` is
+equivalent to script access on the public site — grant it accordingly.
+
+Prefer a real section type when one fits. This is for the page needing a layout nothing else
+provides — a legal page with its own contents sidebar, a vendor's embed snippet — not a way
+around building a blueprint for something the site does repeatedly.
+
+
 ## Architecture
 
 ```
