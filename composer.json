@@ -12,6 +12,7 @@
         "bezhansalleh/filament-shield": "^4.2",
         "dedoc/scramble": "^0.13.28",
         "filament/filament": "^4.0",
+        "klaviyo/api": "^20.0",
         "laravel/framework": "^13.0",
         "laravel/horizon": "^5.46",
         "laravel/reverb": "^1.10",

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "02e2de530a8e0d45b01a88f9738d6d61",
+    "content-hash": "b81a2c1c227b48b0e1ae62b314a37b0f",
     "packages": [
         {
             "name": "authorizenet/authorizenet",
@@ -2766,6 +2766,61 @@
                 "source": "https://github.com/kirschbaum-development/eloquent-power-joins/tree/4.3.1"
             },
             "time": "2026-03-29T12:05:03+00:00"
+        },
+        {
+            "name": "klaviyo/api",
+            "version": "20.0.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/klaviyo/klaviyo-api-php.git",
+                "reference": "d84fdb71575bcfdc5b28a27b236d37785169cac2"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/klaviyo/klaviyo-api-php/zipball/d84fdb71575bcfdc5b28a27b236d37785169cac2",
+                "reference": "d84fdb71575bcfdc5b28a27b236d37785169cac2",
+                "shasum": ""
+            },
+            "require": {
+                "ext-curl": "*",
+                "ext-json": "*",
+                "ext-mbstring": "*",
+                "guzzlehttp/guzzle": "^7.3",
+                "guzzlehttp/psr7": "^1.7 || ^2.0",
+                "php": "^8.1"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "KlaviyoAPI\\": "lib/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Klaviyo",
+                    "homepage": "https://www.klaviyo.com/"
+                }
+            ],
+            "description": "PHP SDK for Klaviyo's API.",
+            "homepage": "https://developers.klaviyo.com",
+            "keywords": [
+                "api",
+                "openapi",
+                "openapi-generator",
+                "openapitools",
+                "php",
+                "rest",
+                "sdk"
+            ],
+            "support": {
+                "issues": "https://github.com/klaviyo/klaviyo-api-php/issues",
+                "source": "https://github.com/klaviyo/klaviyo-api-php/tree/v20.0.0"
+            },
+            "time": "2026-07-15T18:38:21+00:00"
         },
         {
             "name": "laravel/framework",
@@ -13394,5 +13449,5 @@
         "php": "^8.3"
     },
     "platform-dev": {},
-    "plugin-api-version": "2.6.0"
+    "plugin-api-version": "2.9.0"
 }
