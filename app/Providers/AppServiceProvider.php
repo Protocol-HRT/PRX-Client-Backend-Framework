@@ -19,6 +19,7 @@ use App\Models\PageSection;
 use App\Models\Kb\Compound;
 use App\Models\Kb\HealthGoal;
 use App\Observers\CmsCacheObserver;
+use Filament\Forms\Components\Repeater;
 use App\Observers\PageSectionObserver;
 use App\Services\Cms\BlockRegistry;
 use App\Services\Cms\FrontendRevalidator;
@@ -131,6 +132,21 @@ class AppServiceProvider extends ServiceProvider
     private function configureCmsObservers(): void
     {
         // Any CMS content write bumps the versioned public-payload cache.
+        // A repeater starts EMPTY in this admin, not with one blank row.
+        //
+        // Filament's default is one item, and almost every repeater here marks
+        // an inner field required — so a brand-new product, package, flexible
+        // type or section arrived with a blank row that failed validation on a
+        // tab the operator had never opened. The save did nothing and said
+        // nothing. It cost a real "new products don't save" bug report.
+        //
+        // Set once here rather than as ->defaultItems(0) on each of the ~30
+        // repeaters, because the next one added would have the same trap and
+        // nobody would remember. Any repeater that genuinely wants a starting
+        // row can still say ->defaultItems(1) explicitly, which now reads as a
+        // decision instead of an accident.
+        Repeater::configureUsing(static fn (Repeater $repeater) => $repeater->defaultItems(0));
+
         Page::observe(CmsCacheObserver::class);
         PageSection::observe(CmsCacheObserver::class);
         PageSection::observe(PageSectionObserver::class);

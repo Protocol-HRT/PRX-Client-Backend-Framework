@@ -4,6 +4,7 @@ namespace App\Data\Catalog;
 
 use App\Enums\CatalogStatus;
 use App\Enums\InventoryStatus;
+use Spatie\LaravelData\Attributes\Validation\Present;
 use Spatie\LaravelData\Attributes\Validation\Max;
 use Spatie\LaravelData\Attributes\Validation\Min;
 use Spatie\LaravelData\Attributes\Validation\Required;
@@ -31,6 +32,7 @@ class ProductData extends Data
         public ?string $description = null,
         #[Max(2048)]
         public ?string $hero_image_path = null,
+        #[Present]
         public array $gallery = [],
         #[WithCast(EnumCast::class)]
         public CatalogStatus $status = CatalogStatus::Draft,
@@ -59,7 +61,9 @@ class ProductData extends Data
         public ?string $provider_encounter_type_id = null,
         #[Max(32)]
         public ?string $badge_text = null,
+        #[Present]
         public array $highlights = [],
+        #[Present]
         public array $detail_sections = [],
         public bool $is_featured = false,
         public bool $is_in_stock = true,
@@ -71,7 +75,9 @@ class ProductData extends Data
         #[Max(2048)]
         public ?string $og_image_path = null,
         public int $position = 0,
+        #[Present]
         public array $category_ids = [],
+        #[Present]
         public array $tag_ids = [],
     ) {}
 }
