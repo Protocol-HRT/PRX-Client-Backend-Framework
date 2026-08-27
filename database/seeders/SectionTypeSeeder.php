@@ -110,6 +110,32 @@ class SectionTypeSeeder extends Seeder
                 ],
             ],
             [
+                'slug' => 'quiz-cta',
+                'name' => 'Quiz CTA (lead magnet)',
+                'icon' => 'heroicon-o-clipboard-document-check',
+                'description' => 'Ingress to the health-goal quiz: eyebrow, headline, short pitch, a CTA with an icon and a reassurance line, and trust badges. Drop it on any page that should start the flow.',
+                'schema' => [
+                    'fields' => [
+                        ['key' => 'eyebrow', 'kind' => 'text', 'max' => 120, 'label' => 'Eyebrow', 'help' => 'Small line above the headline, with a dot marker. "Your free peptide report".'],
+                        ['key' => 'heading', 'kind' => 'text', 'max' => 255, 'required' => true, 'label' => 'Headline', 'help' => 'Wrap the words you want emphasised in <em>…</em>.'],
+                        ['key' => 'heading_level', 'kind' => 'select', 'label' => 'Headline level', 'default' => 'h2', 'help' => 'Use H1 only when this section is the top of the page — a page with two H1s reads as two documents to a search engine.', 'options' => [
+                            ['value' => 'h1', 'label' => 'H1 — this is the page heading'],
+                            ['value' => 'h2', 'label' => 'H2 — the page has its own heading'],
+                        ]],
+                        ['key' => 'body', 'kind' => 'richtext', 'label' => 'Pitch', 'help' => 'One or two sentences. Bold the part that names what they get.'],
+                        ['key' => 'cta', 'kind' => 'cta', 'label' => 'Call to action'],
+                        ['key' => 'cta_icon', 'kind' => 'svg', 'label' => 'Button icon', 'help' => 'Optional SVG shown after the label. Leave the fill as currentColor so it follows the button text.'],
+                        ['key' => 'cta_subtext', 'kind' => 'text', 'max' => 160, 'label' => 'Under the button', 'help' => 'The reassurance line. "Takes 2 minutes · No payment".'],
+                        ['key' => 'badges', 'kind' => 'repeater', 'label' => 'Trust badges', 'help' => 'Short proof points shown as pills under the button.', 'fields' => [
+                            ['key' => 'icon', 'kind' => 'svg', 'label' => 'Icon'],
+                            ['key' => 'label', 'kind' => 'text', 'max' => 60, 'required' => true],
+                        ]],
+                        ['key' => 'media', 'kind' => 'image', 'label' => 'Side image', 'help' => 'Optional. Without it the section centres on one column.'],
+                        ['key' => 'media_caption', 'kind' => 'text', 'max' => 40, 'label' => 'Image seal', 'help' => 'Two or three words stamped on the image.'],
+                    ],
+                ],
+            ],
+            [
                 'slug' => 'video-embed',
                 'name' => 'Video embed',
                 'icon' => 'heroicon-o-play-circle',

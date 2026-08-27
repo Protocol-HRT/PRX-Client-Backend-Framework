@@ -20,6 +20,7 @@ use App\Cms\Sections\PackagePricingComparisonSection;
 use App\Cms\Sections\PackageSliderSection;
 use App\Cms\Sections\PhysiciansSection;
 use App\Cms\Sections\PricingTiersSection;
+use App\Cms\Sections\QuizCtaSection;
 use App\Cms\Sections\ProductCalloutSection;
 use App\Cms\Sections\ProductGridSection;
 use App\Cms\Sections\ProductSliderSection;
@@ -54,6 +55,7 @@ enum SectionType: string
     case TextBlock = 'text-block';
     case ImageTextSplit = 'image-text-split';
     case CtaBanner = 'cta-banner';
+    case QuizCta = 'quiz-cta';
     case FeaturesGrid = 'features-grid';
     case VideoEmbed = 'video-embed';
     case HighlightBanner = 'highlight-banner';
@@ -91,6 +93,7 @@ enum SectionType: string
             self::TextBlock => app(TextBlockSection::class),
             self::ImageTextSplit => app(ImageTextSplitSection::class),
             self::CtaBanner => app(CtaBannerSection::class),
+            self::QuizCta => app(QuizCtaSection::class),
             self::FeaturesGrid => app(FeaturesGridSection::class),
             self::VideoEmbed => app(VideoEmbedSection::class),
             self::HighlightBanner => app(HighlightBannerSection::class),
