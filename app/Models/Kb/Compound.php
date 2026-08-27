@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\EloquentSortable\Sortable;
 use Spatie\EloquentSortable\SortableTrait;
@@ -165,6 +166,22 @@ class Compound extends Model implements Sortable
     public function scopePeptides(Builder $query): Builder
     {
         return $query->where('is_peptide', true);
+    }
+
+    /**
+     * Health goals this compound aligns with — the EDUCATION edge.
+     *
+     * Deliberately not derived from `ingredient->healthGoals()`: only 7 of the
+     * 102 imported compounds map to a catalog ingredient, so deriving it would
+     * leave 95 monographs showing no goals at all. "BPC-157 has shown efficacy
+     * for recovery" is true whether or not this install stocks it.
+     */
+    public function healthGoals(): BelongsToMany
+    {
+        return $this->belongsToMany(HealthGoal::class, 'compound_health_goal')
+            ->withPivot(['relevance_note', 'evidence_level', 'position'])
+            ->withTimestamps()
+            ->orderByPivot('position');
     }
 
     public function ingredient(): BelongsTo

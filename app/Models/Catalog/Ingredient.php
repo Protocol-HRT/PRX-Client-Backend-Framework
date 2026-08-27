@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use App\Models\Kb\HealthGoal;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\EloquentSortable\Sortable;
 use Spatie\EloquentSortable\SortableTrait;
@@ -48,6 +49,19 @@ class Ingredient extends Model implements Sortable
             'is_active' => 'boolean',
         ];
     }
+
+    /**
+     * Health goals this ingredient serves — the edge the quiz recommends
+     * through. Weighted on the pivot; see HealthGoal for why the edge is here
+     * rather than on the compound.
+     */
+    public function healthGoals(): BelongsToMany
+    {
+        return $this->belongsToMany(HealthGoal::class, 'health_goal_ingredient')
+            ->withPivot(['relevance_weight', 'evidence_level', 'is_first_line', 'relevance_note', 'position'])
+            ->withTimestamps();
+    }
+
 
     public function products(): BelongsToMany
     {

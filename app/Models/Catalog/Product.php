@@ -11,6 +11,7 @@ use App\Models\Concerns\HasFulfillmentCenter;
 use App\Models\Concerns\HasItemSections;
 use App\Models\Concerns\HasReviews;
 use App\Models\Concerns\HasTags;
+use App\Models\Kb\HealthGoal;
 use App\Models\User;
 use Database\Factories\Catalog\ProductFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -117,6 +118,21 @@ class Product extends Model implements Sortable
                 $product->is_in_stock = $product->inventory_status->isPurchasable();
             }
         });
+    }
+
+    /**
+     * Health goals this product is pinned to directly.
+     *
+     * The override, not the main path. Most recommendations reach a product
+     * through its INGREDIENTS, which is what the product actually contains;
+     * this edge exists for the case where an operator wants a product on a
+     * goal regardless of that.
+     */
+    public function healthGoals(): BelongsToMany
+    {
+        return $this->belongsToMany(HealthGoal::class, 'health_goal_product')
+            ->withPivot(['relevance_weight', 'is_first_line', 'relevance_note', 'position'])
+            ->withTimestamps();
     }
 
     public function packages(): BelongsToMany
