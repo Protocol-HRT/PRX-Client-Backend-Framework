@@ -91,7 +91,15 @@ class HealthGoalForm
                             ->schema([
                                 TextInput::make('icon')
                                     ->maxLength(64)
-                                    ->hintIcon(Heroicon::InformationCircle, 'Heroicon name or emoji, shown on the quiz card.'),
+                                    ->placeholder('ti ti-gender-bigender')
+                                    ->hintIcon(Heroicon::InformationCircle, 'A Tabler icon class, shown on the quiz card. Browse them at tabler.io/icons — the class is "ti ti-" plus the icon name. An emoji works too.')
+                                    ->helperText('Tabler rather than the Heroicons this admin uses: Heroicons have no vocabulary for bodies, conditions or symptoms.'),
+                                TextInput::make('icon_size')
+                                    ->label('Icon size (px)')
+                                    ->numeric()
+                                    ->minValue(12)
+                                    ->maxValue(160)
+                                    ->hintIcon(Heroicon::InformationCircle, 'Optional. Leave blank for the site default — set it only to even up a glyph that reads heavier or lighter than the others in the set.'),
                                 ColorPicker::make('color')
                                     ->hintIcon(Heroicon::InformationCircle, 'Accent for this goal wherever it is shown as a card or chip.'),
                                 FileUpload::make('image_path')

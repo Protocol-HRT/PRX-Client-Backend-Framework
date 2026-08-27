@@ -34,6 +34,9 @@ class HealthGoalResource extends JsonResource
             'prompt' => $this->prompt ?: $this->name,
             'description' => $this->description,
             'icon' => $this->icon,
+            // Null means "use your default" rather than zero — the frontend
+            // must not read a missing correction as a size of 0.
+            'icon_size' => $this->icon_size ?: null,
             'color' => $this->color,
             'image_url' => $this->image_path ? Storage::disk('public')->url($this->image_path) : null,
             'parent_slug' => $this->whenLoaded('parent', fn (): ?string => $this->parent?->slug),

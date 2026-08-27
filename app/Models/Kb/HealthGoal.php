@@ -68,6 +68,7 @@ class HealthGoal extends Model implements Sortable
         'prompt',
         'description',
         'icon',
+        'icon_size',
         'color',
         'image_path',
         'parent_id',

@@ -24,6 +24,18 @@ class HealthGoalsTable
             ->defaultSort('position')
             ->reorderable('position')
             ->columns([
+                // The class, not the glyph. Rendering the glyph would need the
+                // Tabler webfont loaded in the ADMIN, and Vite does not rebase
+                // the font URLs out of that package — the built theme points at
+                // ./fonts/tabler-icons.woff2 and nothing copies it there. An
+                // empty box is worse than the class string, so this shows what
+                // is actually stored and the operator previews on tabler.io.
+                TextColumn::make('icon')
+                    ->label('Icon')
+                    ->fontFamily('mono')
+                    ->size('xs')
+                    ->placeholder('—')
+                    ->toggleable(),
                 TextColumn::make('name')
                     ->searchable()
                     ->sortable()
