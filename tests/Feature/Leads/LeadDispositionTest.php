@@ -8,6 +8,7 @@ use App\Events\Leads\LeadDispositionChanged;
 use App\Models\Lead;
 use App\Models\LeadDisposition;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use RuntimeException;
 use Tests\TestCase;
@@ -204,6 +205,23 @@ class LeadDispositionTest extends TestCase
         ])->save();
 
         Event::assertDispatched(LeadDispositionChanged::class);
+    }
+
+    public function test_the_event_fires_for_a_write_inside_a_transaction(): void
+    {
+        // REGRESSION. The observer is $afterCommit, so its handler runs after
+        // Eloquent has synced original away — `getOriginal('status')` then
+        // returned the NEW value, `$from === $to`, and the guard swallowed the
+        // event entirely. Every transactional status write dispatched nothing,
+        // including SubmitPrescribeRxCheckoutAction's move to handed_off, while
+        // direct writes worked fine and every test passed.
+        $lead = Lead::factory()->create(['status' => LeadStatus::New_->value]);
+
+        Event::fake([LeadDispositionChanged::class]);
+
+        DB::transaction(fn () => $lead->update(['status' => LeadStatus::HandedOff->value]));
+
+        Event::assertDispatched(LeadDispositionChanged::class, fn (LeadDispositionChanged $e): bool => $e->from === LeadStatus::New_->value && $e->to === LeadStatus::HandedOff->value);
     }
 
     // ─── The wire format did not move ────────────────────────────────

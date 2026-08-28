@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Events\Leads\LeadDispositionChanged;
 use App\Models\Lead;
+use App\Support\ModelChangeSnapshot;
 
 /**
  * Turns a change of `leads.status` into a domain event.
@@ -34,13 +35,29 @@ class LeadObserver
      */
     public bool $afterCommit = true;
 
+    /**
+     * Capture the previous values BEFORE Eloquent syncs them away.
+     *
+     * Required by `$afterCommit`: the handler below runs from a commit callback,
+     * by which point `getOriginal()` returns the NEW value. Without this, every
+     * transactional status write — the prescribe-rx checkout handoff included —
+     * saw `$from === $to` and dispatched nothing at all, while direct writes
+     * worked. See App\Support\ModelChangeSnapshot.
+     */
+    public function updating(Lead $lead): void
+    {
+        ModelChangeSnapshot::capture($lead);
+    }
+
     public function updated(Lead $lead): void
     {
         if (! $lead->wasChanged('status')) {
             return;
         }
 
-        $from = $lead->getOriginal('status');
+        $snapshot = ModelChangeSnapshot::read($lead);
+
+        $from = $snapshot['original']['status'] ?? null;
         $to = $lead->status;
 
         // A no-op write (saving the form without touching the select) does not

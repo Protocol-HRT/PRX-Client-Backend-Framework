@@ -157,6 +157,14 @@ manufacture evidence; the gap is recorded honestly instead.
 welcome comms off `QuizCompleted` silently skips the highest-intent leads the funnel
 produces. `QuizCompleted` fires *in addition*, never instead.
 
+**`LeadDispositionChanged` reads its `from` from a pre-write snapshot, not from
+`getOriginal()`.** The observer is `$afterCommit`, and a commit callback runs after
+`syncOriginal()` — so `getOriginal('status')` there returns the NEW value, `$from === $to`,
+and the guard swallows the event. That shipped: transactional status writes, including
+`SubmitPrescribeRxCheckoutAction`'s move to `handed_off`, dispatched nothing whatsoever
+while direct writes worked. See `App\Support\ModelChangeSnapshot` and the regression test
+`test_the_event_fires_for_a_write_inside_a_transaction`.
+
 **`LeadDispositionChanged` carries both `from` and `to`,** because the useful workflow
 conditions are transitions, not states — "became `quiz_complete` *from* `new*`" cannot be
 reconstructed after the fact. It lives in an observer rather than in each action because

@@ -1,0 +1,62 @@
+<?php
+
+namespace App\Filament\Resources\Workflows;
+
+use App\Filament\Resources\Workflows\Pages\CreateWorkflow;
+use App\Filament\Resources\Workflows\Pages\EditWorkflow;
+use App\Filament\Resources\Workflows\Pages\ListWorkflows;
+use App\Filament\Resources\Workflows\RelationManagers\RunsRelationManager;
+use App\Filament\Resources\Workflows\Schemas\WorkflowForm;
+use App\Filament\Resources\Workflows\Tables\WorkflowsTable;
+use App\Models\Workflow\Workflow;
+use BackedEnum;
+use Filament\Resources\Resource;
+use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Table;
+use UnitEnum;
+
+/**
+ * Where an operator builds their funnel.
+ *
+ * Everything selectable here comes from WorkflowRegistry, so this screen grows
+ * when an install registers a new subject, event or action — no edit to this file.
+ */
+class WorkflowResource extends Resource
+{
+    protected static ?string $model = Workflow::class;
+
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBolt;
+
+    protected static string|UnitEnum|null $navigationGroup = 'Automation';
+
+    protected static ?int $navigationSort = 10;
+
+    protected static ?string $recordTitleAttribute = 'name';
+
+    public static function form(Schema $schema): Schema
+    {
+        return WorkflowForm::configure($schema);
+    }
+
+    public static function table(Table $table): Table
+    {
+        return WorkflowsTable::configure($table);
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            RunsRelationManager::class,
+        ];
+    }
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => ListWorkflows::route('/'),
+            'create' => CreateWorkflow::route('/create'),
+            'edit' => EditWorkflow::route('/{record}/edit'),
+        ];
+    }
+}

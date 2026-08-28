@@ -18,6 +18,7 @@ Per-module documentation: `user.md` = admin operator guide, `dev.md` = architect
 | Checkout | prx-embed vs local gateway flow, gateway config endpoint | [`checkout/dev.md`](checkout/dev.md) |
 | Orders | Order shells, webhook sync, shipments | [`orders/dev.md`](orders/dev.md) · [`orders/user.md`](orders/user.md) |
 | Leads | Lead capture, consents, UTM attribution | [`leads/dev.md`](leads/dev.md) · [`leads/user.md`](leads/user.md) |
+| Workflows | Operator-built automation: triggers, conditions, actions, run log | [`workflows/dev.md`](workflows/dev.md) · [`workflows/user.md`](workflows/user.md) |
 | Payments | Gateway abstraction, merchant accounts (NMI / Authorize.net / Stripe / Square) | [`payments/dev.md`](payments/dev.md) · [`payments/user.md`](payments/user.md) |
 | Intake | Intake schema API, wizard strategy | [`intake/dev.md`](intake/dev.md) · [`intake/user.md`](intake/user.md) |
 | prescribe-rx | Clinical API integration, partner guide | [`prescribe-rx/dev.md`](prescribe-rx/dev.md) · [`prescribe-rx/user.md`](prescribe-rx/user.md) · [`prescribe-rx/partner-implementation-guide.md`](prescribe-rx/partner-implementation-guide.md) |
