@@ -2,8 +2,12 @@
 
 namespace App\Providers;
 
+use App\Integrations\Drivers\GoHighLevelDriver;
+use App\Integrations\Drivers\KlaviyoDriver;
 use App\Integrations\Drivers\LocalMailDriver;
+use App\Integrations\Drivers\TwilioDriver;
 use App\Integrations\IntegrationRegistry;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\TextInput;
 use Illuminate\Support\ServiceProvider;
 
@@ -61,6 +65,96 @@ class IntegrationServiceProvider extends ServiceProvider
                     ->label('From name override')
                     ->helperText('Leave empty to use the brand name from Settings → Brand.')
                     ->maxLength(120),
+            ],
+        );
+
+        $registry->registerProvider(
+            'klaviyo',
+            KlaviyoDriver::class,
+            'Klaviyo',
+            'Profiles, lists and events. Klaviyo has no way to push somebody straight into a flow — '
+            .'record an event and let the flow trigger on it instead.',
+            credentials: fn (): array => [
+                TextInput::make('credentials.private_key')
+                    ->label('Private API key')
+                    ->password()
+                    ->revealable()
+                    ->required()
+                    ->helperText('Starts with pk_. A key\'s scopes are fixed when it is created — to widen '
+                        .'them you have to mint a new key, not edit this one.'),
+            ],
+            settings: fn (): array => [
+                // The name → id map. Without it, every workflow step would have
+                // to carry an opaque list id, and rebuilding a list would break
+                // every step that named it.
+                Repeater::make('settings.lists')
+                    ->label('List names')
+                    ->helperText('Give your Klaviyo lists names your workflows can use. A workflow step says '
+                        .'"quiz-completers"; this is where that becomes a list ID.')
+                    ->defaultItems(0)
+                    ->addActionLabel('Map a list')
+                    ->columns(2)
+                    ->schema([
+                        TextInput::make('name')->label('Name used in workflows')->required(),
+                        TextInput::make('list_id')->label('Klaviyo list ID')->required(),
+                    ]),
+            ],
+        );
+
+        $registry->registerProvider(
+            'gohighlevel',
+            GoHighLevelDriver::class,
+            'GoHighLevel',
+            'Contacts, tags and workflow enrolment. GoHighLevel has no events API — start one of its '
+            .'workflows instead.',
+            credentials: fn (): array => [
+                TextInput::make('credentials.access_token')
+                    ->label('API token')
+                    ->password()
+                    ->revealable()
+                    ->required(),
+            ],
+            settings: fn (): array => [
+                TextInput::make('settings.location_id')
+                    ->label('Location ID')
+                    ->required()
+                    ->helperText('The sub-account these contacts belong to. Every call is scoped to it, so '
+                        .'nothing works without it. Not a secret — it names the account, it does not open it.'),
+
+                TextInput::make('settings.source')
+                    ->label('Source label')
+                    ->helperText('Optional. Recorded against each contact so you can tell where they came from.')
+                    ->maxLength(120),
+            ],
+        );
+
+        $registry->registerProvider(
+            'twilio',
+            TwilioDriver::class,
+            'Twilio',
+            'Text messages. Twilio will sign a business associate agreement, so this is one of the few '
+            .'channels where health content can be legitimate — if your own contract covers it.',
+            credentials: fn (): array => [
+                TextInput::make('credentials.account_sid')
+                    ->label('Account SID')
+                    ->required()
+                    ->helperText('Starts with AC.'),
+
+                TextInput::make('credentials.auth_token')
+                    ->label('Auth token')
+                    ->password()
+                    ->revealable()
+                    ->required(),
+            ],
+            settings: fn (): array => [
+                TextInput::make('settings.messaging_service_sid')
+                    ->label('Messaging Service SID')
+                    ->helperText('Preferred over a single number: it carries your sender pool, opt-out '
+                        .'handling and compliance registration. Starts with MG.'),
+
+                TextInput::make('settings.from_number')
+                    ->label('From number')
+                    ->helperText('Used only when there is no Messaging Service. E.164 format, e.g. +15550123.'),
             ],
         );
     }
