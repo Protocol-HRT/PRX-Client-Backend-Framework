@@ -72,6 +72,15 @@ that did not match**, because "why didn't my workflow fire?" is the actual quest
 A *Skipped* row reading `email_consent equals "1" — actual: false` is telling you the lead
 had not consented — the workflow is working exactly as written.
 
+**Give it a second before you conclude nothing happened.** Workflows run in the background
+rather than in the visitor's page load, so that a slow step — sending an email, pushing to
+your CRM — never makes somebody wait on the site. A run appears in this log when it
+*executes*, usually within a second or two of the trigger, not the instant the record is
+saved. If you save a lead and refresh immediately, an empty log is normal; refresh again.
+
+If runs never appear at all, that is not a workflow problem — the background worker is not
+running. Ask whoever administers the server to check it.
+
 ## Loops are handled, but be aware of them
 
 A workflow that changes a field it also watches would trigger itself forever. The system

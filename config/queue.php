@@ -73,6 +73,36 @@ return [
             'after_commit' => false,
         ],
 
+        /*
+         * Workflow chains, which are allowed to take longer than anything else.
+         *
+         * A CHAIN'S RUNTIME IS NOT OURS TO PREDICT: an operator can string
+         * several webhook or CRM actions together, each capped at 30s, so a
+         * legitimate chain can run for minutes. That forces its own connection,
+         * because `retry_after` is what Redis uses to decide a reserved job has
+         * been abandoned — and it MUST stay comfortably above the worker timeout
+         * in `config/horizon.php`.
+         *
+         * Get that backwards and the failure is silent and wrong in both
+         * directions: Redis hands a still-running chain to a second worker, which
+         * sees the attempt count exceeded and marks the job FAILED without
+         * running it, while the first worker quietly finishes the same chain
+         * successfully. The run log then reports a failure that did not happen —
+         * and if anyone ever raises `tries`, the redelivery executes instead, and
+         * every webhook in that chain is sent twice.
+         *
+         * `WorkflowQueueConfigurationTest` pins timeout < retry_after so the pair
+         * cannot be retuned one side at a time.
+         */
+        'workflows' => [
+            'driver' => 'redis',
+            'connection' => env('REDIS_QUEUE_CONNECTION', 'default'),
+            'queue' => 'workflows',
+            'retry_after' => (int) env('WORKFLOWS_QUEUE_RETRY_AFTER', 300),
+            'block_for' => null,
+            'after_commit' => false,
+        ],
+
         'deferred' => [
             'driver' => 'deferred',
         ],

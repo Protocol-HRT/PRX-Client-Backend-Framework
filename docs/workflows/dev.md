@@ -84,6 +84,15 @@ The chain is per-process and clears when it drains. A queued listener gets a fre
 which is correct: reacting to a change made by an earlier, finished chain is new causation,
 not a loop.
 
+**This is why the chain is queued at its root and nowhere else** — see "Queued execution"
+below. Both guards are per-process state, and the re-entry claim has to be visible to the
+write that an action makes from inside `run()`. Put each hop on the queue and every hop gets
+its own copy of the bookkeeping: two actions raising triggers fork the chain into jobs whose
+claim sets diverge, release-on-skip in one branch is invisible to the other, and the guard
+has to become a distributed lock to buy nothing. This is not theoretical — deleting the
+depth check in `queue()` and re-running the suite does not fail a test, it **hangs**, because
+the direct cycle becomes infinite again.
+
 **Re-entry is mutation-tested**; removing it makes the run count 2 instead of 1. **The
 depth guard is not.** Re-entry bounds each *workflow* to one acting run, not chain *depth* —
 a chain of N distinct workflows on one subject still nests, and enough of them will reach
@@ -162,12 +171,77 @@ back to `getOriginal()`.
 instances behind one generic `push_to_integration` action, so the shipped set never names a
 third party. See the next-session notes.
 
-## Known gaps
+## Queued execution
 
-- **The whole chain runs synchronously inside the triggering request.** A webhook on
-  `lead.created` stalls the public `POST /api/v1/leads` until it returns (capped at 30s per
-  hook). `LeadCreated`'s own doc comment anticipates queued listeners; making the dispatcher
-  queue its runs is the fix, and it is not done. Keep webhook timeouts low until it is.
+A trigger no longer runs its workflows on the thread that raised it. Everything outside the
+engine calls `WorkflowDispatcher::queue()`, which pushes one `RunWorkflowChain` job; the job
+opens the chain and every trigger raised *inside* it runs inline. The public
+`POST /api/v1/leads` therefore returns without waiting for anybody's CRM.
+
+| | |
+|---|---|
+| Queue name | `workflows` |
+| Connection | `workflows` in `config/queue.php` (`retry_after` 300s) |
+| Supervised by | `supervisor-workflows` in `config/horizon.php` |
+| Retries | **none** (`$tries = 1`) |
+| Timeout | 180s, vs 60s on `default` |
+
+**The timeout and `retry_after` are one setting in two files.** `retry_after` is when Redis
+decides a reserved job was abandoned; the worker timeout is how long a chain may take. Cross
+them and a chain that outlives its reservation is handed to a second worker, which sees the
+attempt count exceeded and marks it **failed without running it**, while the first worker
+finishes the same chain successfully — a failure in the run log that never happened. Raise
+`tries` on top of that and the redelivery *executes*, sending every webhook in the chain
+twice. That pairing is why workflows have their own connection rather than sharing `redis`
+(90s), and `WorkflowQueueConfigurationTest` pins it so neither side can be retuned alone.
+
+Four things worth knowing before changing any of it:
+
+- **The queue name is not decoration.** Nothing else watches `workflows`. Delete that
+  supervisor and the work does not fall back to `default` — every trigger enqueues a job no
+  worker collects, and the symptom is an admin showing no runs and no errors. Workflow chains
+  are on their own queue so that a slow CRM push cannot sit in front of cache revalidation or
+  an inbound prescribe-rx event.
+- **It does not retry, deliberately.** Per-action failures are already caught and recorded as
+  `workflow_action_runs` rows, so a failure that reaches the job means the chain died
+  part-way — and a retry re-runs the actions that already completed. Webhooks do not un-send.
+  At-least-once is the wrong default for an engine whose actions are side effects on other
+  people's systems. A `failed()` hook logs what the run log could not.
+- **The subject travels as an attribute snapshot, not a model reference.** `SerializesModels`
+  would re-fetch by key, which throws for `model_deleted` — the one trigger whose whole point
+  is that the row is gone — and, when the row has moved since, would evaluate conditions
+  against new state while `_original.*` still described the old write, stitching a context out
+  of two moments. So the attributes are carried as they were at the trigger and rehydrated
+  with `newFromBuilder()`. An `update_field` still emits an `UPDATE` of only the field it
+  sets, so a stale snapshot cannot clobber a column something else moved. If the subject was
+  deleted in the gap, that write matches zero rows and says nothing — a correct no-op, and a
+  silent one. An action needing the freshest state should re-read inside its own handler.
+- **A run row appears when the chain executes, not when it is queued.** There is no "pending"
+  row: at enqueue time the matching workflow set is not yet known, and `workflow_runs`
+  requires a `workflow_id`. Work in flight is visible in Horizon, not in the run log.
+
+**Deploying:** Horizon workers hold the code they booted with. After any deploy touching the
+engine, `sudo supervisorctl restart atlas-protocol-admin-horizon` (or `php artisan
+horizon:terminate`), or queued chains run the previous release.
+
+**Two behavioural changes to know about.**
+
+*An API response is now serialized before the workflows fire*, so a lead-create response
+reports the disposition as it was written, not as a workflow later moved it. The Atlas
+frontend reads only `lead.uuid` (`QuizWizard`) and `handoff_url` (`CheckoutClient`) off that
+response, neither of which a workflow can write — but a frontend reading `status` would see
+the pre-workflow value.
+
+*Chains raised by one request now run concurrently.* A single `POST /api/v1/leads` carrying a
+quiz raises three root triggers — `model_created`, `lead.created`, `quiz.completed` — which
+used to run in deterministic order in one process and are now three jobs across up to five
+workers. Each evaluates its own trigger-time snapshot correctly, so nothing races on data;
+what is no longer guaranteed is ORDER between them. If one workflow sets a field another
+conditions on, do not express that as two workflows on two different triggers of the same
+request — chain them off the field change instead, which is what the `_changed.*` conditions
+are for and is deterministic because it happens inside one chain.
+
+## Known gaps
 - Action config is a generic key/value editor. A per-action-type schema is the obvious next
   improvement; not required for correctness.
 - No `scheduled` or `manual` trigger runner yet — the columns accept them, nothing fires them.

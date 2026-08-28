@@ -4,6 +4,7 @@ namespace App\Workflows;
 
 use App\Models\Workflow\Workflow;
 use App\Models\Workflow\WorkflowRun;
+use App\Workflows\Jobs\RunWorkflowChain;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -33,6 +34,17 @@ use Illuminate\Support\Facades\Log;
  * The chain is per-process and cleared when it drains. A queued listener gets a
  * fresh chain, which is correct: a workflow reacting to a change made by an
  * earlier, already-finished chain is a new causal chain, not a loop.
+ *
+ * ─── Queued at the root, inline within ─────────────────────────────────
+ *
+ * Triggers arrive through `queue()`, which pushes a job for the FIRST one and
+ * runs every trigger raised inside that job inline. Both halves are load-
+ * bearing: off the request thread, a slow action no longer holds a visitor's
+ * POST open; inline within the chain, the two guards above keep working
+ * unchanged, because they are per-process state and an action's own write
+ * re-enters `dispatch()` from inside `run()`. See
+ * App\Workflows\Jobs\RunWorkflowChain for why one-job-per-hop is not the same
+ * design with more steps.
  */
 class WorkflowDispatcher
 {
@@ -50,10 +62,72 @@ class WorkflowDispatcher
 
     private int $depth = 0;
 
-    public function __construct(
-        private readonly WorkflowRegistry $registry,
-        private readonly WorkflowRunner $runner,
-    ) {}
+    public function __construct(private readonly WorkflowRunner $runner) {}
+
+    /**
+     * Take a trigger, off the request thread when it starts a new chain.
+     *
+     * THIS IS THE ENTRY POINT FOR EVERYTHING OUTSIDE THIS CLASS. The observer
+     * and the event bridge both call it, and neither has to know whether it is
+     * opening a chain or continuing one — only this object holds the state that
+     * can answer that.
+     *
+     * `$depth > 0` means an action's own write raised this trigger from inside a
+     * running chain, and it must be handled inline: the re-entry claim is taken
+     * BEFORE run() precisely so that the write can see it, and a claim in one
+     * process is invisible to a job in another. Queueing here would hand each
+     * hop a private copy of the guard and quietly restore the infinite loop the
+     * guard exists to stop.
+     *
+     * Deliberately returns nothing. A queued chain has no runs to report yet,
+     * and a signature promising some would be a lie at exactly the moment it
+     * mattered. Nothing outside this class reads them.
+     */
+    public function queue(string $triggerType, string $triggerTarget, WorkflowContext $context): void
+    {
+        if ($this->depth > 0) {
+            $this->dispatch($triggerType, $triggerTarget, $context);
+
+            return;
+        }
+
+        // Ask the cheap question before paying for a job. Every save of every
+        // registered subject reaches here — including admin form saves that
+        // matched nothing — and without this each one costs a Redis round trip
+        // to discover there was no work. The job re-runs this query anyway, so a
+        // workflow created in the gap is picked up by the NEXT trigger rather
+        // than lost; nothing is racing for a row that did not exist yet.
+        if (! Workflow::forTrigger($triggerType, $triggerTarget)->exists()) {
+            return;
+        }
+
+        dispatch(RunWorkflowChain::forContext($context));
+    }
+
+    /**
+     * Assert this dispatcher is not part-way through a chain.
+     *
+     * Called by the job before it opens one. `dispatch()` decrements depth in a
+     * `finally`, so a leak requires a fatal that would take the worker with it —
+     * but a worker is long-lived and a singleton survives every job in it, so if
+     * that invariant is ever broken the failure is silent and cumulative: every
+     * later chain in that worker starts deeper, and once past MAX_DEPTH they
+     * stop running entirely with nothing to show for it. Cheap to make loud.
+     */
+    public function assertIdle(): void
+    {
+        if ($this->depth === 0 && $this->seen === []) {
+            return;
+        }
+
+        Log::warning('Workflow dispatcher was not idle at the start of a chain; resetting.', [
+            'depth' => $this->depth,
+            'claims' => count($this->seen),
+        ]);
+
+        $this->depth = 0;
+        $this->seen = [];
+    }
 
     /**
      * @return list<WorkflowRun>
@@ -138,46 +212,6 @@ class WorkflowDispatcher
             if ($this->depth === 0) {
                 $this->seen = [];
             }
-        }
-
-        return $runs;
-    }
-
-    /** Convenience for model triggers, which are the common case. */
-    public function dispatchForModel(string $triggerType, WorkflowContext $context): array
-    {
-        if ($context->subjectKey === null) {
-            return [];
-        }
-
-        return $this->dispatch($triggerType, $context->subjectKey, $context);
-    }
-
-    /**
-     * Dispatch every workflow registered against a domain event class.
-     *
-     * One event class may carry several registry keys — an install can register
-     * the same event under two names with different subjects — so this fans out
-     * rather than assuming one.
-     */
-    public function dispatchForEvent(string $eventClass, WorkflowContext $context): array
-    {
-        $runs = [];
-
-        foreach ($this->registry->keysForEvent($eventClass) as $key) {
-            $definition = $this->registry->event($key);
-
-            $scoped = new WorkflowContext(
-                triggerType: 'event_fired',
-                triggerTarget: $key,
-                subject: $context->subject,
-                subjectKey: $definition['subject'] ?? $context->subjectKey,
-                original: $context->original,
-                changed: $context->changed,
-                payload: $context->payload,
-            );
-
-            $runs = array_merge($runs, $this->dispatch('event_fired', $key, $scoped));
         }
 
         return $runs;

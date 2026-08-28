@@ -70,7 +70,12 @@ class WorkflowSubjectObserver
 
         $snapshot = ModelChangeSnapshot::read($model);
 
-        $this->dispatcher->dispatchForModel($triggerType, new WorkflowContext(
+        // queue(), not dispatch(): a trigger raised by a visitor's request must
+        // not run that visitor's workflows on their thread. The dispatcher
+        // decides whether this actually becomes a job — a trigger raised from
+        // inside a chain already running is handled inline, or the loop guard
+        // would be split across processes.
+        $this->dispatcher->queue($triggerType, $key, new WorkflowContext(
             triggerType: $triggerType,
             triggerTarget: $key,
             subject: $model,

@@ -210,6 +210,46 @@ return [
             'timeout' => 60,
             'nice' => 0,
         ],
+
+        /*
+         * Workflow chains get their own workers, because their runtime is not
+         * ours to predict. An operator-built workflow may POST to a webhook or
+         * push to a CRM, and whatever that costs must not sit in front of cache
+         * revalidation or an inbound prescribe-rx event on the default queue.
+         *
+         * A SUPERVISOR HERE IS NOT OPTIONAL. Nothing else watches this queue, so
+         * removing this entry does not move the work back to `default` — it
+         * makes every trigger enqueue a job that is never picked up, with the
+         * admin showing no runs and no errors. That is the failure mode this
+         * project keeps meeting; it is named here so the next person does not
+         * meet it again.
+         *
+         * `tries` stays 1 deliberately: a retry re-runs actions that already
+         * completed, and webhooks do not un-send. See RunWorkflowChain.
+         */
+        'supervisor-workflows' => [
+            // The 'workflows' CONNECTION, not 'redis' — it carries a longer
+            // `retry_after` than the timeout below, which is the whole reason it
+            // exists. See config/queue.php.
+            'connection' => 'workflows',
+            'queue' => ['workflows'],
+            'balance' => 'auto',
+            'autoScalingStrategy' => 'time',
+            'maxProcesses' => 1,
+            'maxTime' => 0,
+            'maxJobs' => 0,
+            'memory' => 128,
+            'tries' => 1,
+            // Longer than the default 60s: a chain runs several actions in
+            // series and each may be a network call to somebody else's API.
+            //
+            // MUST STAY BELOW `retry_after` ON THE 'workflows' CONNECTION
+            // (config/queue.php). Cross them and Redis re-releases a chain that
+            // is still running, a second worker marks it failed without running
+            // it, and the run log reports a failure that never happened.
+            'timeout' => 180,
+            'nice' => 0,
+        ],
     ],
 
     'environments' => [
@@ -219,11 +259,21 @@ return [
                 'balanceMaxShift' => 1,
                 'balanceCooldown' => 3,
             ],
+
+            'supervisor-workflows' => [
+                'maxProcesses' => 5,
+                'balanceMaxShift' => 1,
+                'balanceCooldown' => 3,
+            ],
         ],
 
         'local' => [
             'supervisor-1' => [
                 'maxProcesses' => 3,
+            ],
+
+            'supervisor-workflows' => [
+                'maxProcesses' => 2,
             ],
         ],
     ],

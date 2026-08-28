@@ -151,7 +151,7 @@ class WorkflowServiceProvider extends ServiceProvider
                     $changed[] = $changedField;
                 }
 
-                $this->app->make(WorkflowDispatcher::class)->dispatch('event_fired', $key, new WorkflowContext(
+                $this->app->make(WorkflowDispatcher::class)->queue('event_fired', $key, new WorkflowContext(
                     triggerType: 'event_fired',
                     triggerTarget: $key,
                     subject: $subject,
