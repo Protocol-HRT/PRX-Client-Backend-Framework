@@ -70,13 +70,20 @@ funnel that stopped working tells you rather than going quiet.
 
 ## Health data — read this before ticking it
 
-**Atlas collects health information.** Goals, measurements, sex, age — and the recommendations
-that come out of them. Some services are contractually allowed to receive that and some are
-explicitly not; several major marketing platforms forbid it in their terms and will not sign an
-agreement covering it.
+**Atlas collects health information.** Measurements, medications, anything flagged as a
+condition, sex, age — and the recommendations that come out of them. Some services are
+contractually allowed to receive that and some are explicitly not; several major marketing
+platforms forbid it in their terms and will not sign an agreement covering it.
 
 So every integration starts as **not permitted for health data**, and any field marked as
 health data is refused or blanked before it reaches that destination.
+
+**A goal is not health data**, and that is a deliberate decision rather than an oversight.
+"More energy" or "lose weight" is what somebody *wants*, not a condition, a diagnosis or a
+treatment — so goals go to your marketing platform like any other personal detail, which is
+what makes segmenting a campaign on them possible at all. What comes *out* of the quiz is
+different: a recommended protocol name, or a list called "TRT interest", discloses health
+status even though the goal behind it did not. Mind the names you send, not only the values.
 
 To change that, open the integration and use **Permit health data**. You will be asked to write
 down what you are relying on — "BAA signed with X on this date, reference Y". That note, your

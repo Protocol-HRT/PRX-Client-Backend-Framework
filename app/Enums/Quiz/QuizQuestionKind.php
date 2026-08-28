@@ -105,8 +105,8 @@ enum QuizQuestionKind: string
      * only the operator knows what their own free-text question asks for. What
      * this supplies is the answer for the majority of questions nobody will ever
      * classify by hand, and the reserved kinds where the answer is not a matter
-     * of opinion: a health-goals question reads the health-goals table, and a
-     * measurement exists so a report can compute BMI.
+     * of opinion: a measurement exists so a report can compute BMI, and sex and
+     * age feed the eligibility gate.
      *
      * THE DEFAULTS LEAN PROTECTIVE, and the asymmetry is the reason. An
      * over-classified field costs an operator one downgrade they had to think
@@ -132,13 +132,30 @@ enum QuizQuestionKind: string
      * address are personal, but they disclose nothing clinical on their own —
      * and classifying them as health data would make ordinary mail impossible
      * for an install that never touches PHI at all.
+     *
+     * ─── HEALTH GOALS ARE NOT HEALTH DATA. Operator's call, 2026-08-28 ─────
+     *
+     * `HealthGoals` is `Sensitive`, and the reasoning is the durable part: a
+     * goal is ASPIRATIONAL — "more energy", "lose weight" — and is not a current
+     * condition, a diagnosis or a treatment. It is what somebody wants, not what
+     * is wrong with them. Flags (blood pressure, cholesterol, blood sugar,
+     * liver) and medications ARE clinical; those are authored kinds and default
+     * to `Phi` already.
+     *
+     * This is the one place the protective lean is deliberately not taken,
+     * because the goal is the whole point of an intake quiz: it drives the
+     * recommendation and therefore the marketing, and a goal that cannot leave
+     * the building cannot be segmented on. Note what it does not license — an
+     * OUTCOME can disclose more than the input that produced it, so a
+     * recommended protocol name, or a list called "TRT interest", is health data
+     * even though the goal behind it was not.
      */
     public function defaultDataClassification(): DataClassification
     {
         return match ($this) {
-            // Reads the health goals table. There is no reading of this that is
-            // not clinical.
-            self::HealthGoals => DataClassification::Phi,
+            // Goals are aspirational, not clinical — see the docblock. This is
+            // the one reserved kind that is NOT health data.
+            self::HealthGoals => DataClassification::Sensitive,
             // Height and weight exist here so a report can compute BMI, which is
             // a clinical measure whatever the fields are called.
             self::Measurement => DataClassification::Phi,

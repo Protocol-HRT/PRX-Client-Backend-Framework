@@ -131,14 +131,63 @@ class PhiBoundaryTest extends TestCase
 
     public function test_a_quiz_answer_inherits_its_questions_kind(): void
     {
-        // Nobody classified this question by hand. A health-goals question reads
-        // the health goals table, so there is no reading of it that is not
-        // clinical, and the default has to say so.
-        $lead = $this->leadWithQuiz(kind: QuizQuestionKind::HealthGoals, slug: 'goals', dataClass: null);
+        // Nobody classified this question by hand. A measurement exists so a
+        // report can compute BMI, which is a clinical measure whatever the
+        // fields are called, and the default has to say so.
+        $lead = $this->leadWithQuiz(kind: QuizQuestionKind::Measurement, slug: 'body', dataClass: null);
 
         $this->assertSame(
             DataClassification::Phi,
+            $this->map()->classify('quiz_answers.body', $this->context($lead)),
+        );
+    }
+
+    public function test_health_goals_are_not_health_data_and_may_leave_the_building(): void
+    {
+        // THE OPERATOR'S DETERMINATION, 2026-08-28, and the one reserved kind
+        // that is not `Phi`: a goal is aspirational — "more energy" — not a
+        // condition, a diagnosis or a treatment. It is also the answer the whole
+        // quiz exists to collect, so a default that blocked it would have to be
+        // downgraded by hand on every install.
+        //
+        // The assertion that matters is the second one: the goal reaches an
+        // UNATTESTED destination. Classifying it `Sensitive` and stopping there
+        // would prove nothing, because `Sensitive` gates nothing.
+        $lead = $this->leadWithQuiz(
+            kind: QuizQuestionKind::HealthGoals,
+            slug: 'goals',
+            dataClass: null,
+            answers: ['goals' => 'more-energy'],
+        );
+
+        $this->assertSame(
+            DataClassification::Sensitive,
             $this->map()->classify('quiz_answers.goals', $this->context($lead)),
+        );
+
+        $sent = $this->map()->apply(
+            [['source' => 'quiz_answers.goals', 'destination' => 'Goals']],
+            $this->context($lead),
+            $this->destination(phiPermitted: false),
+        );
+
+        $this->assertSame(['Goals' => 'more-energy'], $sent);
+    }
+
+    public function test_a_clinical_question_beside_a_goal_is_still_refused(): void
+    {
+        // The downgrade is per KIND, not a hole in the gate. "Anything to flag?"
+        // is an authored question — blood pressure, cholesterol, blood sugar,
+        // liver — and authored questions still default to health data.
+        $lead = $this->leadWithQuiz(kind: QuizQuestionKind::MultiSelect, slug: 'flags', dataClass: null);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessageMatches('/health data/');
+
+        $this->map()->apply(
+            [['source' => 'quiz_answers.flags', 'destination' => 'Flags']],
+            $this->context($lead),
+            $this->destination(phiPermitted: false),
         );
     }
 
@@ -360,7 +409,8 @@ class PhiBoundaryTest extends TestCase
         return $instance;
     }
 
-    private function leadWithQuiz(QuizQuestionKind $kind, string $slug, ?DataClassification $dataClass): Lead
+    /** @param  array<string, mixed>  $answers */
+    private function leadWithQuiz(QuizQuestionKind $kind, string $slug, ?DataClassification $dataClass, array $answers = []): Lead
     {
         $quiz = Quiz::create(['name' => 'Intake', 'slug' => 'intake', 'is_active' => true]);
         $step = QuizStep::create(['quiz_id' => $quiz->id, 'slug' => 'step-1', 'name' => 'Step', 'position' => 1]);
@@ -376,7 +426,7 @@ class PhiBoundaryTest extends TestCase
             'is_active' => true,
         ]);
 
-        return Lead::factory()->create(['quiz_id' => $quiz->id]);
+        return Lead::factory()->create(['quiz_id' => $quiz->id, 'quiz_answers' => $answers]);
     }
 }
 

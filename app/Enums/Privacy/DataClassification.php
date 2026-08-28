@@ -51,8 +51,12 @@ enum DataClassification: string
     case Sensitive = 'sensitive';
 
     /**
-     * Health information. Goals, symptoms, measurements, sex — anything from
-     * which a clinical inference can be drawn.
+     * Health information. Symptoms, medications, measurements, sex — anything
+     * from which a clinical inference can be drawn.
+     *
+     * A GOAL IS NOT ONE OF THESE. "More energy" is aspirational rather than a
+     * condition, a diagnosis or a treatment, so `QuizQuestionKind::HealthGoals`
+     * defaults to `Sensitive` — its docblock carries the operator's reasoning.
      *
      * Note that an OUTCOME can disclose as much as an input: a list named
      * "TRT interest" or a recommended product name reveals health status just as
@@ -75,7 +79,7 @@ enum DataClassification: string
         return match ($this) {
             self::General => 'Ordinary business data — attribution, totals, country. Safe to send anywhere.',
             self::Sensitive => 'Personal but not clinical — name, email, phone. Most destinations accept this.',
-            self::Phi => 'Health information — goals, symptoms, measurements, sex. Only destinations you have marked as permitted may receive it.',
+            self::Phi => 'Health information — symptoms, medications, measurements, sex. Only destinations you have marked as permitted may receive it.',
         };
     }
 

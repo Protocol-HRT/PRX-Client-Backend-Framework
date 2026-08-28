@@ -116,6 +116,14 @@ Where a classification comes from:
   the mapper. The operator downgrades what is genuinely not clinical via the **Sensitivity**
   select on the question; that control has to exist or the protective default is a wall.
 
+  **`HealthGoals` is the one reserved kind that is NOT `Phi`** — the operator's determination,
+  2026-08-28. A goal is aspirational ("more energy"), not a condition, a diagnosis or a
+  treatment, and it is the answer the whole quiz exists to collect: block it by default and
+  every install has to downgrade it by hand before it can segment on anything. `Measurement`,
+  `Sex` and `Age` stay `Phi`; so do authored kinds, which is where flags and medications live.
+  Note the asymmetry this does not break — an OUTCOME can disclose more than the input, so a
+  recommended protocol name is health data even though the goal that produced it was not.
+
 `quiz_answers` is deliberately **not** in the subject allow-list. Registering it would
 classify the container and let every answer inside inherit one verdict. `FieldMap` resolves
 `quiz_answers.{slug}` per question instead, and reads those values directly rather than
