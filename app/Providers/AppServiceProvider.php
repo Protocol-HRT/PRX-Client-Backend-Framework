@@ -31,6 +31,7 @@ use App\Services\Cms\FrontendRevalidator;
 use App\Services\Cms\PageRevisionService;
 use App\Services\Cms\SectionRegistry;
 use App\Services\Payments\PaymentGatewayManager;
+use App\Services\Mail\MailConfigurator;
 use App\Settings\BrandSettings;
 use Awcodes\Curator\Config\GlideManager;
 use Awcodes\Curator\Glide\SymfonyResponseFactory;
@@ -69,6 +70,7 @@ class AppServiceProvider extends ServiceProvider
         $this->configureApiDocs();
         $this->configureCmsObservers();
         $this->configureBrandMailFrom();
+        $this->configureMailProvider();
         $this->configureGlideCache();
         $this->configureFilamentModalDefaults();
     }
@@ -132,6 +134,23 @@ class AppServiceProvider extends ServiceProvider
         if (filled($brandName)) {
             config(['mail.from.name' => $brandName]);
         }
+    }
+
+    /**
+     * Let the operator's chosen provider take over the mailer.
+     *
+     * AFTER configureBrandMailFrom, on purpose: the brand name is a sensible
+     * default for the From name, and an explicitly configured
+     * `mail_from_name` should beat it rather than the other way round.
+     *
+     * `rescue` because this runs on EVERY boot, including `artisan migrate` on
+     * a database that does not yet have the settings row. A provider selection
+     * failing to load must not stop the app from booting — it must only stop
+     * mail from being repointed.
+     */
+    private function configureMailProvider(): void
+    {
+        rescue(fn () => app(MailConfigurator::class)->apply(), null, false);
     }
 
     private function configureCmsObservers(): void

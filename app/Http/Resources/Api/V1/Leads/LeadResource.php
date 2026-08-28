@@ -50,6 +50,10 @@ class LeadResource extends JsonResource
             'quiz' => $this->when($this->quiz_id !== null, fn (): array => [
                 'answers' => $this->quiz_answers ?? [],
                 'completed_at' => $this->quiz_completed_at?->toIso8601String(),
+                // A FACT, not an intention. The plan page says "we've sent a
+                // copy" only when this is set, so a failed or disabled send
+                // shows honest copy instead of a confident lie.
+                'plan_sent_at' => $this->plan_sent_at?->toIso8601String(),
             ]),
             'cart_items' => $this->cart_items ?? [],
             'cart_subtotal' => $this->cart_subtotal,

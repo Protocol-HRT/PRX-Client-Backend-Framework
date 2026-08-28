@@ -7,6 +7,7 @@ use App\Data\Leads\LeadData;
 use App\Enums\CheckoutPath;
 use App\Http\Controllers\Api\V1\ApiController;
 use App\Http\Resources\Api\V1\Leads\LeadResource;
+use App\Events\Quiz\QuizCompleted;
 use App\Models\Lead;
 use App\Models\Quiz\Quiz;
 use App\Services\Quiz\QuizAnswerValidator;
@@ -127,6 +128,14 @@ class LeadController extends ApiController
         );
 
         $lead = $action->execute($data);
+
+        // Fired after the lead is safely persisted, and only for a lead that
+        // actually came through the quiz. Listeners are queued, so nothing
+        // hanging off this — the plan email today, a CRM push tomorrow — can
+        // fail the request that produced the lead.
+        if ($quiz !== null) {
+            QuizCompleted::dispatch($lead);
+        }
 
         return $this->success((new LeadResource($lead))->toArray($request), status: 201);
     }

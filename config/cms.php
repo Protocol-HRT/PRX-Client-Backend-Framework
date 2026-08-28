@@ -36,6 +36,19 @@ return [
         'revalidate_url' => env('CMS_FRONTEND_REVALIDATE_URL'),
         'revalidate_secret' => env('CMS_FRONTEND_REVALIDATE_SECRET'),
         'revalidate_timeout' => (int) env('CMS_FRONTEND_REVALIDATE_TIMEOUT', 5),
+
+        /*
+         * The frontend's PUBLIC origin, for links this backend puts in an
+         * email. Separate from revalidate_url on purpose: that one points at
+         * 127.0.0.1 because both apps sit on one box and the request must
+         * never leave it, whereas a link in an email has to work in somebody
+         * else's browser. Using the revalidate host for both would email a
+         * recipient a localhost URL.
+         *
+         * Falls back to APP_URL, which is the admin — wrong, but visibly
+         * wrong, rather than a link to nowhere.
+         */
+        'url' => env('CMS_FRONTEND_URL'),
     ],
 
     /*

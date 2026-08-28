@@ -28,6 +28,22 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    /*
+     * Mailgun. The transport reads these; without the entry Laravel builds a
+     * mailgun mailer with null config and fails at send time with an error
+     * that names neither the domain nor the key — which is how this install
+     * sat with MAIL_MAILER=mailgun and no way to send for months.
+     *
+     * `endpoint` matters for EU-region domains: Mailgun's US and EU stacks are
+     * separate, and a domain verified in one 401s against the other.
+     */
+    'mailgun' => [
+        'domain' => env('MAILGUN_DOMAIN'),
+        'secret' => env('MAILGUN_SECRET'),
+        'endpoint' => env('MAILGUN_ENDPOINT', 'api.mailgun.net'),
+        'scheme' => 'https',
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

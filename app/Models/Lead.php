@@ -67,6 +67,7 @@ class Lead extends Model
             'age' => 'integer',
             'quiz_answers' => 'array',
             'quiz_completed_at' => 'datetime',
+            'plan_sent_at' => 'datetime',
             'consent_given_at' => 'datetime',
             'handed_off_at' => 'datetime',
             'completed_at' => 'datetime',

@@ -23,7 +23,9 @@
         "spatie/laravel-data": "^4.22",
         "spatie/laravel-permission": "^7.4",
         "spatie/laravel-settings": "^3.8",
-        "spatie/laravel-sluggable": "^4.0"
+        "spatie/laravel-sluggable": "^4.0",
+        "symfony/http-client": "^8.1",
+        "symfony/mailgun-mailer": "^8.1"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

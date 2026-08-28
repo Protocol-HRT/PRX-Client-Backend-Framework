@@ -49,6 +49,18 @@ return [
             'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
         ],
 
+        /*
+         * Mailgun. Laravel's shipped config/mail.php stopped listing this
+         * mailer, so `MAIL_MAILER=mailgun` resolved to nothing and every send
+         * threw "Mailer [mailgun] is not defined" — the fourth and last of the
+         * blockers that made this install unable to send at all, alongside the
+         * missing transport package and the missing services.mailgun entry.
+         */
+        'mailgun' => [
+            'transport' => 'mailgun',
+            // Read from services.mailgun; listed here so the mailer resolves.
+        ],
+
         'ses' => [
             'transport' => 'ses',
         ],

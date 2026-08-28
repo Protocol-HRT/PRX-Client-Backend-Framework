@@ -6,6 +6,7 @@ use App\Actions\Settings\UpdateCommunicationSettingsAction;
 use App\Data\Settings\CommunicationSettingsData;
 use App\Settings\CommunicationSettings;
 use BackedEnum;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -41,6 +42,77 @@ class ManageCommunication extends BaseSettingsPage
     {
         return $schema
             ->components([
+
+                Section::make('Email')
+                    ->description('Which service actually sends mail, and whether it sends at all.')
+                    ->columns(2)
+                    ->components([
+                        Toggle::make('email_enabled')
+                            ->label('Send email')
+                            ->columnSpanFull()
+                            ->helperText('Off means nothing is sent. Pages that would otherwise say "we have emailed you" show honest copy instead — they read what was actually sent, not what was intended.'),
+
+                        Select::make('mail_provider')
+                            ->label('Provider')
+                            ->options([
+                                'mailgun' => 'Mailgun',
+                                'postmark' => 'Postmark',
+                                'ses' => 'Amazon SES',
+                                'smtp' => 'SMTP',
+                            ])
+                            ->native(false)
+                            ->live()
+                            ->placeholder('Use the server configuration')
+                            ->columnSpanFull()
+                            ->helperText('Leave blank to keep using whatever the server is configured with. Choosing one here overrides it without a redeploy.'),
+
+                        TextInput::make('mailgun_domain')
+                            ->label('Mailgun sending domain')
+                            ->visible(fn (Get $get): bool => $get('mail_provider') === 'mailgun')
+                            ->helperText('The verified domain, e.g. mg.example.com — not your website address.'),
+                        TextInput::make('mailgun_secret')
+                            ->label('Mailgun API key')
+                            ->password()
+                            ->revealable()
+                            ->visible(fn (Get $get): bool => $get('mail_provider') === 'mailgun'),
+                        TextInput::make('mailgun_endpoint')
+                            ->label('Mailgun region endpoint')
+                            ->placeholder('api.mailgun.net')
+                            ->visible(fn (Get $get): bool => $get('mail_provider') === 'mailgun')
+                            ->columnSpanFull()
+                            ->helperText('Leave blank for the US region. Use api.eu.mailgun.net for an EU domain — the two stacks are separate and a domain verified in one is rejected by the other.'),
+
+                        TextInput::make('postmark_token')
+                            ->label('Postmark server token')
+                            ->password()
+                            ->revealable()
+                            ->columnSpanFull()
+                            ->visible(fn (Get $get): bool => $get('mail_provider') === 'postmark'),
+
+                        TextInput::make('ses_key')
+                            ->label('AWS access key ID')
+                            ->password()
+                            ->revealable()
+                            ->visible(fn (Get $get): bool => $get('mail_provider') === 'ses'),
+                        TextInput::make('ses_secret')
+                            ->label('AWS secret access key')
+                            ->password()
+                            ->revealable()
+                            ->visible(fn (Get $get): bool => $get('mail_provider') === 'ses'),
+                        TextInput::make('ses_region')
+                            ->label('AWS region')
+                            ->placeholder('us-east-1')
+                            ->visible(fn (Get $get): bool => $get('mail_provider') === 'ses')
+                            ->columnSpanFull(),
+
+                        TextInput::make('mail_from_address')
+                            ->label('From address')
+                            ->email()
+                            ->helperText('Must be on a domain the provider has verified, or mail is rejected or silently spam-filed.'),
+                        TextInput::make('mail_from_name')
+                            ->label('From name')
+                            ->helperText('Defaults to your brand name.'),
+                    ]),
 
                 Section::make('Twilio credentials')
                     ->description('Credentials from your Twilio Console (console.twilio.com). Stored encrypted. Used for SMS, Voice, and proxying telehealth video access tokens.')
