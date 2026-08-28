@@ -9,6 +9,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -157,22 +158,36 @@ class WorkflowForm
                                     ->maxLength(255)
                                     ->helperText('Optional. Shows in the run log.'),
 
-                                // A generic key/value editor rather than a bespoke
-                                // form per action type. The handler owns the shape
-                                // of its config, and a product that grows action
-                                // types by registration cannot have a hardcoded
-                                // form for each. A per-type schema is the obvious
-                                // next improvement; it is not required for correctness.
-                                KeyValue::make('config')
-                                    ->keyLabel('Setting')
-                                    ->valueLabel('Value')
+                                // A PER-TYPE FORM WHERE THE ACTION REGISTERED ONE,
+                                // and the generic key/value editor otherwise.
+                                //
+                                // The fallback is not laziness — the handler owns
+                                // the shape of its config, and a product that grows
+                                // action types by registration cannot ship a
+                                // hardcoded form for each. So an action that wants
+                                // a real form declares it at registration, and the
+                                // three that predate this keep working untouched.
+                                //
+                                // The integration actions NEED one: an operator
+                                // cannot be expected to type an instance slug from
+                                // memory, and — the actual reason — a free-text box
+                                // cannot tell them the field they just mapped is
+                                // health data going somewhere unattested.
+                                Group::make()
                                     ->columnSpanFull()
-                                    ->helperText(fn ($get): string => match ($get('action_type')) {
-                                        'update_field' => 'field = the field to set, value = what to set it to.',
-                                        'webhook' => 'url = where to POST. Optional: method, timeout.',
-                                        'dispatch_job' => 'job = the registered job key.',
-                                        default => 'Settings for this step.',
-                                    }),
+                                    ->schema(fn ($get): array => app(WorkflowRegistry::class)
+                                        ->configSchemaFor($get('action_type')) ?? [
+                                            KeyValue::make('config')
+                                                ->keyLabel('Setting')
+                                                ->valueLabel('Value')
+                                                ->columnSpanFull()
+                                                ->helperText(match ($get('action_type')) {
+                                                    'update_field' => 'field = the field to set, value = what to set it to.',
+                                                    'webhook' => 'url = where to POST. Optional: method, timeout.',
+                                                    'dispatch_job' => 'job = the registered job key.',
+                                                    default => 'Settings for this step.',
+                                                }),
+                                        ]),
 
                                 Toggle::make('is_active')->default(true),
                                 Toggle::make('halt_on_failure')

@@ -2,6 +2,8 @@
 
 namespace App\Enums\Quiz;
 
+use App\Enums\Privacy\DataClassification;
+
 /**
  * What a quiz question actually asks for, and therefore which control the
  * frontend renders and which rule validates the answer.
@@ -94,6 +96,62 @@ enum QuizQuestionKind: string
     public function isStoredAsAnswer(): bool
     {
         return $this !== self::Contact;
+    }
+
+    /**
+     * How sensitive this kind of answer is, when nobody has said otherwise.
+     *
+     * A DEFAULT, NOT A RULE — `quiz_questions.data_class` overrides it, because
+     * only the operator knows what their own free-text question asks for. What
+     * this supplies is the answer for the majority of questions nobody will ever
+     * classify by hand, and the reserved kinds where the answer is not a matter
+     * of opinion: a health-goals question reads the health-goals table, and a
+     * measurement exists so a report can compute BMI.
+     *
+     * THE DEFAULTS LEAN PROTECTIVE, and the asymmetry is the reason. An
+     * over-classified field costs an operator one downgrade they had to think
+     * about; an under-classified one sends health data somewhere it must not go,
+     * silently, looking exactly like every correct mapping beside it.
+     *
+     * WHICH IS WHY AN AUTHORED QUESTION DEFAULTS TO `Phi`, not to something
+     * milder. An earlier version of this method defaulted them to `Sensitive`,
+     * which reads as cautious and is not: only `Phi` engages the field mapper's
+     * gate, so `Sensitive` was indistinguishable from `General` at the only
+     * moment that matters. On this very install that left "Anything to flag?"
+     * — blood pressure, cholesterol, blood sugar, liver — and "On any
+     * medications right now?" free to leave for an unattested destination,
+     * labelled "personal" in the mapper.
+     *
+     * The questions an operator authors in a health quiz are the ones nobody
+     * else can classify in advance, so the default has to be the safe end and
+     * the downgrade has to be deliberate. "How did you hear about us?" is a
+     * perfectly reasonable thing to mark `General`; it is just not something
+     * this enum can know.
+     *
+     * `Contact` is Sensitive rather than Phi on purpose: a name and an email
+     * address are personal, but they disclose nothing clinical on their own —
+     * and classifying them as health data would make ordinary mail impossible
+     * for an install that never touches PHI at all.
+     */
+    public function defaultDataClassification(): DataClassification
+    {
+        return match ($this) {
+            // Reads the health goals table. There is no reading of this that is
+            // not clinical.
+            self::HealthGoals => DataClassification::Phi,
+            // Height and weight exist here so a report can compute BMI, which is
+            // a clinical measure whatever the fields are called.
+            self::Measurement => DataClassification::Phi,
+            // Sex and age gate which treatments may be recommended, so in this
+            // context they carry the inference even though elsewhere they would
+            // be ordinary demographics.
+            self::Sex, self::Age => DataClassification::Phi,
+            // Identity, not clinical content.
+            self::Contact => DataClassification::Sensitive,
+            // Authored questions. Health data until an operator says otherwise —
+            // see above; this is the half that was wrong.
+            self::SingleSelect, self::MultiSelect, self::Scale, self::Text => DataClassification::Phi,
+        };
     }
 
     /** @return array<string, string> value => label, for a Filament select. */

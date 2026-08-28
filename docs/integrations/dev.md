@@ -1,0 +1,315 @@
+# Integrations — architecture
+
+How this installation sends data to other people's systems, and what stops it sending the
+wrong data to the wrong one.
+
+Operator guide: [`user.md`](user.md). The engine that calls all of this:
+[`../workflows/dev.md`](../workflows/dev.md).
+
+## Which layer names a vendor
+
+This was the load-bearing decision, and it is easy to get backwards. Vendors must be visible
+and selectable — an operator has to see Klaviyo, switch it on and paste their keys. The rule
+is not "never name a vendor"; it is about **which layer** does.
+
+| Layer | Names a vendor? | Why |
+|---|---|---|
+| `WorkflowRegistry` action types | **No** | A `push_to_klaviyo` case in the shipped registry means every install with a different CRM forks the product to add theirs |
+| `IntegrationRegistry` (driver catalogue) | **Yes** | A Klaviyo driver needs Klaviyo-specific code; it has to exist somewhere. Registered like actions are, so it is additive |
+| `integration_instances` row | **Yes** | "Klaviyo — Marketing", with this operator's own credentials |
+| `workflow_actions.config` | The **instance** | `{"integration": "klaviyo-marketing"}` |
+
+So there is one generic `push_to_integration`, and the action palette is a **query against
+enabled instances** rather than a list maintained in code. Enabling a vendor is what makes it
+appear.
+
+`integration_instances.provider` holds a registry **key**, never a class name. That is the
+same security boundary `WorkflowRegistry` draws for the same reason: these rows are
+operator-editable, and a class name in an editable row that is later instantiated is
+arbitrary class instantiation in a product many companies deploy.
+
+## Capabilities: two questions, both asked
+
+An integration is offered for something only when **both** are true:
+
+- **Can it?** The driver implements that capability's interface. A fact about code, checked
+  with `instanceof`, and impossible to misdeclare — `IntegrationCapability::capabilitiesOf()`
+  derives the set from `class_implements()`, so `registerProvider()` takes no capability list
+  at all. A driver that loses an interface stops claiming the capability in the same commit.
+- **May it?** The operator ticked it on the instance. One Twilio account may be authorised
+  for SMS but not voice; one email vendor for transactional but not marketing.
+
+Neither implies the other. `IntegrationRegistry::instanceOffers()` asks both so callers have
+one question to remember instead of two.
+
+| Capability | Interface |
+|---|---|
+| `sms` | `SendsSms` |
+| `transactional_email` | `SendsTransactionalEmail` |
+| `marketing_email` | `SendsMarketingEmail` |
+| `crm` | `SyncsContacts` |
+
+Transactional and marketing email are separate cases because the **consent** is separate:
+somebody who gave an address to receive their own protocol has not joined a mailing list.
+
+## Narrow interfaces, because two real vendors disagree
+
+`TelehealthProviderInterface` in this codebase is **42 methods** and no second vendor could
+implement it. That is what a `supports(string $capability): bool` design produces: one
+interface wide enough for every vendor, with each implementation throwing on the half it
+cannot do.
+
+The concrete case this design had to survive:
+
+| | Klaviyo | GoHighLevel |
+|---|---|---|
+| Events API | yes | **does not exist** |
+| Direct automation enrolment | **forbidden by their terms** | yes |
+| Grouping | list **ids** | tag **strings**; no lists |
+
+They accomplish "start the follow-up" through opposite verbs. So Klaviyo implements
+`SyncsContacts` + `TracksEvents`, GoHighLevel implements `SyncsContacts` +
+`EnrollsInAutomations`, and neither pretends. `SyncsContacts::addToGroup()` takes a semantic
+**name** and the instance's `settings` map it — a list id at one end, a tag at the other.
+
+Build the second driver early rather than last. Two vendors that disagree are what prove a
+contract; one vendor only proves it can describe itself.
+
+Also note a limit neither vendor escapes: **you cannot start somebody mid-automation.**
+"Where in the funnel they arrive" has to become *which* automation, plus contact attributes
+its internal branches read.
+
+## The PHI boundary
+
+Once "push to a CRM" is a dropdown beside a field list, mapping a quiz's health answers into
+a destination that must never receive them is one click, looks exactly like every correct
+mapping, and **produces no error**. The driver sees a string, the vendor accepts it, the run
+row says success. Nothing downstream can catch it and no log would show it afterwards.
+
+So the check is structural, and it sits in `FieldMap` between the operator's mapping and the
+driver.
+
+**Classification travels with the field**, in one vocabulary
+(`App\Enums\Privacy\DataClassification`: `general` < `sensitive` < `phi`), rather than each
+driver deciding what it will accept. A driver can then be wrong about a vendor's terms without
+that being a data-protection failure.
+
+Where a classification comes from:
+
+- **Subject fields** — the `WorkflowRegistry` subject allow-list, which is already the
+  boundary everything outbound passes through. `registerSubject()` accepts
+  `'age' => ['label' => 'Age', 'class' => DataClassification::Phi]`; a bare string means
+  `general`, so existing registrations keep working. **Atlas declares its own**: `age` and
+  `gender` are ordinary demographics in a shop and clinical inputs here, because this install
+  uses them to gate which treatments may be recommended. The generic layer enforces; the
+  domain decides.
+- **Quiz answers** — per question. `quiz_questions.data_class` overrides
+  `QuizQuestionKind::defaultDataClassification()`, and **null means inherit**, which is the
+  state almost every question is in. Always call `QuizQuestion::effectiveDataClass()`; reading
+  the raw column treats the commonest case as unclassified.
+
+  **Authored kinds default to `Phi`**, and that is a correction, not caution. They defaulted to
+  `Sensitive` first, which reads as protective and is not — only `Phi` engages the gate, so
+  `Sensitive` and `General` behave identically at the one moment that matters. On this install
+  that left "Anything to flag?" (blood pressure, cholesterol, blood sugar, liver) and "On any
+  medications right now?" free to leave for an unattested destination, labelled "· personal" in
+  the mapper. The operator downgrades what is genuinely not clinical via the **Sensitivity**
+  select on the question; that control has to exist or the protective default is a wall.
+
+`quiz_answers` is deliberately **not** in the subject allow-list. Registering it would
+classify the container and let every answer inside inherit one verdict. `FieldMap` resolves
+`quiz_answers.{slug}` per question instead, and reads those values directly rather than
+through `WorkflowContext::get()` — which is bounded by the allow-list and would silently blank
+every one of them.
+
+**Permission is a setting, not a hardcoded refusal.** An install with an agreement covering
+health data is entitled to send it; hardcoding a vendor's name into a refusal would be wrong
+for them and would go stale the moment that vendor changed its terms. `FieldMap` compares two
+declared facts — the field's classification and the instance's attestation — and has no
+opinion of its own about any vendor.
+
+Three outcomes, not two. `block` and `send` alone force a choice between a broken funnel and
+an unsafe one, and the unsafe one always wins:
+
+| `on_phi` | Effect |
+|---|---|
+| `block` (default) | The whole push is refused, naming the field |
+| `redact` | The destination learns the field was present; the value never leaves |
+| `send` | A deliberate override |
+
+**Unknown sources fail closed.** An unregistered source, a subject with no key, a
+`quiz_answers.{slug}` with no question behind it — all classify as `phi`. A source nobody has
+classified is precisely the one not to wave through.
+
+**But note exactly what the gate covers: field VALUES classified `Phi`.** `Sensitive` is
+informational — it changes a label in the mapper, not whether a value may be sent. Do not read
+it as a partial block. Three things are outside the gate entirely and are recorded in
+"Known gaps" below.
+
+**The check runs at send time, not only at save time.** An attestation can be withdrawn after
+a workflow was authored — that is the point of allowing revocation — and a form-time-only
+check would keep shipping data the operator has since withdrawn permission for.
+
+**The identity fields pass through the gate too, as implicit mappings.** A contact needs
+something to be keyed by, so `email`, `phone`, `first_name` and `last_name` are sent even when
+the operator mapped nothing — but `PushToIntegrationAction::withIdentity()` appends them to the
+mapping list rather than reading them off the subject. Reading them directly would be a hole by
+construction: harmless only because this install classifies email as personal rather than
+health data, and leaking the day somebody reclassified a field the fallback touched. An
+explicit mapping for the same source always wins, so an operator's own destination name and
+`on_phi` choice are never overridden.
+
+## The attestation
+
+`integration_instances.phi_permitted` is a **cache** of the newest row in
+`integration_phi_attestations`. Always write it through `IntegrationInstance::attestPhi()`;
+setting the boolean alone produces a permission nobody is recorded as having granted.
+
+It is an **attestation, not a verification**. Nothing here can check whether an agreement
+exists — only that a named person said it does, on a date, with a reason. That makes the who
+and the when the entire value of the record, which is why a pair of columns is not enough:
+they lose the previous answer the second time the flag is toggled, which is exactly when the
+question gets asked.
+
+Append-only, enforced in the model exactly as `LeadConsent` is, with the same honest limit:
+these are Eloquent model events, so they cover every path through a model instance and nothing
+else. A query-builder `update()` or `withoutEvents()` bypasses them. The claim is "no path
+through this class", not "impossible".
+
+`permitted = false` is a real record. "Revoked on the 3rd" and "never attested" are different
+facts.
+
+The admin exposes this as an **action, not a form toggle** — a field an operator can flip
+while editing a display name is a permission nobody is recorded as having granted.
+
+## Slugs are guarded
+
+`workflow_actions.config` references an instance by slug inside a JSON column, so no foreign
+key can protect it. This project has met the consequence twice — a renamed palette colour
+blanks every section using it, a re-slugged disposition orphans its workflows. **When
+references are by name, a rename is a removal.** `IntegrationInstance` therefore blocks both
+rename and delete while any action points at it, and the operator deactivates instead.
+
+## Credentials
+
+`credentials` is `encrypted:array`; `settings` is plain JSON so an admin table can show
+non-secret config without decrypting anything.
+
+**Never render credentials as a key/value editor.** It cannot mask one field, shows every
+secret at once, and rewrites the whole blob on save — so a masked placeholder would overwrite
+the real secret with the mask. Each driver declares its credential inputs via the
+`credentials:` closure on `registerProvider()`, and each becomes a masked `TextInput`, as
+`MerchantAccountForm` already does.
+
+## What a handler may put in the run log
+
+**`workflow_action_runs.output` and `.error` are UNENCRYPTED**, and readable by any admin with
+run-log access. Two rules follow, and both are tested:
+
+- **Handlers record identifiers, never values.** `remote_id`, a message SID, a status, a count.
+  Never a message body, never a mapped field. `PushToIntegrationAction` returns
+  `['remote_id' => …, 'fields_sent' => 3]` for exactly this reason, and `TwilioDriver` returns
+  the message SID rather than the text it sent.
+- **Credentials are scrubbed from error messages.** Several vendor APIs quote the offending key
+  back in their error ("the key pk_live_… is not valid"), and that message is persisted verbatim.
+  `TalksToVendorApi` remembers every secret read through `credential()` — the single place a
+  driver reads one — and redacts them from anything that escapes. Mutation-verified: disabling
+  the scrub writes a live key into the error.
+
+## Known gaps
+
+Three things the gate does not cover. All are decisions, not oversights, and all should be
+closed before an install builds a funnel that depends on them.
+
+**Operator-authored labels leave unclassified.** The `group` (list or tag name), `event` name
+and `automation` id in a `push_to_integration` config are strings an operator types, and
+nothing classifies them. `SyncsContacts`' own docblock makes the point: a list named "TRT
+interest" discloses health status exactly as a symptom answer does, and so does a protocol or
+product name. Today only `user.md` warns about it, in prose.
+
+**`Sensitive` gates nothing.** By design — but it means a field marked personal rather than
+clinical reaches every enabled destination. If "warn before sending personal data somewhere
+new" is wanted, add it as an explicit second check rather than giving `Sensitive` a partial
+meaning only some call sites honour.
+
+**`WebhookAction` is a known bypass around the PHI gate.** It posts `WorkflowContext::toLog()`
+to any URL, so an operator can point it straight at a vendor's HTTP API and skip everything
+above. Its payload is at least bounded by the subject allow-list — which is why `quiz_answers`
+is not on that list — but this should be closed properly, either by classifying its payload or
+by treating `webhook` as a destination that is never permitted for health data.
+
+## Shipped drivers
+
+| Key | Vendor | Capabilities | Operations | Credentials | Options |
+|---|---|---|---|---|---|
+| `local_mail` | This site's own mail stack | `transactional_email` | — | none (uses Communications settings) | from-name override |
+| `klaviyo` | Klaviyo | `crm` | contact sync, **events** | private API key | list name → id map |
+| `gohighlevel` | GoHighLevel | `crm` | contact sync, **enrolment** | API token | location id, source label |
+| `twilio` | Twilio | `sms` | — | account SID, auth token | messaging service SID, from number |
+
+**Klaviyo and GoHighLevel are deliberately not symmetrical**, and the table above is the proof
+the contract works: Klaviyo implements `TracksEvents` and not `EnrollsInAutomations`,
+GoHighLevel the exact reverse. Neither throws from a method it cannot honour, and the operation
+picker in the workflow form offers each only what its driver implements. `VendorDriverTest`
+asserts the asymmetry directly, so a future edit that "tidies" one to match the other fails.
+
+The two also disagree about grouping, which is why `addToGroup()` takes a semantic **name**:
+Klaviyo resolves it through the instance's list map to an opaque id, GoHighLevel passes it
+straight through as a tag. One workflow step, two correct meanings.
+
+> **⚠ NONE OF THE THREE VENDOR DRIVERS HAS BEEN RUN AGAINST A LIVE ACCOUNT.** They are built
+> from documented API shapes; the tests fake HTTP and pin the request we *intend* to send. Treat
+> a green suite as "this driver does what we meant", never as "this driver works". Verify with
+> real credentials before a funnel depends on one — the endpoint paths, the version headers
+> (`revision` for Klaviyo, `Version` for GoHighLevel) and the upsert response shapes are the
+> first things to check.
+
+Notes worth carrying, each of which shaped the code:
+
+- **Klaviyo's `external_id` does not participate in profile merging.** Keying on our lead id
+  creates duplicates rather than preventing them, so identity is email/phone and `external_id`
+  is a back-reference only.
+- **Klaviyo pins behaviour to a dated `revision` header**, which is effectively the API version.
+  Changing it can change response shapes.
+- **A Klaviyo private key's scopes are fixed at creation.** Widening them means a new key, which
+  the credential field's helper text says so an operator does not go looking for an edit screen.
+- **Every GoHighLevel call is scoped to a location** (sub-account). That id is configuration,
+  not a secret — it names the account, it does not open it — so it sits in `settings` unmasked.
+- **Neither vendor can start somebody mid-automation.** "Where in the funnel they arrive" has to
+  become *which* automation plus contact attributes its branches read.
+- **Twilio's REST API is form-encoded**, not JSON, and answers a JSON body with an unexplained
+  400. `TwilioDriver` uses `asForm()` and a test pins the content type.
+- **Twilio will sign a BAA**, making SMS one of the few channels where health content can be
+  legitimate. That is still the operator's attestation; no driver enforces it.
+- **Klaviyo's acceptable-use policy bars health data and they sign no BAA.** That is a fact
+  about their terms, not a rule any class here enforces — `FieldMap` and the operator's
+  attestation decide. Do not add a hardcoded refusal: it would be wrong for an install whose
+  contract differs, and stale the moment their terms change.
+
+## Adding a provider
+
+1. Implement `IntegrationDriver` plus the capability interfaces you can genuinely honour.
+   Do not implement one you would have to throw from.
+2. Register it in `IntegrationServiceProvider` (or your own provider) with a key, a label, and
+   `credentials:` / `settings:` closures returning Filament components.
+3. That is all. The admin form, the capability checkboxes, the action palette and the
+   operation picker all read the registry.
+
+`LocalMailDriver` is the reference: it registers this site's own mail stack as a provider so
+`send_email` is uniformly capability-routed and works on a fresh install with no vendor
+account anywhere. It deliberately does **not** offer `marketing_email` — Laravel's mailer
+cannot honour an unsubscribe.
+
+## Files
+
+| | |
+|---|---|
+| Catalogue + capability derivation | `app/Integrations/IntegrationRegistry.php` |
+| Capability ↔ interface map | `app/Enums/Integrations/IntegrationCapability.php` |
+| Driver contracts | `app/Integrations/Contracts/*.php` |
+| PHI gate | `app/Integrations/FieldMap.php` |
+| Classification vocabulary | `app/Enums/Privacy/DataClassification.php` |
+| Models | `app/Models/Integrations/*.php` |
+| Actions | `app/Workflows/Actions/{PushToIntegration,SendEmail,SendSms,CapabilityRouting}*.php` |
+| Admin | `app/Filament/Resources/Integrations/`, `app/Filament/Support/IntegrationActionForms.php` |
+| Where vendors are declared | `app/Providers/IntegrationServiceProvider.php` |

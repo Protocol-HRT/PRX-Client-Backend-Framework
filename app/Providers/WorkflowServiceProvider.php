@@ -2,11 +2,17 @@
 
 namespace App\Providers;
 
+use App\Enums\Integrations\IntegrationCapability;
+use App\Enums\Privacy\DataClassification;
 use App\Events\Leads\LeadCreated;
 use App\Events\Leads\LeadDispositionChanged;
 use App\Events\Quiz\QuizCompleted;
+use App\Filament\Support\IntegrationActionForms;
 use App\Models\Lead;
 use App\Workflows\Actions\DispatchJobAction;
+use App\Workflows\Actions\PushToIntegrationAction;
+use App\Workflows\Actions\SendEmailAction;
+use App\Workflows\Actions\SendSmsAction;
 use App\Workflows\Actions\UpdateFieldAction;
 use App\Workflows\Actions\WebhookAction;
 use App\Workflows\WorkflowContext;
@@ -81,18 +87,63 @@ class WorkflowServiceProvider extends ServiceProvider
             'Run a background job',
             'Dispatch one of this installation\'s registered jobs.',
         );
+
+        // ── Capability-routed, and therefore conditional ──────────────
+        //
+        // These three appear in the palette only while some enabled integration
+        // provides what they need. That is the whole design: enabling a vendor
+        // is what makes its actions available, and no vendor is named in any of
+        // the keys, labels or handlers below.
+
+        $registry->registerAction(
+            'send_email',
+            SendEmailAction::class,
+            'Send an email',
+            'Emails the person this workflow is about, through whichever integration you have enabled '
+            .'for transactional email.',
+            capability: IntegrationCapability::TransactionalEmail,
+            configSchema: fn (): array => IntegrationActionForms::sendEmail(),
+        );
+
+        $registry->registerAction(
+            'send_sms',
+            SendSmsAction::class,
+            'Send an SMS',
+            'Texts the person this workflow is about. Only available once an SMS provider is configured.',
+            capability: IntegrationCapability::Sms,
+            configSchema: fn (): array => IntegrationActionForms::sendSms(),
+        );
+
+        $registry->registerAction(
+            'push_to_integration',
+            PushToIntegrationAction::class,
+            'Send to an integration',
+            'Push the record to a CRM or marketing platform you have configured, mapping the fields '
+            .'you choose. Health fields are checked against that destination\'s permissions before '
+            .'anything is sent.',
+            capability: IntegrationCapability::Crm,
+            configSchema: fn (): array => IntegrationActionForms::pushToIntegration(),
+        );
     }
 
     private function registerAtlasSubjects(WorkflowRegistry $registry): void
     {
+        // THE CLASSIFICATIONS ARE ATLAS'S, NOT THE ENGINE'S. What counts as health
+        // data depends on what the install collects and why: `age` and `gender`
+        // are ordinary demographics in a shop and clinical inputs here, because
+        // this install uses them to gate which treatments may be recommended. So
+        // they are declared where the domain is known, and the generic layer only
+        // enforces what it is told.
         $registry->registerSubject('lead', Lead::class, 'Lead', [
             'status' => 'Disposition',
-            'email' => 'Email',
-            'phone' => 'Phone',
-            'first_name' => 'First name',
-            'last_name' => 'Last name',
-            'age' => 'Age',
-            'gender' => 'Sex',
+            'email' => ['label' => 'Email', 'class' => DataClassification::Sensitive],
+            'phone' => ['label' => 'Phone', 'class' => DataClassification::Sensitive],
+            'first_name' => ['label' => 'First name', 'class' => DataClassification::Sensitive],
+            'last_name' => ['label' => 'Last name', 'class' => DataClassification::Sensitive],
+            // Clinical here: both feed the eligibility gate that decides which
+            // ingredients a person may be recommended.
+            'age' => ['label' => 'Age', 'class' => DataClassification::Phi],
+            'gender' => ['label' => 'Sex', 'class' => DataClassification::Phi],
             'country' => 'Country',
             'state' => 'State',
             'checkout_path' => 'Checkout path',
@@ -102,6 +153,11 @@ class WorkflowServiceProvider extends ServiceProvider
             'utm_medium' => 'UTM medium',
             'utm_campaign' => 'UTM campaign',
             'cart_subtotal' => 'Cart subtotal',
+            // The quiz a lead answered. The ANSWERS are not registered here and
+            // must not be — they are per-question, classified per question, and
+            // reach the mapper through QuizAnswerFields rather than as one opaque
+            // blob. Registering `quiz_answers` would classify the container and
+            // let every answer inside it inherit that single verdict.
             'quiz_id' => 'Quiz',
         ]);
     }

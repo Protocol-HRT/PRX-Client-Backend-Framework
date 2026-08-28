@@ -2,6 +2,7 @@
 
 namespace App\Models\Quiz;
 
+use App\Enums\Privacy\DataClassification;
 use App\Enums\Quiz\QuizQuestionKind;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -15,7 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class QuizQuestion extends Model
 {
     protected $fillable = [
-        'quiz_step_id', 'quiz_id', 'slug', 'kind', 'prompt', 'help',
+        'quiz_step_id', 'quiz_id', 'slug', 'kind', 'data_class', 'prompt', 'help',
         'is_required', 'position', 'is_active', 'visible_when', 'config',
     ];
 
@@ -23,6 +24,7 @@ class QuizQuestion extends Model
     {
         return [
             'kind' => QuizQuestionKind::class,
+            'data_class' => DataClassification::class,
             'is_required' => 'boolean',
             'is_active' => 'boolean',
             'visible_when' => 'array',
@@ -56,5 +58,26 @@ class QuizQuestion extends Model
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);
+    }
+
+    /**
+     * How sensitive this answer is, resolving the operator's choice against the
+     * kind's default.
+     *
+     * ALWAYS ASK THIS, never read `data_class` directly. Null there means "not
+     * classified by hand", which is the state almost every question is in — and
+     * a caller reading the raw column would treat the commonest case as
+     * unclassified rather than as the kind's default, which is how a health
+     * question ends up looking like general data to a field mapper.
+     */
+    public function effectiveDataClass(): DataClassification
+    {
+        return $this->data_class ?? $this->kind->defaultDataClassification();
+    }
+
+    /** Whether the operator classified this by hand, or it is inheriting. */
+    public function isDataClassExplicit(): bool
+    {
+        return $this->data_class !== null;
     }
 }

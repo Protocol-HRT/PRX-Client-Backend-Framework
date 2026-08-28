@@ -2,7 +2,11 @@
 
 namespace App\Workflows;
 
+use App\Enums\Integrations\IntegrationCapability;
+use App\Enums\Privacy\DataClassification;
+use App\Integrations\IntegrationRegistry;
 use App\Workflows\Contracts\WorkflowActionHandler;
+use Closure;
 use Illuminate\Database\Eloquent\Model;
 use InvalidArgumentException;
 
@@ -28,7 +32,7 @@ use InvalidArgumentException;
  */
 class WorkflowRegistry
 {
-    /** @var array<string, array{model: class-string<Model>, label: string, fields: array<string, string>}> */
+    /** @var array<string, array{model: class-string<Model>, label: string, fields: array<string, array{label: string, class: DataClassification}>}> */
     private array $subjects = [];
 
     /** @var array<string, array{event: class-string, label: string, subject: string|null, changed_field: string|null, subject_property: string|null}> */
@@ -45,17 +49,37 @@ class WorkflowRegistry
     /**
      * @param  string  $key  Stable key stored in `workflows.trigger_target`.
      * @param  class-string<Model>  $model
-     * @param  array<string, string>  $fields  attribute => human label. This is
-     *                                         an ALLOW-LIST, not documentation: it bounds what conditions may
-     *                                         read and what an update-field action may write, so a workflow
-     *                                         cannot be pointed at `password` or a hidden column.
+     * @param  array<string, string|array{label: string, class?: DataClassification}>  $fields
+     *                                                                                          attribute => human label, or attribute => ['label' => …, 'class' => …].
+     *
+     *   THIS IS AN ALLOW-LIST, NOT DOCUMENTATION. It bounds what conditions may
+     *   read, what an update-field action may write, and what a field mapper may
+     *   send to a third party — so a workflow cannot be pointed at `password` or
+     *   a hidden column.
+     *
+     *   The optional `class` says how sensitive the field is, which is what the
+     *   PHI gate compares against a destination's permissions. It hangs HERE
+     *   rather than on the model because this list is already the boundary
+     *   everything outbound passes through; classifying anywhere else would mean
+     *   a field could reach a destination without its classification travelling
+     *   with it. A bare string label means `general`, so every existing
+     *   registration keeps working unchanged.
      */
     public function registerSubject(string $key, string $model, string $label, array $fields = []): void
     {
-        $this->subjects[$key] = ['model' => $model, 'label' => $label, 'fields' => $fields];
+        $this->subjects[$key] = [
+            'model' => $model,
+            'label' => $label,
+            'fields' => array_map(
+                fn (string|array $field): array => is_array($field)
+                    ? ['label' => $field['label'], 'class' => $field['class'] ?? DataClassification::General]
+                    : ['label' => $field, 'class' => DataClassification::General],
+                $fields,
+            ),
+        ];
     }
 
-    /** @return array<string, array{model: class-string<Model>, label: string, fields: array<string, string>}> */
+    /** @return array<string, array<string, mixed>> */
     public function subjects(): array
     {
         return $this->subjects;
@@ -81,7 +105,24 @@ class WorkflowRegistry
     /** @return array<string, string> attribute => label, for a condition builder. */
     public function fieldsFor(string $subjectKey): array
     {
-        return $this->subjects[$subjectKey]['fields'] ?? [];
+        return array_map(
+            fn (array $field): string => $field['label'],
+            $this->subjects[$subjectKey]['fields'] ?? [],
+        );
+    }
+
+    /**
+     * How sensitive one of a subject's fields is.
+     *
+     * FAILS CLOSED, like every other read bounded by this allow-list: an
+     * unregistered field is treated as health data rather than as general data.
+     * The asymmetry is deliberate — guessing "general" for something nobody
+     * classified would let an unknown field through the PHI gate silently, and a
+     * field nobody has thought about is precisely the one to be careful with.
+     */
+    public function classificationFor(string $subjectKey, string $field): DataClassification
+    {
+        return $this->subjects[$subjectKey]['fields'][$field]['class'] ?? DataClassification::Phi;
     }
 
     /**
@@ -140,36 +181,90 @@ class WorkflowRegistry
         return $this->events[$key] ?? null;
     }
 
-    /** @return list<string> every registry key registered for this event class. */
-    public function keysForEvent(string $eventClass): array
-    {
-        return array_keys(array_filter(
-            $this->events,
-            fn (array $d): bool => $d['event'] === $eventClass,
-        ));
-    }
-
     // ─── Actions: what a workflow can do ─────────────────────────────
 
     /**
      * @param  string  $type  Stored in `workflow_actions.action_type`.
      * @param  class-string<WorkflowActionHandler>  $handler
+     * @param  IntegrationCapability|null  $capability  Offer this action only while some enabled
+     *                                                  integration provides this capability. Null =
+     *                                                  always offered.
+     * @param  Closure|null  $configSchema  Returns Filament components for this action's config.
+     *                                      Null falls back to the generic key/value editor, so the
+     *                                      actions that predate per-type forms keep working.
      */
-    public function registerAction(string $type, string $handler, string $label, ?string $description = null): void
-    {
-        $this->actions[$type] = ['handler' => $handler, 'label' => $label, 'description' => $description];
+    public function registerAction(
+        string $type,
+        string $handler,
+        string $label,
+        ?string $description = null,
+        ?IntegrationCapability $capability = null,
+        ?Closure $configSchema = null,
+    ): void {
+        $this->actions[$type] = [
+            'handler' => $handler,
+            'label' => $label,
+            'description' => $description,
+            'capability' => $capability,
+            'config_schema' => $configSchema,
+        ];
     }
 
-    /** @return array<string, array{handler: class-string<WorkflowActionHandler>, label: string, description: string|null}> */
+    /** @return array<string, array<string, mixed>> */
     public function actions(): array
     {
         return $this->actions;
     }
 
-    /** @return array<string, string> type => label, for a Filament select. */
+    /**
+     * The action types an operator may currently choose.
+     *
+     * FILTERED BY WHAT IS ACTUALLY CONFIGURED. "Send an email" is not offered
+     * while no integration provides transactional email, because an action that
+     * can only fail is worse than an absent one — the operator builds the funnel,
+     * sees no error, and discovers weeks later that the step never worked.
+     * Enabling an integration is what makes its actions appear.
+     *
+     * This filters the FORM only. `resolveAction()` deliberately does not filter,
+     * so a workflow authored while an integration was enabled keeps failing
+     * loudly per run after it is switched off, rather than quietly becoming a
+     * no-op that nothing explains.
+     *
+     * @return array<string, string> type => label, for a Filament select.
+     */
     public function actionOptions(): array
     {
-        return array_map(fn (array $d): string => $d['label'], $this->actions);
+        return collect($this->actions)
+            ->filter(fn (array $definition): bool => $this->capabilityIsAvailable($definition['capability'] ?? null))
+            ->map(fn (array $definition): string => $definition['label'])
+            ->all();
+    }
+
+    /** The capability an action needs, if any. */
+    public function capabilityFor(string $type): ?IntegrationCapability
+    {
+        return $this->actions[$type]['capability'] ?? null;
+    }
+
+    /**
+     * Filament components for one action's config, or null for the generic editor.
+     *
+     * @return list<mixed>|null
+     */
+    public function configSchemaFor(?string $type): ?array
+    {
+        $schema = $type === null ? null : ($this->actions[$type]['config_schema'] ?? null);
+
+        return $schema instanceof Closure ? $schema() : null;
+    }
+
+    private function capabilityIsAvailable(?IntegrationCapability $capability): bool
+    {
+        if ($capability === null) {
+            return true;
+        }
+
+        return app(IntegrationRegistry::class)->instancesOffering($capability)->isNotEmpty();
     }
 
     /**

@@ -2,17 +2,18 @@
 
 namespace App\Filament\Resources\Quiz\Quizzes\RelationManagers;
 
+use App\Enums\Privacy\DataClassification;
 use App\Enums\Quiz\QuizQuestionKind;
-use Filament\Forms\Components\Repeater;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -108,6 +109,21 @@ class StepsRelationManager extends RelationManager
                                 ->helperText('Optional line under the question.'),
                             Toggle::make('is_required')->label('Required')->default(true),
                             Toggle::make('is_active')->label('Active')->default(true),
+
+                            // THE DOWNGRADE CONTROL, and it has to exist here or
+                            // the protective default becomes a wall. Every
+                            // authored question is treated as health data until
+                            // somebody says otherwise, which is right for a
+                            // health quiz and wrong for "how did you hear about
+                            // us?" — and without this control the only way to
+                            // say otherwise would be a manual database write.
+                            Select::make('data_class')
+                                ->label('Sensitivity')
+                                ->native(false)
+                                ->placeholder(fn (?string $state, $get): string => 'Automatic — '
+                                    .(QuizQuestionKind::tryFrom($get('kind') ?? '')?->defaultDataClassification()->label() ?? 'Health (PHI)'))
+                                ->options(DataClassification::options())
+                                ->helperText('Controls where this answer may be sent. Leave on Automatic unless you know this question is not clinical — answers marked as health data are blocked from integrations you have not approved for it.'),
 
                             self::conditions()
                                 ->label('Ask this only when')
