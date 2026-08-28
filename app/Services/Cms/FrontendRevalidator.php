@@ -8,7 +8,13 @@ use App\Models\Cms\MenuItem;
 use App\Models\Content\FaqCategory;
 use App\Models\Content\FaqItem;
 use App\Models\Kb\Compound;
+use App\Models\Catalog\Package;
+use App\Models\Catalog\Plan;
 use App\Models\Kb\HealthGoal;
+use App\Models\Quiz\Quiz;
+use App\Models\Quiz\QuizQuestion;
+use App\Models\Quiz\QuizQuestionOption;
+use App\Models\Quiz\QuizStep;
 use App\Models\Page;
 use App\Models\PageSection;
 use Illuminate\Contracts\Foundation\Application;
@@ -151,6 +157,24 @@ class FrontendRevalidator
             // The quiz reads one list of goals, so a change to any of them
             // invalidates that list; there is no per-goal page to tag.
             $model instanceof HealthGoal => [self::TAG_ALL, 'health-goals'],
+
+            // The quiz payload embeds LIVE price ranges computed from plans,
+            // so a catalog write can make a cached quiz wrong without the quiz
+            // itself being touched. Plans and packages therefore invalidate
+            // `quiz` too — a plan's price, and a package's tier, both decide
+            // which range an option shows.
+            //
+            // Narrow on purpose: catalog models are NOT otherwise observed,
+            // so this adds no general catalog invalidation. Making catalog
+            // writes invalidate `catalog` as well is a separate, larger
+            // decision about revalidation traffic.
+            $model instanceof Plan,
+            $model instanceof Package => [self::TAG_ALL, 'quiz'],
+
+            $model instanceof Quiz,
+            $model instanceof QuizStep,
+            $model instanceof QuizQuestion,
+            $model instanceof QuizQuestionOption => [self::TAG_ALL, 'quiz'],
 
             $model instanceof Compound => array_values(array_filter([
                 self::TAG_ALL,

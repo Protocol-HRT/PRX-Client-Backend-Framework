@@ -1,0 +1,163 @@
+<?php
+
+namespace Tests\Feature\Quiz;
+
+use App\Cms\Support\VisibleWhen;
+use App\Enums\CatalogStatus;
+use App\Enums\Quiz\QuizQuestionKind;
+use App\Models\Catalog\Package;
+use App\Models\Catalog\Plan;
+use App\Models\Kb\HealthGoal;
+use App\Models\Quiz\Quiz;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+/**
+ * The quiz as data: what the walker is handed, and the branching vocabulary
+ * it shares with the CMS.
+ */
+class QuizSchemaTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private function quiz(): Quiz
+    {
+        return Quiz::create(['name' => 'T', 'slug' => 'test-quiz', 'is_active' => true, 'is_default' => true]);
+    }
+
+    private function step(Quiz $quiz, string $slug = 's1'): object
+    {
+        return $quiz->steps()->create(['slug' => $slug, 'name' => 'Step', 'position' => 1, 'is_active' => true]);
+    }
+
+    public function test_health_goals_resolve_from_the_goals_table_not_authored_options(): void
+    {
+        // The point of the reserved kind: a goal added here shows up in the
+        // quiz with no edit to the quiz, and one withdrawn from intake stops
+        // being offered without orphaning anything.
+        HealthGoal::create(['name' => 'Weight', 'slug' => 'weight', 'prompt' => 'Lose weight', 'show_in_quiz' => true]);
+        HealthGoal::create(['name' => 'Hidden', 'slug' => 'hidden', 'show_in_quiz' => false]);
+
+        $quiz = $this->quiz();
+        $this->step($quiz)->questions()->create([
+            'slug' => 'health_goals', 'kind' => QuizQuestionKind::HealthGoals,
+            'prompt' => 'Goals?', 'position' => 1, 'is_active' => true,
+        ]);
+
+        $options = $this->getJson('/api/v1/quiz')->assertOk()
+            ->json('data.steps.0.questions.0.options');
+
+        $this->assertSame(['weight'], array_column($options, 'value'));
+        // prompt wins over name — the same rule HealthGoalResource applies.
+        $this->assertSame('Lose weight', $options[0]['label']);
+    }
+
+    public function test_a_price_range_is_computed_live_and_never_authored(): void
+    {
+        $package = Package::factory()->create(['status' => CatalogStatus::Published, 'tier' => 'protocol']);
+        Plan::factory()->create(['package_id' => $package->id, 'status' => CatalogStatus::Published, 'retail_price' => 100, 'sale_price' => null]);
+        Plan::factory()->create(['package_id' => $package->id, 'status' => CatalogStatus::Published, 'retail_price' => 500, 'sale_price' => 400]);
+
+        $quiz = $this->quiz();
+        $question = $this->step($quiz)->questions()->create([
+            'slug' => 'start', 'kind' => QuizQuestionKind::SingleSelect,
+            'prompt' => 'Where?', 'position' => 1, 'is_active' => true,
+        ]);
+        $question->options()->create(['value' => 'protocol', 'label' => 'Protocol', 'price_source' => 'packages:protocol', 'position' => 1]);
+        $question->options()->create(['value' => 'advise', 'label' => 'Advise me', 'position' => 2]);
+
+        $options = $this->getJson('/api/v1/quiz')->assertOk()
+            ->json('data.steps.0.questions.0.options');
+
+        // sale_price wins over retail where present. assertEquals, not
+        // assertSame: JSON renders 100.0 as 100, so the decoded value is an
+        // int — the same shape PackageResource's price_range has always had.
+        $this->assertEquals(['from' => 100, 'to' => 400, 'currency' => 'USD'], $options[0]['price_range']);
+        // No source means no range — not a zero range, which would render as
+        // "$0 – $0" and read as free.
+        $this->assertNull($options[1]['price_range']);
+    }
+
+    public function test_a_tier_matching_no_package_yields_no_range_rather_than_every_package(): void
+    {
+        $package = Package::factory()->create(['status' => CatalogStatus::Published, 'tier' => 'protocol']);
+        Plan::factory()->create(['package_id' => $package->id, 'status' => CatalogStatus::Published, 'retail_price' => 100]);
+
+        $quiz = $this->quiz();
+        $question = $this->step($quiz)->questions()->create([
+            'slug' => 'start', 'kind' => QuizQuestionKind::SingleSelect,
+            'prompt' => 'Where?', 'position' => 1, 'is_active' => true,
+        ]);
+        $question->options()->create(['value' => 'stack', 'label' => 'Stack', 'price_source' => 'packages:stack', 'position' => 1]);
+
+        $this->assertNull(
+            $this->getJson('/api/v1/quiz')->json('data.steps.0.questions.0.options.0.price_range')
+        );
+    }
+
+    public function test_no_configured_quiz_is_a_404_not_an_empty_schema(): void
+    {
+        // An empty schema renders a wizard with no questions and a working
+        // Continue button, which looks broken rather than absent.
+        $this->getJson('/api/v1/quiz')->assertStatus(404);
+    }
+
+    public function test_the_answer_key_is_unique_across_the_quiz_not_the_step(): void
+    {
+        $quiz = $this->quiz();
+        $this->step($quiz, 's1')->questions()->create([
+            'slug' => 'dupe', 'kind' => QuizQuestionKind::Text, 'prompt' => 'A', 'position' => 1, 'is_active' => true,
+        ]);
+
+        $this->expectException(\Illuminate\Database\QueryException::class);
+
+        $this->step($quiz, 's2')->questions()->create([
+            'slug' => 'dupe', 'kind' => QuizQuestionKind::Text, 'prompt' => 'B', 'position' => 1, 'is_active' => true,
+        ]);
+    }
+
+    public function test_only_one_quiz_can_be_default(): void
+    {
+        $first = $this->quiz();
+        $second = Quiz::create(['name' => 'Second', 'slug' => 'second', 'is_active' => true, 'is_default' => true]);
+
+        $this->assertFalse($first->fresh()->is_default);
+        $this->assertTrue($second->fresh()->is_default);
+        $this->assertSame($second->id, Quiz::resolveDefault()->id);
+    }
+
+    /**
+     * `contains` is the operator the quiz added to the CMS's condition
+     * vocabulary. It is membership, not substring — branching on
+     * `health_goals: ["a","b"]` cannot be expressed with equals, and casting
+     * an array to a string to compare it would fatal.
+     */
+    public function test_visible_when_contains_matches_membership_in_a_multi_answer(): void
+    {
+        $answers = ['health_goals' => ['weight-management', 'sleep'], 'sex' => 'female'];
+        $get = fn (string $field): mixed => $answers[$field] ?? null;
+
+        $this->assertTrue(VisibleWhen::passes([['field' => 'health_goals', 'operator' => 'contains', 'value' => 'sleep']], $get));
+        $this->assertFalse(VisibleWhen::passes([['field' => 'health_goals', 'operator' => 'contains', 'value' => 'libido']], $get));
+        $this->assertTrue(VisibleWhen::passes([['field' => 'health_goals', 'operator' => 'not_contains', 'value' => 'libido']], $get));
+
+        // Degrades to equality on a scalar, so a condition survives a question
+        // being changed from multi- to single-select.
+        $this->assertTrue(VisibleWhen::passes([['field' => 'sex', 'operator' => 'contains', 'value' => 'female']], $get));
+
+        // An unanswered question matches nothing rather than erroring.
+        $this->assertFalse(VisibleWhen::passes([['field' => 'missing', 'operator' => 'contains', 'value' => 'x']], $get));
+    }
+
+    public function test_the_existing_equals_operators_are_unchanged(): void
+    {
+        // Regression guard: VisibleWhen is shared with the CMS's flexible
+        // section types, which author equals/not_equals conditions today.
+        $get = fn (string $f): mixed => ['mode' => 'manual', 'count' => 4][$f] ?? null;
+
+        $this->assertTrue(VisibleWhen::passes([['field' => 'mode', 'operator' => 'equals', 'value' => 'manual']], $get));
+        $this->assertFalse(VisibleWhen::passes([['field' => 'mode', 'operator' => 'equals', 'value' => 'featured']], $get));
+        $this->assertTrue(VisibleWhen::passes([['field' => 'count', 'value' => '4']], $get));
+        $this->assertTrue(VisibleWhen::passes([['field' => 'mode', 'operator' => 'not_equals', 'value' => 'featured']], $get));
+    }
+}

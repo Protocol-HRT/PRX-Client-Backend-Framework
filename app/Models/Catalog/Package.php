@@ -46,6 +46,7 @@ class Package extends Model implements Sortable
         'hero_image_path',
         'gallery',
         'status',
+        'tier',
         'retail_price',
         'sale_price',
         'cost',

@@ -17,7 +17,12 @@ use App\Models\Content\FaqItem;
 use App\Models\Page;
 use App\Models\PageSection;
 use App\Models\Kb\Compound;
+use App\Models\Catalog\Plan;
 use App\Models\Kb\HealthGoal;
+use App\Models\Quiz\Quiz;
+use App\Models\Quiz\QuizQuestion;
+use App\Models\Quiz\QuizQuestionOption;
+use App\Models\Quiz\QuizStep;
 use App\Observers\CmsCacheObserver;
 use Filament\Forms\Components\Repeater;
 use App\Observers\PageSectionObserver;
@@ -165,6 +170,15 @@ class AppServiceProvider extends ServiceProvider
         // content does — see FrontendRevalidator::tagsFor() for the tags.
         Compound::observe(CmsCacheObserver::class);
         HealthGoal::observe(CmsCacheObserver::class);
+        Quiz::observe(CmsCacheObserver::class);
+        // Prices and package tiers are embedded in the served quiz, so they
+        // invalidate it. See FrontendRevalidator for why this is deliberately
+        // narrower than "observe the catalog".
+        Plan::observe(CmsCacheObserver::class);
+        Package::observe(CmsCacheObserver::class);
+        QuizStep::observe(CmsCacheObserver::class);
+        QuizQuestion::observe(CmsCacheObserver::class);
+        QuizQuestionOption::observe(CmsCacheObserver::class);
 
         // Menu items reference linkable entities by short alias so DB rows
         // don't couple to class names. Non-enforcing: other morphs (tags,

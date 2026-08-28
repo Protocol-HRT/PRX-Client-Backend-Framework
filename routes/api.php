@@ -22,6 +22,7 @@ use App\Http\Controllers\Api\V1\Content\ProfileController;
 use App\Http\Controllers\Api\V1\Intake\IntakeSchemaController;
 use App\Http\Controllers\Api\V1\Kb\CompoundController;
 use App\Http\Controllers\Api\V1\Kb\HealthGoalController;
+use App\Http\Controllers\Api\V1\Quiz\QuizController;
 use App\Http\Controllers\Api\V1\Recommendations\ProtocolPreviewController;
 use App\Http\Controllers\Api\V1\Leads\LeadController;
 use App\Http\Controllers\Api\V1\Orders\OrderController;
@@ -131,6 +132,13 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
     // content. Nesting them under /kb would say the opposite.
     Route::get('health-goals', [HealthGoalController::class, 'index'])
         ->name('health-goals.index')
+        ->middleware('throttle:api');
+
+    // The quiz's own questions — public, identical for everyone, cacheable.
+    // The opposite of protocol/preview below, which is per-visitor and must
+    // never be cached.
+    Route::get('quiz/{slug?}', [QuizController::class, 'show'])
+        ->name('quiz.show')
         ->middleware('throttle:api');
 
     // What the quiz may offer a visitor, given the goals they picked and what

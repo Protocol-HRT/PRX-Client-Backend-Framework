@@ -31,6 +31,7 @@ class PackageResource extends JsonResource
             'banner_image_url' => $this->banner_image_path ? Storage::disk('public')->url($this->banner_image_path) : null,
             'gallery' => collect($this->gallery ?? [])->map(fn ($p) => Storage::disk('public')->url($p))->values()->all(),
             'status' => $this->status->value,
+            'tier' => $this->tier,
             'badge_text' => $this->badge_text,
             'highlights' => $highlights,
             'is_featured' => (bool) $this->is_featured,

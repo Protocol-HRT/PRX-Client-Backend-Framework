@@ -37,6 +37,13 @@ class PackageData extends Data
         public array $gallery = [],
         #[WithCast(EnumCast::class)]
         public CatalogStatus $status = CatalogStatus::Draft,
+
+        // What KIND of package this is — Atlas uses `protocol` and `stack`.
+        // A free string, not an enum: prx-backend ships to more than one
+        // client and their vocabulary is their own. Null means unclassified,
+        // which is the correct starting state.
+        #[Max(32)]
+        public ?string $tier = null,
         public ?float $retail_price = null,
         public ?float $sale_price = null,
         #[Min(0)]

@@ -26,6 +26,7 @@ class CreatePackageAction
                 'banner_image_path' => $data->banner_image_path,
                 'gallery' => $data->gallery,
                 'status' => $data->status,
+                'tier' => $data->tier,
                 'retail_price' => $data->retail_price,
                 'sale_price' => $data->sale_price,
                 'cost' => $data->cost,

@@ -94,6 +94,17 @@ class PackageForm
                                     ->hintIcon(Heroicon::InformationCircle, 'Draft and Pending packages are not visible on the public site.')
                                     ->native(false),
 
+                                Select::make('tier')
+                                    ->label('Kind')
+                                    ->options([
+                                        'protocol' => 'Protocol — a few peptides designed to run together',
+                                        'stack' => 'Stack — the larger, complete system',
+                                    ])
+                                    ->native(false)
+                                    ->placeholder('Unclassified')
+                                    ->helperText('The intake quiz asks "where would you like to start" and shows a live price range for protocols and for stacks. A package left unclassified appears in neither range.')
+                                    ->hintIcon(Heroicon::InformationCircle, 'Free-form on purpose — these two values are Atlas\'s. Another deployment on this backend can use its own.'),
+
                                 Section::make('Pricing')
                                     ->description('Display pricing. Used as transaction price when local checkout is configured; otherwise PRX is the source of truth.')
                                     ->columnSpanFull()

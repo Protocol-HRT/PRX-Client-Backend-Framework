@@ -246,7 +246,15 @@ class FlexibleSectionTypeForm
                     ->regex(self::KEY_PATTERN)
                     ->helperText('Sibling field key.'),
                 Select::make('operator')
-                    ->options(['equals' => 'Equals', 'not_equals' => 'Does not equal'])
+                    // Kept in step with the intake quiz's builder on purpose:
+                    // both compile to VisibleWhen, and two dialects for one
+                    // evaluator is how they drift.
+                    ->options([
+                        'equals' => 'Equals',
+                        'not_equals' => 'Does not equal',
+                        'contains' => 'Includes',
+                        'not_contains' => 'Does not include',
+                    ])
                     ->default('equals')
                     ->native(false),
                 TextInput::make('value')
