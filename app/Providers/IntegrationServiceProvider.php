@@ -80,8 +80,18 @@ class IntegrationServiceProvider extends ServiceProvider
                     ->password()
                     ->revealable()
                     ->required()
-                    ->helperText('Starts with pk_. A key\'s scopes are fixed when it is created — to widen '
-                        .'them you have to mint a new key, not edit this one.'),
+                    // THE SCOPES ARE NAMED HERE BECAUSE "Test connection" CANNOT
+                    // CATCH A MISSING ONE. It reads /accounts/, which needs only
+                    // `accounts:read` — so a read-only key reports a healthy
+                    // connection and then 403s on every write. That happened on
+                    // this install: the first key carried no write scope at all,
+                    // and no lead had ever reached Klaviyo.
+                    ->helperText('Starts with pk_. Give it these scopes when you create it: '
+                        .'accounts:read, profiles:write, lists:write, subscriptions:write, events:write. '
+                        .'Scopes are FIXED when a key is created — to change them, mint a new key and '
+                        .'paste it here; this one cannot be widened. Note that "Test connection" only '
+                        .'proves the key is valid: it cannot see which scopes the key has, so a read-only '
+                        .'key passes the test and then fails everything else.'),
             ],
             settings: fn (): array => [
                 // The name → id map. Without it, every workflow step would have

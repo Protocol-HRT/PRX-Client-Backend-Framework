@@ -40,8 +40,14 @@ use RuntimeException;
  *  * Consent and profile properties can never be one request. Subscribing is a
  *    different endpoint with different rules, so `upsertContact()` sets no
  *    consent — `addToGroup()` is where the two verbs part company.
- *  * A private key's scope is fixed when it is created. Widening it means
- *    minting a new key, which is why the credential field says so.
+ *  * A private key's scopes are fixed when it is created, and `test()` CANNOT
+ *    SEE THEM. It reads `/accounts/`, which needs only `accounts:read`, so a
+ *    read-only key reports a healthy connection and then 403s on every write —
+ *    which is what this install's first key did, meaning no lead ever reached
+ *    Klaviyo at all. The driver needs `accounts:read`, `profiles:write`,
+ *    `lists:write`, `subscriptions:write` and `events:write`; the credential
+ *    field names them, because the connection test cannot check them and there
+ *    is no endpoint that reports a key's scopes.
  *  * Klaviyo's acceptable-use policy bars health data and they do not sign BAAs.
  *    That is a fact about their terms, NOT a rule this class enforces — the
  *    operator's own attestation decides, and `FieldMap` enforces it upstream.

@@ -386,10 +386,17 @@ straight through as a tag. One workflow step, two correct meanings.
 > paths, the version headers (`Version` for GoHighLevel) and the upsert response shapes are the
 > first things to check.
 >
-> **The consented path is the most likely of these to fail first**, and not because of its
-> envelope: `POST /profile-subscription-bulk-create-jobs/` needs `subscriptions:write` on the
-> key, `test()` proves only that the key can read `/accounts/`, and a key's scopes are fixed
-> when it is minted. An install can therefore pass the connection test and fail every subscribe.
+> **SCOPES ARE THE FIRST THING THAT BREAKS, AND `test()` CANNOT SEE THEM.** Confirmed live on
+> this install 2026-08-28: the connection test passed and `POST /profile-import/` answered
+> `403 — Your API key is missing required scopes: profiles:write`. The key was read-only, so no
+> lead had ever reached Klaviyo at all, and nothing said so. `test()` reads `/accounts/`, which
+> needs only `accounts:read`; there is no endpoint that reports a key's scopes; and scopes are
+> fixed when a key is minted, so the fix is always a new key rather than an edit.
+>
+> The driver needs `accounts:read`, `profiles:write`, `lists:write`, `subscriptions:write`,
+> `events:write`. They are named in the credential field's helper text for exactly this reason.
+> Everything past the profile upsert — the subscribe envelope included — is therefore **still
+> unverified against a live account**; the 403 arrived before any of it was reached.
 
 Notes worth carrying, each of which shaped the code:
 

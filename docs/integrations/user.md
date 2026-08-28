@@ -193,3 +193,9 @@ uses it.
 - **Nothing happens at all.** Workflows run in the background, so give it a few seconds and
   refresh the run log. If runs never appear for anything, the background worker is not running
   and that is a server problem, not a settings one.
+- **"Test connection" passes but everything fails with "missing required scopes".** Your API key
+  is valid but was created without permission to *write*. The connection test can only tell you
+  the key works, not what it is allowed to do — no service will tell us that in advance — so
+  this is the one problem it cannot warn you about, and it has happened here. Most services fix
+  their permissions when a key is created and never afterwards, so you cannot widen the key you
+  have: create a new one with the permissions listed under the key field, and paste that in.
