@@ -130,9 +130,42 @@ Two limits worth knowing, because they are not obvious:
   discloses someone's health status just as plainly as an answer would, and so does a protocol
   or product name. Nothing can catch that for you; choose neutral names.
 
-Every question in your quiz counts as health data unless you say otherwise — you can change
-that per question under **Quizzes → the question → Sensitivity**. Leave it on *Automatic*
-unless you are sure a question is not clinical.
+Every question you write counts as health data unless you say otherwise — you can change that
+per question under **Quizzes → the question → Sensitivity**. Leave it on *Automatic* unless you
+are sure a question is not clinical. The goals question is the exception and is already treated
+as personal rather than health data, so you can segment campaigns on it.
+
+## Lists, and who actually ends up on one
+
+**Adding somebody to a marketing list is not the same as subscribing them**, and getting that
+wrong is silent in both directions — which is why this is decided for you from the consent you
+already hold rather than left as a checkbox.
+
+- **Someone who agreed to marketing is subscribed properly.** Their consent is recorded at the
+  destination as well as here, so your emails actually send. Previously they were only *added*
+  to the list: the automation fired, the platform suppressed the message for want of consent,
+  and nothing told you.
+- **Someone who did not agree is left off the list.** Their profile is still created or
+  updated, so everything else you mapped is there — they are simply not put on an audience they
+  never opted into.
+
+Consent is per channel: somebody who agreed to email and not to texts is subscribed for email
+only.
+
+**To record that someone has withdrawn**, open the lead, go to **Consent audit** and use
+**Record a decision**. It takes effect on the very next workflow run, with nothing to edit in
+the workflow itself. The consent boxes on the lead's own tab are a display of the current state
+and cannot be changed there — a withdrawal has to be recorded as history, with who entered it
+and when, or it is not evidence of anything. Nothing already recorded is ever altered: a person
+who agreed and later changed their mind has both entries, in order.
+
+If a list is really your own bookkeeping — "quiz-abandoned", "called back" — rather than
+something you send to, set **If they have not agreed to marketing → Add them anyway** on that
+step. For reaching people who have not opted in, an **event** is the better tool: record
+"abandoned the quiz" and let a flow decide what to do with it.
+
+When somebody is left off, the run log says so on that step. An empty list with a healthy run
+log usually means exactly this, not a broken workflow.
 
 ## Sending email and SMS
 

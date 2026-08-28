@@ -125,6 +125,19 @@ class IntegrationInstance extends Model
         return $this->hasMany(IntegrationPhiAttestation::class)->latest('id');
     }
 
+    /**
+     * What this destination calls the records we have pushed to it.
+     *
+     * Survives a soft delete on purpose — switching a destination off must not
+     * lose the ids, or turning it back on would create every profile again.
+     *
+     * @return HasMany<IntegrationIdentity>
+     */
+    public function identities(): HasMany
+    {
+        return $this->hasMany(IntegrationIdentity::class);
+    }
+
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);

@@ -440,5 +440,5 @@ class ContactSyncingDriver implements SyncsContacts
         return 'remote-phi-test';
     }
 
-    public function addToGroup(IntegrationInstance $instance, string $remoteId, string $group): void {}
+    public function addToGroup(IntegrationInstance $instance, string $remoteId, string $group, ContactPayload $contact): void {}
 }

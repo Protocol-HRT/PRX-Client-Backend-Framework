@@ -95,7 +95,27 @@ class IntegrationActionForms
             TextInput::make('config.group')
                 ->label('Add to list or tag')
                 ->helperText('The name of a list or tag at the far end. Leave empty to only update the person.')
+                ->live(onBlur: true)
                 ->visible(fn (Get $get): bool => $get('config.operation') === PushToIntegrationAction::OP_SYNC_CONTACT),
+
+            // Only meaningful once a list is named — there is nothing to skip
+            // otherwise, and a control that does nothing invites the operator to
+            // read a guarantee into it that is not there.
+            Select::make('config.when_not_consented')
+                ->label('If they have not agreed to marketing')
+                ->default(PushToIntegrationAction::NOT_CONSENTED_SKIP)
+                ->options([
+                    PushToIntegrationAction::NOT_CONSENTED_SKIP => 'Leave them off the list',
+                    PushToIntegrationAction::NOT_CONSENTED_ADD => 'Add them anyway',
+                ])
+                ->helperText('Someone who agreed is recorded as having agreed at the destination too, where '
+                    .'that service has such a thing — which is what makes your emails actually send rather '
+                    .'than being suppressed at their end. Someone who did not agree is left off: putting a '
+                    .'person on a marketing list without their agreement is the mistake worth avoiding, and '
+                    .'they are usually better reached by an event that triggers a flow. Choose "add them '
+                    .'anyway" only for a list or tag you keep for your own records rather than for sending.')
+                ->visible(fn (Get $get): bool => $get('config.operation') === PushToIntegrationAction::OP_SYNC_CONTACT
+                    && filled($get('config.group'))),
 
             TextInput::make('config.event')
                 ->label('Event name')

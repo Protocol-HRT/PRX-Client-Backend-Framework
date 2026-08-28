@@ -190,6 +190,119 @@ facts.
 The admin exposes this as an **action, not a form toggle** — a field an operator can flip
 while editing a display name is a permission nobody is recorded as having granted.
 
+## Consent decides the verb
+
+**`addToGroup()` adding somebody to a Klaviyo list set no consent, and that was a live
+defect.** `POST /lists/{id}/relationships/profiles/` puts a profile on a list without
+subscribing it. Klaviyo then suppresses marketing to that profile — while the "Added to List"
+flow still fires. The funnel looks correct, the run row says success, and the email never
+lands. Nothing anywhere reports it.
+
+The fix is **not** "always subscribe". Opting somebody in who did not agree is the worse of
+the two errors and the one that reaches a regulator. So the verb comes from **our own consent
+audit**:
+
+```
+lead_consents (append-only)          →  ConsentResolver  →  ConsentState  →  ContactPayload
+  latest row per channel, granted        (live query)        list<channel>     ->consent
+```
+
+- **`ConsentResolver` reads `lead_consents`, not the `leads` booleans.** The booleans are a
+  current-state cache, written by `RecordConsentAction` at the same moment as the row it
+  caches; the audit is what anything outbound consults. A withdrawal is a *new row* with
+  `granted = false`, so the resolver takes the latest row per channel and orders by `id` as
+  well as `consented_at`, or a grant and a withdrawal captured in the same second resolve
+  arbitrarily. (There *was* a path that moved the booleans without an audit row — `LeadForm`'s
+  consent toggles. It is closed; see the end of this section.)
+- **Resolved at send time, from the database.** A chain carries a trigger-time attribute
+  snapshot (see `RunWorkflowChain`) and may run after a withdrawal. This is exactly the field
+  where the stale answer is the harmful one — the same rule the PHI attestation follows, and
+  for the same reason: a revocation must take effect on the next run with nobody editing a
+  workflow.
+- **Fails closed.** Non-`Lead` subject, null subject, no rows → nothing granted.
+
+**Consent deliberately does not go through `FieldMap`.** Everything the mapper carries is a
+field an operator *chose* to send; consent is an invariant, and a mapping somebody can point
+anywhere — or forget — is the wrong shape for the thing deciding whether a person may be
+marketed to. It therefore rides on `ContactPayload::$consent`, out of reach of any mapping,
+and a mapping whose destination is literally `consent` is nothing but a custom property with a
+suggestive name. `ConsentVerbTest` pins that.
+
+**`SyncsContacts::addToGroup()` takes the whole payload, not just the remote id.** A remote id
+is enough to add somebody to a list and not enough to subscribe them: consent is per channel,
+and a channel needs its identifier — an email grant with no email address subscribes nothing.
+A driver may ignore consent where its platform has no such concept (GoHighLevel tags carry
+none; its opt-out is a separate DND concept on the contact). What a driver may **not** do is
+read consent out of `$contact->attributes`.
+
+Klaviyo's consented path is `POST /api/profile-subscription-bulk-create-jobs/`, which sets
+consent and adds to the list in one asynchronous job (202, no body). `subscriptions` is keyed
+by channel and an omitted channel is left untouched rather than cleared. **`consented_at` is
+deliberately not sent**: Klaviyo accepts it only under `historical_import: true`, which also
+bypasses double opt-in and the "Added to List" flows — wrong for a live capture, and our
+timestamp evidence lives in `lead_consents` anyway. **This path needs `subscriptions:write` on
+the key**, which `test()` does not prove — it only reads `/accounts/`, and a key's scopes are
+fixed when it is minted.
+
+The not-consented branch is the operator's, via `when_not_consented` on the action —
+`skip` (default) or `add`. `add` exists because not every group is an audience: a tag such as
+"quiz-abandoned" is internal bookkeeping. The test is `!== add`, so an unrecognised value in
+that JSON column skips rather than adds; `config` is authored by fill scripts as well as by the
+form, and a typo must not opt somebody in. A skip is **named in the run result**
+(`group_skipped`), because a step that quietly does three-quarters of its job is the failure
+this whole slice removes.
+
+**Scope, stated so nobody reads more into it.** Consent decides the verb for the GROUP step of
+`sync_contact`, and nothing else. `track_event` and `enroll` do not consult it — enrolment in
+particular drops somebody into an automation that can send, with no gate and no
+`when_not_consented`. That is not an oversight to leave quiet: an event is the *recommended*
+way to reach somebody who has not opted in (it triggers a flow without putting them on a
+list), and enrolment is a GoHighLevel concept whose own DND handling sits at the vendor. But if
+a second gate is ever wanted, enrolment is where it goes.
+
+**The whole thing rests on `RecordConsentAction` being the only writer**, so the paths that
+could break it matter as much as the resolver. The lead form used to carry raw
+`email_consent` / `sms_consent` toggles that wrote the cache and no audit row — meaning an
+operator could enter somebody's opt-out into a column nothing downstream reads, while the audit
+still said granted and the next run subscribed them. Those fields are now `disabled()` **and**
+`dehydrated(false)` (disabled alone still submits), and the audit relation manager carries an
+append-only "Record a decision" action. A veto — treating a cached `false` as a refusal
+regardless of the audit — was tried and rejected: an import writing straight to the audit
+leaves the cache at its default, so it would silently discard real consent, and a rule that
+only sometimes matches the record is the `Sensitive` mistake again.
+
+## Remote ids
+
+`integration_identities` records what a destination calls one of our records — the id
+`upsertContact()` returns, which used to be discarded the moment the run ended.
+
+| | |
+|---|---|
+| Key | `(integration_instance_id, subject_type, subject_id)`, unique |
+| Also indexed | `(integration_instance_id, remote_id)` for reverse lookup |
+| Written by | `PushToIntegrationAction`, never a driver |
+
+- **A table, not a column per vendor.** A lead exists in several destinations at once, and a
+  column per vendor is a migration every time an operator connects one — in a backend that
+  ships to companies whose vendors we have not met. It would also invent a naming convention,
+  and this codebase already carries three that compete (`prescribe_rx_*`, `provider_*`,
+  `prx_*`). Keyed by the *instance*, so the operator's own row names the destination.
+- **Not unique on `remote_id`.** Klaviyo merges profiles on email, so two of our subjects can
+  legitimately point at one remote profile; a constraint forbidding that would fail a push for
+  being correct. A re-push is an upsert, and the newest id wins — a merge hands back a
+  different one.
+- **Polymorphic**, because the workflow engine's subjects already are and because progressive
+  identify (23c) captures somebody before a lead exists.
+- **Cascades on force-delete only.** `IntegrationInstance` soft-deletes, so switching a
+  destination off keeps the ids and turning it back on does not recreate every profile.
+- **Persisting is best-effort.** The remote push has already succeeded when it runs; failing
+  the action there would report a failure that did not happen, and with `tries = 1` nobody
+  retries it. A missing row costs one redundant upsert; a false failure costs trust in the run
+  log.
+- **Index names are explicit.** MySQL caps an identifier at 64 characters and
+  `integration_identities` plus three columns overflows it — the same trap that created
+  `integration_phi_attestations` with its index silently missing.
+
 ## Slugs are guarded
 
 `workflow_actions.config` references an instance by slug inside a JSON column, so no foreign
@@ -251,7 +364,7 @@ by treating `webhook` as a destination that is never permitted for health data.
 | Key | Vendor | Capabilities | Operations | Credentials | Options |
 |---|---|---|---|---|---|
 | `local_mail` | This site's own mail stack | `transactional_email` | — | none (uses Communications settings) | from-name override |
-| `klaviyo` | Klaviyo | `crm` | contact sync, **events** | private API key | list name → id map |
+| `klaviyo` | Klaviyo | `crm` | contact sync (subscribes on consent), **events** | private API key | list name → id map |
 | `gohighlevel` | GoHighLevel | `crm` | contact sync, **enrolment** | API token | location id, source label |
 | `twilio` | Twilio | `sms` | — | account SID, auth token | messaging service SID, from number |
 
@@ -265,12 +378,18 @@ The two also disagree about grouping, which is why `addToGroup()` takes a semant
 Klaviyo resolves it through the instance's list map to an opaque id, GoHighLevel passes it
 straight through as a tag. One workflow step, two correct meanings.
 
-> **⚠ NONE OF THE THREE VENDOR DRIVERS HAS BEEN RUN AGAINST A LIVE ACCOUNT.** They are built
-> from documented API shapes; the tests fake HTTP and pin the request we *intend* to send. Treat
-> a green suite as "this driver does what we meant", never as "this driver works". Verify with
-> real credentials before a funnel depends on one — the endpoint paths, the version headers
-> (`revision` for Klaviyo, `Version` for GoHighLevel) and the upsert response shapes are the
+> **⚠ ALMOST NOTHING HERE HAS BEEN RUN AGAINST A LIVE ACCOUNT.** Verified so far, all Klaviyo:
+> the `revision` header, the credential check in `test()`, and the shape of a list id.
+> Everything else is built from documented API shapes; the tests fake HTTP and pin the request
+> we *intend* to send. Treat a green suite as "this driver does what we meant", never as "this
+> driver works". GoHighLevel and Twilio have touched no real account at all — the endpoint
+> paths, the version headers (`Version` for GoHighLevel) and the upsert response shapes are the
 > first things to check.
+>
+> **The consented path is the most likely of these to fail first**, and not because of its
+> envelope: `POST /profile-subscription-bulk-create-jobs/` needs `subscriptions:write` on the
+> key, `test()` proves only that the key can read `/accounts/`, and a key's scopes are fixed
+> when it is minted. An install can therefore pass the connection test and fail every subscribe.
 
 Notes worth carrying, each of which shaped the code:
 
@@ -317,6 +436,7 @@ cannot honour an unsubscribe.
 | Driver contracts | `app/Integrations/Contracts/*.php` |
 | PHI gate | `app/Integrations/FieldMap.php` |
 | Classification vocabulary | `app/Enums/Privacy/DataClassification.php` |
+| Consent → verb | `app/Integrations/ConsentResolver.php`, `app/Integrations/Messages/ConsentState.php` |
 | Models | `app/Models/Integrations/*.php` |
 | Actions | `app/Workflows/Actions/{PushToIntegration,SendEmail,SendSms,CapabilityRouting}*.php` |
 | Admin | `app/Filament/Resources/Integrations/`, `app/Filament/Support/IntegrationActionForms.php` |

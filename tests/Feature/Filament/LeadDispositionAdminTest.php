@@ -2,12 +2,14 @@
 
 namespace Tests\Feature\Filament;
 
+use App\Actions\Leads\RecordConsentAction;
 use App\Enums\LeadStatus;
 use App\Filament\Resources\LeadDispositions\Pages\CreateLeadDisposition;
 use App\Filament\Resources\LeadDispositions\Pages\EditLeadDisposition;
 use App\Filament\Resources\LeadDispositions\Pages\ListLeadDispositions;
 use App\Filament\Resources\Leads\Pages\EditLead;
 use App\Filament\Resources\Leads\RelationManagers\ConsentsRelationManager;
+use App\Integrations\ConsentResolver;
 use App\Models\Lead;
 use App\Models\LeadConsent;
 use App\Models\LeadDisposition;
@@ -126,6 +128,57 @@ class LeadDispositionAdminTest extends TestCase
             ->assertOk()
             ->assertSee('Email me my protocol plan.')
             ->assertSee('203.0.113.9');
+    }
+
+    public function test_the_lead_form_cannot_change_a_consent(): void
+    {
+        // IT COULD, AND THAT WAS THE HOLE. The form's toggles wrote the cached
+        // booleans and no audit row, so an operator entering somebody's opt-out
+        // changed a column nothing downstream reads while the audit — which
+        // everything downstream does read — still said granted. The next
+        // workflow run subscribed them at the destination, and reported success.
+        $lead = Lead::factory()->create();
+        app(RecordConsentAction::class)->execute($lead, 'email', true, source: 'quiz');
+
+        Livewire::test(EditLead::class, ['record' => $lead->getRouteKey()])
+            ->fillForm(['email_consent' => false])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertTrue($lead->fresh()->email_consent);
+        $this->assertSame(1, LeadConsent::query()->where('lead_id', $lead->getKey())->count());
+    }
+
+    public function test_an_operator_records_a_withdrawal_as_a_new_audit_entry(): void
+    {
+        // The path that had to exist for the docs to be true: nothing in the
+        // admin could record a withdrawal at all. It APPENDS — the grant stays
+        // on the record, because "they agreed, then changed their mind" is two
+        // facts and an audit that overwrote the first would lose one of them.
+        $lead = Lead::factory()->create();
+        app(RecordConsentAction::class)->execute($lead, 'email', true, source: 'quiz');
+
+        Livewire::test(ConsentsRelationManager::class, [
+            'ownerRecord' => $lead,
+            'pageClass' => EditLead::class,
+        ])
+            ->callTableAction('record', data: [
+                'channel' => 'email',
+                'decision' => 'withdrew',
+                'consent_text' => 'Asked to be removed by email.',
+            ])
+            ->assertHasNoActionErrors();
+
+        $rows = LeadConsent::query()->where('lead_id', $lead->getKey())->orderBy('id')->get();
+
+        $this->assertCount(2, $rows);
+        $this->assertTrue($rows[0]->granted);
+        $this->assertFalse($rows[1]->granted);
+        $this->assertSame('admin', $rows[1]->source);
+        $this->assertNotNull($rows[1]->recorded_by_user_id);
+
+        // And it reaches the thing that decides whether they may be marketed to.
+        $this->assertFalse(app(ConsentResolver::class)->resolve($lead->fresh())->grants('email'));
     }
 
     private function leadWithQuizAnswers(): Lead

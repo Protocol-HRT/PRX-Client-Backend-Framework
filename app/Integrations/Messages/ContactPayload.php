@@ -18,6 +18,17 @@ namespace App\Integrations\Messages;
  * preventing them. Treat it as a back-reference for our own reconciliation, not
  * as a merge key.
  *
+ * ─── `consent` is NOT one of the mapped fields, deliberately ───────────
+ *
+ * It arrives beside `attributes` rather than inside it because it is an
+ * invariant, not a choice: the action resolves it from our own consent audit,
+ * and an operator can neither map it, rename it, nor point it at something else.
+ * A driver reads it to choose its verb — subscribe versus merely add — and must
+ * never look for consent among `attributes`, where a mapping called "consent"
+ * is nothing but a custom property somebody typed.
+ *
+ * `null` means not consented. See `ConsentState`.
+ *
  * @param  array<string, scalar|null>  $attributes
  */
 readonly class ContactPayload
@@ -29,5 +40,12 @@ readonly class ContactPayload
         public ?string $lastName = null,
         public ?string $externalId = null,
         public array $attributes = [],
+        public ?ConsentState $consent = null,
     ) {}
+
+    /** Convenience for drivers: an absent state and an empty one read the same. */
+    public function consents(string $channel): bool
+    {
+        return $this->consent?->grants($channel) ?? false;
+    }
 }

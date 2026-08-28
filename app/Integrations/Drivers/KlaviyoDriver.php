@@ -37,9 +37,9 @@ use RuntimeException;
  *  * `external_id` does NOT participate in Klaviyo's profile merging. Keying on
  *    our lead id CREATES duplicates rather than preventing them, so it is sent
  *    as a back-reference only and identity is email/phone.
- *  * Consent and profile properties can never be one request. Subscribing
- *    somebody is a different endpoint with different rules, deliberately not
- *    done here — this driver updates profiles, it does not opt anybody in.
+ *  * Consent and profile properties can never be one request. Subscribing is a
+ *    different endpoint with different rules, so `upsertContact()` sets no
+ *    consent — `addToGroup()` is where the two verbs part company.
  *  * A private key's scope is fixed when it is created. Widening it means
  *    minting a new key, which is why the credential field says so.
  *  * Klaviyo's acceptable-use policy bars health data and they do not sign BAAs.
@@ -117,15 +117,86 @@ class KlaviyoDriver implements SyncsContacts, TracksEvents
         return $id;
     }
 
-    public function addToGroup(IntegrationInstance $instance, string $remoteId, string $group): void
-    {
+    /**
+     * Put somebody on a list — subscribing them where they consented to it.
+     *
+     * ─── WHY THIS BRANCHES, AND WHAT WENT WRONG WHEN IT DID NOT ────────
+     *
+     * `POST /lists/{id}/relationships/profiles/` adds a profile to a list and
+     * sets NO consent. Klaviyo will not send marketing to a profile without
+     * consent, but an "Added to List" flow still fires — so the funnel looks
+     * like it is working, the run log says success, and the email is suppressed
+     * on their side. Nothing anywhere reports it. That was the shipped
+     * behaviour, and it is the exact failure mode this project keeps meeting:
+     * a success that is not one.
+     *
+     * The fix is not "always subscribe". Subscribing somebody who did not agree
+     * is the worse error of the two, and it is the one that reaches a regulator
+     * rather than a support inbox. So the verb comes from OUR consent audit,
+     * which makes it structurally impossible to opt somebody in that our own
+     * records say did not opt in.
+     *
+     * ─── Per channel, and only with the identifier that channel needs ──
+     *
+     * `subscriptions` is keyed by channel, and a channel omitted is left
+     * untouched rather than cleared. An email grant with no email address on the
+     * payload subscribes nothing, so it is dropped here rather than sent for
+     * Klaviyo to reject.
+     *
+     * `consented_at` is deliberately NOT sent: Klaviyo only accepts it under
+     * `historical_import: true`, which also bypasses double opt-in and the
+     * "Added to List" flows — wrong for a live capture, and our timestamp
+     * evidence lives in `lead_consents` regardless.
+     *
+     * NEEDS `subscriptions:write` ON THE KEY. `test()` proves only that the key
+     * reads `/accounts/`, and a key's scopes are fixed when it is minted, so an
+     * install can pass the connection test and fail here.
+     */
+    public function addToGroup(
+        IntegrationInstance $instance,
+        string $remoteId,
+        string $group,
+        ContactPayload $contact,
+    ): void {
         $listId = $this->listId($instance, $group);
 
+        $subscriptions = $this->subscriptions($contact);
+
+        if ($subscriptions === []) {
+            $this->ok(
+                $this->request($instance)->post(self::BASE."/lists/{$listId}/relationships/profiles/", [
+                    'data' => [['type' => 'profile', 'id' => $remoteId]],
+                ]),
+                "Adding someone to the Klaviyo list [{$group}]",
+            );
+
+            return;
+        }
+
+        $profile = array_filter([
+            'email' => $contact->email,
+            'phone_number' => $contact->phone,
+        ], fn ($value): bool => $value !== null);
+
         $this->ok(
-            $this->request($instance)->post(self::BASE."/lists/{$listId}/relationships/profiles/", [
-                'data' => [['type' => 'profile', 'id' => $remoteId]],
+            $this->request($instance)->post(self::BASE.'/profile-subscription-bulk-create-jobs/', [
+                'data' => [
+                    'type' => 'profile-subscription-bulk-create-job',
+                    'attributes' => [
+                        'profiles' => [
+                            'data' => [[
+                                'type' => 'profile',
+                                'id' => $remoteId,
+                                'attributes' => $profile + ['subscriptions' => $subscriptions],
+                            ]],
+                        ],
+                    ],
+                    'relationships' => [
+                        'list' => ['data' => ['type' => 'list', 'id' => $listId]],
+                    ],
+                ],
             ]),
-            "Adding someone to the Klaviyo list [{$group}]",
+            "Subscribing someone to the Klaviyo list [{$group}]",
         );
     }
 
@@ -158,6 +229,40 @@ class KlaviyoDriver implements SyncsContacts, TracksEvents
         // was accepted — and the run log must not carry the properties, which
         // are the person's own data.
         return ['accepted' => true, 'metric' => $event];
+    }
+
+    /**
+     * The `subscriptions` block, built from consent we actually hold.
+     *
+     * Empty means "no channel can be subscribed" — either nothing was granted,
+     * or what was granted has no identifier to subscribe. The caller reads that
+     * as "fall back to a plain list add", never as "subscribe everything".
+     *
+     * Note what the second case means: a consented person carrying neither an
+     * email address nor a phone number takes the unsubscribed branch. That is
+     * the original defect for that one person, and it is left alone because
+     * there is nothing to suppress a send to — `upsertContact()` refuses such a
+     * payload before this is ever reached in a `sync_contact` run.
+     *
+     * Klaviyo's channel names happen to match `lead_consents.channel` for email
+     * and sms; the mapping is written out rather than assumed so a channel this
+     * install adds later (postal, push) does not silently become a Klaviyo key.
+     *
+     * @return array<string, array<string, array<string, string>>>
+     */
+    private function subscriptions(ContactPayload $contact): array
+    {
+        $subscriptions = [];
+
+        if ($contact->consents('email') && $contact->email !== null) {
+            $subscriptions['email'] = ['marketing' => ['consent' => 'SUBSCRIBED']];
+        }
+
+        if ($contact->consents('sms') && $contact->phone !== null) {
+            $subscriptions['sms'] = ['marketing' => ['consent' => 'SUBSCRIBED']];
+        }
+
+        return $subscriptions;
     }
 
     /**

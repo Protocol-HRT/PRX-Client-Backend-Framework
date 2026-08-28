@@ -214,7 +214,7 @@ class EventsOnlyDriver implements SyncsContacts, TracksEvents
         return 'remote-1';
     }
 
-    public function addToGroup(IntegrationInstance $instance, string $remoteId, string $group): void {}
+    public function addToGroup(IntegrationInstance $instance, string $remoteId, string $group, ContactPayload $contact): void {}
 
     public function trackEvent(IntegrationInstance $instance, ContactPayload $contact, string $event, array $properties = []): array
     {
@@ -232,7 +232,7 @@ class EnrolOnlyDriver implements EnrollsInAutomations, SyncsContacts
         return 'remote-2';
     }
 
-    public function addToGroup(IntegrationInstance $instance, string $remoteId, string $group): void {}
+    public function addToGroup(IntegrationInstance $instance, string $remoteId, string $group, ContactPayload $contact): void {}
 
     public function enroll(IntegrationInstance $instance, string $remoteId, string $automation): void {}
 }

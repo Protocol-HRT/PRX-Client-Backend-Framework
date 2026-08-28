@@ -100,15 +100,41 @@ class LeadForm
                                     ->default('US')
                                     ->hintIcon(Heroicon::InformationCircle, 'ISO 3166-1 alpha-2 country code, e.g. US.'),
 
+                                // SHOWN, NEVER WRITTEN. These three are a cache of
+                                // the newest row in the consent audit, and editing
+                                // them here wrote no audit row at all — so an
+                                // operator could untick "Email consent", believe
+                                // they had recorded a withdrawal, and leave the
+                                // audit still saying granted. Everything that
+                                // decides whether somebody may be marketed to
+                                // reads the audit, so that toggle was a control
+                                // that appeared to work and did nothing.
+                                //
+                                // `dehydrated(false)` as well as `disabled()`:
+                                // disabled alone still submits for a field the
+                                // schema can rehydrate, and this must never reach
+                                // the model. Changes go through the Consent audit
+                                // tab, which appends a row — the same reasoning
+                                // that made the PHI attestation an action rather
+                                // than a toggle.
                                 Section::make('Consents')
                                     ->columnSpanFull()
                                     ->columns(3)
+                                    ->description('The current state, from the consent audit. Record a change on the Consent audit tab — it is kept as history, not edited here.')
                                     ->components([
-                                        Toggle::make('sms_consent')->label('SMS consent'),
-                                        Toggle::make('email_consent')->label('Email consent'),
+                                        Toggle::make('sms_consent')
+                                            ->label('SMS consent')
+                                            ->disabled()
+                                            ->dehydrated(false),
+                                        Toggle::make('email_consent')
+                                            ->label('Email consent')
+                                            ->disabled()
+                                            ->dehydrated(false),
                                         DateTimePicker::make('consent_given_at')
-                                            ->label('Consent given at')
-                                            ->hintIcon(Heroicon::InformationCircle, 'Timestamp when the patient gave marketing consent.'),
+                                            ->label('Consent first given at')
+                                            ->disabled()
+                                            ->dehydrated(false)
+                                            ->hintIcon(Heroicon::InformationCircle, 'When marketing consent was first obtained. A later withdrawal does not clear it — the withdrawal is its own entry in the audit.'),
                                     ]),
                             ]),
 

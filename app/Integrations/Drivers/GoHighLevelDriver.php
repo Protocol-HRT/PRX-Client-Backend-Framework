@@ -109,8 +109,21 @@ class GoHighLevelDriver implements EnrollsInAutomations, SyncsContacts
         return $id;
     }
 
-    public function addToGroup(IntegrationInstance $instance, string $remoteId, string $group): void
-    {
+    /**
+     * A tag carries no consent, so `$contact` is unused here and that is correct.
+     *
+     * GoHighLevel has no subscribe verb to branch to: tagging a contact says
+     * nothing about what they agreed to, and its opt-out lives in a separate DND
+     * concept on the contact rather than on the tag. So consent is enforced
+     * upstream — the action skips the group entirely when nothing was granted —
+     * and this method has nothing left to decide.
+     */
+    public function addToGroup(
+        IntegrationInstance $instance,
+        string $remoteId,
+        string $group,
+        ContactPayload $contact,
+    ): void {
         $this->ok(
             $this->request($instance)->post(self::BASE."/contacts/{$remoteId}/tags", [
                 'tags' => [$group],

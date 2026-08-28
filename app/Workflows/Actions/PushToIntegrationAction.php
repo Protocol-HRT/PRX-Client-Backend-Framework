@@ -3,16 +3,19 @@
 namespace App\Workflows\Actions;
 
 use App\Enums\Integrations\IntegrationCapability;
+use App\Integrations\ConsentResolver;
 use App\Integrations\Contracts\EnrollsInAutomations;
 use App\Integrations\Contracts\SyncsContacts;
 use App\Integrations\Contracts\TracksEvents;
 use App\Integrations\FieldMap;
 use App\Integrations\IntegrationRegistry;
 use App\Integrations\Messages\ContactPayload;
+use App\Models\Integrations\IntegrationIdentity;
 use App\Models\Integrations\IntegrationInstance;
 use App\Workflows\Contracts\WorkflowActionHandler;
 use App\Workflows\WorkflowContext;
 use RuntimeException;
+use Throwable;
 
 /**
  * Send the record to a configured integration.
@@ -49,6 +52,16 @@ use RuntimeException;
  * permits accordingly. Bypassing it — reading the subject directly here — would
  * put the one check that prevents a health-data leak behind a `if` somebody can
  * forget to write.
+ *
+ * ─── Consent is the exception, and it goes the OTHER way ───────────────
+ *
+ * `consent` is the one value that deliberately does not come from the mapper.
+ * Everything the mapper carries is a field an operator CHOSE to send; consent is
+ * an invariant, and a mapping somebody can point anywhere — or forget — is the
+ * wrong shape for the thing that decides whether a person may be marketed to. So
+ * it is resolved here from our own `lead_consents` audit, travels on the payload
+ * out of reach of any mapping, and picks the destination's verb: subscribe where
+ * consent exists, plain list-add or nothing where it does not.
  */
 class PushToIntegrationAction implements WorkflowActionHandler
 {
@@ -58,9 +71,16 @@ class PushToIntegrationAction implements WorkflowActionHandler
 
     public const OP_ENROLL = 'enroll';
 
+    /** Default: a person with no marketing consent does not go on the list. */
+    public const NOT_CONSENTED_SKIP = 'skip';
+
+    /** Add them anyway — for a group that is internal bookkeeping, not an audience. */
+    public const NOT_CONSENTED_ADD = 'add';
+
     public function __construct(
         private readonly IntegrationRegistry $integrations,
         private readonly FieldMap $fields,
+        private readonly ConsentResolver $consents,
     ) {}
 
     public function handle(WorkflowContext $context, array $config): array
@@ -106,33 +126,110 @@ class PushToIntegrationAction implements WorkflowActionHandler
             lastName: $this->stringOrNull($attributes['last_name'] ?? null),
             externalId: $this->stringOrNull($context->subject?->getKey()),
             attributes: $attributes,
+            // NOT from `$attributes`, and not from the context snapshot either.
+            // Consent is an invariant rather than something an operator maps,
+            // and it is read live because a chain can run after a withdrawal —
+            // the same rule the PHI attestation follows, for the same reason.
+            consent: $this->consents->resolve($context->subject),
         );
 
         return match ($operation) {
-            self::OP_SYNC_CONTACT => $this->syncContact($driver, $instance, $contact, $config),
+            self::OP_SYNC_CONTACT => $this->syncContact($driver, $instance, $contact, $config, $context),
             self::OP_TRACK_EVENT => $this->trackEvent($driver, $instance, $contact, $config, $attributes),
-            self::OP_ENROLL => $this->enroll($driver, $instance, $contact, $config),
+            self::OP_ENROLL => $this->enroll($driver, $instance, $contact, $config, $context),
             default => throw new RuntimeException("Unknown integration operation [{$operation}]."),
         };
     }
 
-    private function syncContact(object $driver, IntegrationInstance $instance, ContactPayload $contact, array $config): array
-    {
+    private function syncContact(
+        object $driver,
+        IntegrationInstance $instance,
+        ContactPayload $contact,
+        array $config,
+        WorkflowContext $context,
+    ): array {
         $this->require($driver, SyncsContacts::class, $instance, 'sync contacts');
 
         $remoteId = $driver->upsertContact($instance, $contact);
+        $this->rememberIdentity($instance, $context, $remoteId);
 
         $group = $config['group'] ?? null;
+        $skipped = null;
 
         if (is_string($group) && $group !== '') {
-            $driver->addToGroup($instance, $remoteId, $group);
+            // WHETHER A NON-CONSENTED PERSON GOES ON THE LIST AT ALL is the
+            // operator's decision, and it defaults to "no". A list is usually an
+            // opt-in audience: putting somebody on it who never agreed is the
+            // error that reaches a regulator rather than a support inbox, and
+            // an abandon funnel is better served by an event than by a list.
+            if ($this->skipsGroup($config, $contact)) {
+                // Named in the run result rather than passed over in silence.
+                // A step that quietly does three-quarters of its job is the
+                // failure this whole slice exists to remove.
+                $skipped = 'no marketing consent on record';
+            } else {
+                $driver->addToGroup($instance, $remoteId, $group, $contact);
+            }
         }
 
         // The run log is an unencrypted table any admin with run access can read,
         // and this payload is what a webhook would carry. So it records the
         // REMOTE ID and nothing that was mapped — the values are the operator's
-        // data, not a debugging aid.
-        return ['remote_id' => $remoteId, 'group' => $group, 'fields_sent' => count($contact->attributes)];
+        // data, not a debugging aid. The consented CHANNELS are recorded because
+        // "why was this person not subscribed" is otherwise unanswerable, and a
+        // channel name discloses nothing the list name does not.
+        return array_filter([
+            'remote_id' => $remoteId,
+            'group' => $group,
+            'group_skipped' => $skipped,
+            'consented' => $contact->consent?->granted ?: null,
+            'fields_sent' => count($contact->attributes),
+        ], fn ($value): bool => $value !== null);
+    }
+
+    /**
+     * Whether the group step is skipped for want of consent.
+     *
+     * `add` is offered because not every group is a marketing audience — a CRM
+     * tag such as "quiz-abandoned" is internal bookkeeping, and refusing to
+     * apply it would break a legitimate funnel. It is not the default, and the
+     * form says what it means.
+     *
+     * TESTED AGAINST `add`, NOT FOR `skip`, so an unrecognised value skips.
+     * `config` is a JSON column the form is not the only author of — fill
+     * scripts write it too — and `"Skip"` or a typo reading as "add them anyway"
+     * would opt somebody in through a spelling mistake.
+     */
+    private function skipsGroup(array $config, ContactPayload $contact): bool
+    {
+        $behaviour = $config['when_not_consented'] ?? self::NOT_CONSENTED_SKIP;
+
+        return $behaviour !== self::NOT_CONSENTED_ADD
+            && ! ($contact->consent?->grantsAnything() ?? false);
+    }
+
+    /**
+     * Remember what this destination calls the record we just pushed.
+     *
+     * Best-effort by design: the push already SUCCEEDED at the far end when this
+     * runs, so failing the action here would report a failure that did not
+     * happen and — with no retry on the queue — leave the operator chasing a
+     * profile that exists. A missing identity row costs a redundant upsert next
+     * time; a false failure costs trust in the run log.
+     */
+    private function rememberIdentity(IntegrationInstance $instance, WorkflowContext $context, string $remoteId): void
+    {
+        $subject = $context->subject;
+
+        if ($subject === null || $subject->getKey() === null) {
+            return;
+        }
+
+        try {
+            IntegrationIdentity::record($instance, $subject, $remoteId);
+        } catch (Throwable $e) {
+            report($e);
+        }
     }
 
     private function trackEvent(object $driver, IntegrationInstance $instance, ContactPayload $contact, array $config, array $attributes): array
@@ -150,8 +247,13 @@ class PushToIntegrationAction implements WorkflowActionHandler
         return ['event' => $event, 'fields_sent' => count($attributes)];
     }
 
-    private function enroll(object $driver, IntegrationInstance $instance, ContactPayload $contact, array $config): array
-    {
+    private function enroll(
+        object $driver,
+        IntegrationInstance $instance,
+        ContactPayload $contact,
+        array $config,
+        WorkflowContext $context,
+    ): array {
         $this->require($driver, EnrollsInAutomations::class, $instance, 'enrol contacts in automations');
 
         $automation = $config['automation'] ?? null;
@@ -165,6 +267,7 @@ class PushToIntegrationAction implements WorkflowActionHandler
         // build two steps keeps "add them to the follow-up sequence" one action.
         $this->require($driver, SyncsContacts::class, $instance, 'sync contacts');
         $remoteId = $driver->upsertContact($instance, $contact);
+        $this->rememberIdentity($instance, $context, $remoteId);
 
         $driver->enroll($instance, $remoteId, $automation);
 

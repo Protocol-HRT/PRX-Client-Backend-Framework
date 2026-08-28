@@ -9,6 +9,7 @@ use App\Integrations\Drivers\GoHighLevelDriver;
 use App\Integrations\Drivers\KlaviyoDriver;
 use App\Integrations\Drivers\TwilioDriver;
 use App\Integrations\IntegrationRegistry;
+use App\Integrations\Messages\ConsentState;
 use App\Integrations\Messages\ContactPayload;
 use App\Integrations\Messages\SmsMessage;
 use App\Models\Integrations\IntegrationInstance;
@@ -105,7 +106,7 @@ class VendorDriverTest extends TestCase
         // on the instance so rebuilding a list does not break every step.
         Http::fake(['a.klaviyo.com/*' => Http::response([], 204)]);
 
-        app(KlaviyoDriver::class)->addToGroup($this->klaviyo(), '01ABC', 'quiz-completers');
+        app(KlaviyoDriver::class)->addToGroup($this->klaviyo(), '01ABC', 'quiz-completers', new ContactPayload);
 
         Http::assertSent(fn ($request): bool => $request->url()
             === 'https://a.klaviyo.com/api/lists/XyZ123/relationships/profiles/');
@@ -119,7 +120,7 @@ class VendorDriverTest extends TestCase
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessageMatches('/No Klaviyo list is mapped/');
 
-        app(KlaviyoDriver::class)->addToGroup($this->klaviyo(), '01ABC', 'never-mapped-name');
+        app(KlaviyoDriver::class)->addToGroup($this->klaviyo(), '01ABC', 'never-mapped-name', new ContactPayload);
     }
 
     public function test_klaviyo_surfaces_the_vendors_own_error_message(): void
@@ -185,7 +186,7 @@ class VendorDriverTest extends TestCase
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessageMatches('/No Klaviyo list is mapped/');
 
-        app(KlaviyoDriver::class)->addToGroup($this->klaviyo(), '01ABC', 'buyers');
+        app(KlaviyoDriver::class)->addToGroup($this->klaviyo(), '01ABC', 'buyers', new ContactPayload);
     }
 
     public function test_a_real_looking_list_id_still_passes_through_unmapped(): void
@@ -194,10 +195,85 @@ class VendorDriverTest extends TestCase
         // should not be made to invent aliases for them.
         Http::fake(['a.klaviyo.com/*' => Http::response([], 204)]);
 
-        app(KlaviyoDriver::class)->addToGroup($this->klaviyo(), '01ABC', 'Ru4Ff9');
+        app(KlaviyoDriver::class)->addToGroup($this->klaviyo(), '01ABC', 'Ru4Ff9', new ContactPayload);
 
         Http::assertSent(fn ($request): bool => $request->url()
             === 'https://a.klaviyo.com/api/lists/Ru4Ff9/relationships/profiles/');
+    }
+
+    public function test_klaviyo_subscribes_rather_than_merely_adding_when_consent_exists(): void
+    {
+        // THE DEFECT THIS SLICE EXISTS FOR. The relationships endpoint puts a
+        // profile on a list and sets NO consent, so Klaviyo suppresses the send
+        // while the "Added to List" flow still fires — a funnel that looks like
+        // it works, a run log that says success, and an email nobody receives.
+        Http::fake(['a.klaviyo.com/*' => Http::response([], 202)]);
+
+        app(KlaviyoDriver::class)->addToGroup($this->klaviyo(), '01ABC', 'Ru4Ff9', new ContactPayload(
+            email: 'someone@example.invalid',
+            consent: ConsentState::forChannels(['email']),
+        ));
+
+        Http::assertSent(function ($request): bool {
+            $profile = $request['data']['attributes']['profiles']['data'][0];
+
+            return $request->url() === 'https://a.klaviyo.com/api/profile-subscription-bulk-create-jobs/'
+                && $request['data']['relationships']['list']['data']['id'] === 'Ru4Ff9'
+                && $profile['id'] === '01ABC'
+                && $profile['attributes']['email'] === 'someone@example.invalid'
+                && $profile['attributes']['subscriptions']['email']['marketing']['consent'] === 'SUBSCRIBED';
+        });
+    }
+
+    public function test_klaviyo_subscribes_only_the_channels_actually_granted(): void
+    {
+        // `subscriptions` is per channel and an omitted channel is left alone,
+        // so an email-only consent must not quietly opt somebody into texts.
+        Http::fake(['a.klaviyo.com/*' => Http::response([], 202)]);
+
+        app(KlaviyoDriver::class)->addToGroup($this->klaviyo(), '01ABC', 'Ru4Ff9', new ContactPayload(
+            email: 'someone@example.invalid',
+            phone: '+15550123',
+            consent: ConsentState::forChannels(['email']),
+        ));
+
+        Http::assertSent(function ($request): bool {
+            $subscriptions = $request['data']['attributes']['profiles']['data'][0]['attributes']['subscriptions'];
+
+            return array_keys($subscriptions) === ['email'];
+        });
+    }
+
+    public function test_klaviyo_will_not_subscribe_a_channel_it_has_no_identifier_for(): void
+    {
+        // An SMS grant with no phone number subscribes nothing. Sending it for
+        // Klaviyo to reject would turn a consent we hold into a failed run.
+        Http::fake(['a.klaviyo.com/*' => Http::response([], 204)]);
+
+        app(KlaviyoDriver::class)->addToGroup($this->klaviyo(), '01ABC', 'Ru4Ff9', new ContactPayload(
+            email: 'someone@example.invalid',
+            consent: ConsentState::forChannels(['sms']),
+        ));
+
+        Http::assertSent(fn ($request): bool => $request->url()
+            === 'https://a.klaviyo.com/api/lists/Ru4Ff9/relationships/profiles/');
+    }
+
+    public function test_klaviyo_does_not_send_consented_at(): void
+    {
+        // Klaviyo accepts `consented_at` only under `historical_import: true`,
+        // which also bypasses double opt-in and the "Added to List" flows —
+        // wrong for a live capture. Our own timestamp evidence is in
+        // `lead_consents` and does not need to travel.
+        Http::fake(['a.klaviyo.com/*' => Http::response([], 202)]);
+
+        app(KlaviyoDriver::class)->addToGroup($this->klaviyo(), '01ABC', 'Ru4Ff9', new ContactPayload(
+            email: 'someone@example.invalid',
+            consent: ConsentState::forChannels(['email']),
+        ));
+
+        Http::assertSent(fn ($request): bool => ! str_contains(json_encode($request->data()), 'consented_at')
+            && ! str_contains(json_encode($request->data()), 'historical_import'));
     }
 
     // ─── GoHighLevel ─────────────────────────────────────────────────
@@ -239,7 +315,7 @@ class VendorDriverTest extends TestCase
         // addToGroup takes a name rather than an id.
         Http::fake(['services.leadconnectorhq.com/*' => Http::response([], 200)]);
 
-        app(GoHighLevelDriver::class)->addToGroup($this->ghl(), 'ghl-1', 'quiz-completers');
+        app(GoHighLevelDriver::class)->addToGroup($this->ghl(), 'ghl-1', 'quiz-completers', new ContactPayload);
 
         Http::assertSent(fn ($request): bool => $request->url()
             === 'https://services.leadconnectorhq.com/contacts/ghl-1/tags'
