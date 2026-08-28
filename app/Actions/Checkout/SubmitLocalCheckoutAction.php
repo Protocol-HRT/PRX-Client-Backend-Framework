@@ -87,7 +87,7 @@ class SubmitLocalCheckoutAction
                 ]);
             }
 
-            $lead->update(['status' => LeadStatus::Completed]);
+            $lead->update(['status' => LeadStatus::Completed->value]);
 
             $cart->items()->delete();
 

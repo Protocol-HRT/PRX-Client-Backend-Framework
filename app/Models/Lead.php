@@ -3,10 +3,11 @@
 namespace App\Models;
 
 use App\Enums\CheckoutPath;
-use App\Enums\LeadStatus;
 use App\Models\Commerce\Encounter;
+use App\Models\Quiz\QuizQuestion;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
@@ -61,7 +62,11 @@ class Lead extends Model
     protected function casts(): array
     {
         return [
-            'status' => LeadStatus::class,
+            // NOT LeadStatus::class. Dispositions are operator-defined rows now,
+            // so an install that adds 'quiz_complete' would throw a ValueError
+            // on every read if this stayed an enum cast. The enum survives as
+            // the slugs the code itself writes; see App\Models\LeadDisposition.
+            'status' => 'string',
             'checkout_path' => CheckoutPath::class,
             'date_of_birth' => 'date',
             'age' => 'integer',
@@ -86,7 +91,7 @@ class Lead extends Model
                 $lead->uuid = (string) Str::uuid();
             }
             if (blank($lead->status)) {
-                $lead->status = LeadStatus::New_;
+                $lead->status = LeadDisposition::defaultSlug();
             }
         });
     }
@@ -104,6 +109,101 @@ class Lead extends Model
     public function encounters(): HasMany
     {
         return $this->hasMany(Encounter::class);
+    }
+
+    /**
+     * The disposition row behind `status`.
+     *
+     * Matched on SLUG, not on a foreign key — `leads.status` already held these
+     * strings before dispositions were rows, and keeping it that way meant no
+     * data migration and no change to what the API emits.
+     *
+     * May be null: a slug can outlive its row if one is force-deleted around the
+     * model guards. Callers should fall back to the raw slug rather than assume.
+     */
+    public function disposition(): BelongsTo
+    {
+        return $this->belongsTo(LeadDisposition::class, 'status', 'slug');
+    }
+
+    /**
+     * The quiz answers as label/value pairs an operator can read.
+     *
+     * `quiz_answers` is keyed by question SLUG, which is the right storage
+     * shape — retiring a question neither cascades away history nor blocks a
+     * deletion — but it makes the raw column unreadable in the admin.
+     *
+     * Labels are resolved from the questions THAT STILL EXIST, and an answer
+     * whose question has since been retired or renamed still renders, under its
+     * slug. Dropping it would hide real marketing data on the grounds that the
+     * quiz moved on; showing the slug is honest about what happened. Likewise
+     * option values are mapped to their labels where the option survives.
+     *
+     * @return array<int, array{slug: string, label: string, value: string, retired: bool}>
+     */
+    public function quizAnswersForDisplay(): array
+    {
+        $answers = $this->quiz_answers ?? [];
+
+        if ($answers === []) {
+            return [];
+        }
+
+        $questions = $this->quiz_id === null
+            ? collect()
+            : QuizQuestion::query()
+                ->with('options:id,quiz_question_id,value,label')
+                ->where('quiz_id', $this->quiz_id)
+                ->get(['id', 'slug', 'prompt'])
+                ->keyBy('slug');
+
+        $rows = [];
+
+        foreach ($answers as $slug => $value) {
+            $question = $questions->get($slug);
+
+            $rows[] = [
+                'slug' => (string) $slug,
+                'label' => $question?->prompt ?: (string) $slug,
+                'value' => $this->presentAnswer($value, $question),
+                'retired' => $question === null,
+            ];
+        }
+
+        return $rows;
+    }
+
+    /** Flatten one answer to something displayable, mapping option values to labels. */
+    private function presentAnswer(mixed $value, mixed $question): string
+    {
+        $labels = $question?->options
+            ?->mapWithKeys(fn ($o) => [$o->value => $o->label])
+            ->all() ?? [];
+
+        if (is_array($value)) {
+            return implode(', ', array_map(
+                fn ($v) => (string) ($labels[$v] ?? (is_scalar($v) ? $v : json_encode($v))),
+                $value,
+            ));
+        }
+
+        if (is_bool($value)) {
+            return $value ? 'Yes' : 'No';
+        }
+
+        return (string) ($labels[$value] ?? (is_scalar($value) ? $value : json_encode($value)));
+    }
+
+    /**
+     * Every consent decision ever recorded for this lead, newest first.
+     *
+     * Append-only, so this is a full history: a withdrawal is a row with
+     * `granted = false` rather than the absence of one. The booleans on this
+     * model are the current-state summary; these are the evidence.
+     */
+    public function consents(): HasMany
+    {
+        return $this->hasMany(LeadConsent::class)->orderByDesc('consented_at');
     }
 
     /**

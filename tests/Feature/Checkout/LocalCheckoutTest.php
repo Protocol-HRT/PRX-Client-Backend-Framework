@@ -211,7 +211,7 @@ class LocalCheckoutTest extends TestCase
 
         app(SubmitLocalCheckoutAction::class)->execute($cart, $lead, ['payment_token' => 'tok_ok']);
 
-        $this->assertEquals(LeadStatus::Completed, $lead->fresh()->status);
+        $this->assertEquals(LeadStatus::Completed->value, $lead->fresh()->status);
     }
 
     public function test_action_clears_cart_items_on_success(): void

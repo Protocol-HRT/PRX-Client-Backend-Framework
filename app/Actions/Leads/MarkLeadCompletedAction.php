@@ -17,7 +17,7 @@ class MarkLeadCompletedAction
     {
         return $this->tx(function () use ($lead, $response) {
             $lead->update([
-                'status' => LeadStatus::Completed,
+                'status' => LeadStatus::Completed->value,
                 'completed_at' => now(),
                 'prescribe_rx_response' => $response,
             ]);

@@ -18,7 +18,11 @@ class LeadResource extends JsonResource
     {
         return [
             'uuid' => $this->uuid,
-            'status' => $this->status->value,
+            // A plain slug string, unchanged from when this was an enum cast.
+            // Dispositions are operator-defined rows now, so there is no enum to
+            // read ->value from — and the wire format deliberately did not move,
+            // because the frontend keys off these strings.
+            'status' => $this->status,
             'first_name' => $this->first_name,
             'last_name' => $this->last_name,
             'email' => $this->email,

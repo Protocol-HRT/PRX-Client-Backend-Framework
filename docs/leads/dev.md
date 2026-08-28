@@ -63,16 +63,106 @@ Leads are the local tracking anchor for a checkout attempt. They carry enough st
 | `created_at` / `updated_at` | timestamps | |
 | `deleted_at` | timestamp, nullable | Soft delete. |
 
-### Enums
+### Dispositions (`lead_dispositions`)
 
-**`App\Enums\LeadStatus`**
+`leads.status` holds a **slug string**, and the row describing that slug lives in
+`lead_dispositions`. It is **not a foreign key** — matching on slug meant the column
+kept its existing values, the API wire format did not move, and no data migration was
+needed. `Lead::disposition()` is a `belongsTo` on `status` → `slug`.
 
-| Value | Label | Badge color |
+| Column | Notes |
+|---|---|
+| `slug` | Unique. What lands in `leads.status` and what workflows match on. |
+| `name` / `description` / `color` | Operator-facing. `color` is a Filament colour name, never a hex. |
+| `is_default` | The stage new leads start on. Exactly one row, enforced in `LeadDisposition::saving`. |
+| `is_system` | A slug application code writes literally. Never deletable, never re-sluggable. |
+| `is_active` / `sort_order` | Picker visibility and ordering. |
+
+**The trade for slug-matching is referential integrity, bought back in the model.**
+`LeadDisposition` throws on: deleting a system row, re-slugging a system row, and
+deleting or re-slugging any row that leads reference (`leadsUsing()`). This mirrors the
+palette-colour guard, for the same reason — when the reference is by name, **a rename is
+a removal**, and the failure is silent (leads render a raw slug).
+
+`LeadDisposition::map()` memoises slug → name/colour for the life of the request, so a
+lead table renders badges without an N+1. Call `forgetMap()` after mutating rows.
+
+**`App\Enums\LeadStatus` still exists** and is now narrower: it is the set of slugs the
+code itself writes (`MarkLeadHandedOffAction` writes `handed_off`). The migration seeds
+one `is_system` row per case. It is **not** an Eloquent cast any more — `leads.status`
+casts to `string`, because an operator-added slug would throw a `ValueError` on read.
+
+| Seeded slug | Label | Badge color |
 |---|---|---|
 | `new` | New | gray |
 | `handed_off` | Handed off to PRX | warning (yellow) |
 | `completed` | Completed | success (green) |
 | `abandoned` | Abandoned | danger (red) |
+
+### Consent audit (`lead_consents`)
+
+**Append-only, enforced in the model** — `updating` and `deleting` both throw. A
+withdrawal is a new row with `granted = false`; a correction is a new row. There is no
+`updated_at` column.
+
+> **Know the limit of that guarantee.** These are Eloquent *model* events, so they cover
+> every path through a model instance and nothing else. `LeadConsent::query()->update()`,
+> `DB::table('lead_consents')->delete()` and `withoutEvents()` all bypass them, because
+> query-builder bulk operations never fire model events. Real enforcement would need a
+> database trigger or revoked `UPDATE`/`DELETE` privileges. The honest claim is "no path
+> through the model", not "impossible" — do not build on the stronger one.
+
+`leads.email_consent` / `sms_consent` / `consent_given_at` remain the current-state
+summary and are kept in step by `RecordConsentAction`, which is the single writer. The
+audit row is the source of truth; the booleans are a cache of its latest value per
+channel.
+
+| Column | Notes |
+|---|---|
+| `channel` | `email` \| `sms`. A string, not an enum column, so a new channel needs no migration. |
+| `granted` | `false` is a withdrawal or a decline — which is why this is not an "opt-ins" table. |
+| `consent_text` | **The sentence the visitor actually saw.** Null means genuinely unknown, never "none was shown" — currently backfilled rows *and* checkout leads, since the checkout frontend still hardcodes its labels and sends no `consent_disclosures`. The quiz sends them. |
+| `consent_version` | Free-form: a semver, a date, or a hash of the surrounding legal copy. |
+| `source` | `quiz` \| `checkout` \| `admin` \| `api` \| `backfill`. |
+| `ip_address` / `user_agent` | **Server-derived at capture**, never taken from the payload. |
+| `recorded_by_user_id` | Set when an operator recorded it, so that is never confusable with a visitor's own act. |
+
+**Why the text is snapshotted:** the consent sentence is operator copy living in
+`quiz_questions.config`, editable at any time. Without a snapshot, editing that wording
+silently rewrites the meaning of every consent already given. A consent whose wording you
+cannot reproduce is not evidence.
+
+**The client supplies the wording, and that is deliberate.** Only the client knows what it
+rendered. It arrives as `consent_disclosures` and is stored as *descriptive evidence*
+beside server-derived IP/UA — it is never treated as authorisation. The booleans still
+decide whether consent was given.
+
+**A declined channel is recorded when its wording was shown**, and nothing is recorded for
+a channel the payload was silent about. "Declined" and "never asked" are different facts
+and the backend does not guess between them.
+
+The migration backfills existing consents with `source = 'backfill'` and
+`consent_text = null`. Writing today's wording onto a consent given last month would
+manufacture evidence; the gap is recorded honestly instead.
+
+### Events
+
+| Event | Fired from | Fires for |
+|---|---|---|
+| `Leads\LeadCreated` | `CreateLeadAction`, **after** the transaction commits | **Every** lead, quiz or checkout |
+| `Leads\LeadDispositionChanged` | `LeadObserver::updated` | Any change of `leads.status`, by any write path |
+| `Quiz\QuizCompleted` | `LeadController`, guarded by `$quiz !== null` | Quiz leads only |
+
+**`LeadCreated` exists because `QuizCompleted` does not fire for checkout leads.** Hanging
+welcome comms off `QuizCompleted` silently skips the highest-intent leads the funnel
+produces. `QuizCompleted` fires *in addition*, never instead.
+
+**`LeadDispositionChanged` carries both `from` and `to`,** because the useful workflow
+conditions are transitions, not states — "became `quiz_complete` *from* `new*`" cannot be
+reconstructed after the fact. It lives in an observer rather than in each action because
+there are already five write paths and workflow actions will be a sixth; a funnel that
+reacts to four of six transitions is worse than one that reacts to none, because the gap
+is invisible.
 
 **`App\Enums\CheckoutPath`**
 

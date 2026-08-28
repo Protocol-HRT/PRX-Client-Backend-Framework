@@ -106,7 +106,7 @@ class SubmitPrescribeRxCheckoutAction
             }
 
             $lead->update([
-                'status' => LeadStatus::HandedOff,
+                'status' => LeadStatus::HandedOff->value,
                 'prescribe_rx_encounter_id' => $prxResponse->encounter_id,
                 'prescribe_rx_patient_id' => $prxResponse->patient_chart_id,
                 'prescribe_rx_response' => $prxResponse->toArray(),

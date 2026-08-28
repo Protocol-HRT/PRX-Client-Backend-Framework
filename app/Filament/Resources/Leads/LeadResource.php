@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Leads;
 
 use App\Filament\Resources\Leads\Pages\EditLead;
 use App\Filament\Resources\Leads\Pages\ListLeads;
+use App\Filament\Resources\Leads\RelationManagers\ConsentsRelationManager;
 use App\Filament\Resources\Leads\Schemas\LeadForm;
 use App\Filament\Resources\Leads\Tables\LeadsTable;
 use App\Models\Lead;
@@ -36,6 +37,17 @@ class LeadResource extends Resource
     public static function table(Table $table): Table
     {
         return LeadsTable::configure($table);
+    }
+
+    /**
+     * The consent audit hangs off the lead as a read-only relation manager —
+     * see ConsentsRelationManager for why it has no write actions.
+     */
+    public static function getRelations(): array
+    {
+        return [
+            ConsentsRelationManager::class,
+        ];
     }
 
     /**

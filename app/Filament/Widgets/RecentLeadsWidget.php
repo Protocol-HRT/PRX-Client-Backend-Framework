@@ -2,8 +2,8 @@
 
 namespace App\Filament\Widgets;
 
-use App\Enums\LeadStatus;
 use App\Models\Lead;
+use App\Models\LeadDisposition;
 use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -31,7 +31,8 @@ class RecentLeadsWidget extends BaseWidget
                     ->sortable(),
                 TextColumn::make('status')
                     ->badge()
-                    ->color(fn (LeadStatus $state): string => $state->color()),
+                    ->formatStateUsing(fn (?string $state): string => LeadDisposition::labelFor($state))
+                    ->color(fn (?string $state): string => LeadDisposition::colorFor($state)),
                 TextColumn::make('full_name')
                     ->label('Name')
                     ->getStateUsing(fn (Lead $record): string => trim("{$record->first_name} {$record->last_name}"))

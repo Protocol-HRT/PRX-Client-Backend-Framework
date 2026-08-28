@@ -4,19 +4,25 @@ namespace App\Actions\Leads;
 
 use App\Actions\Concerns\Transacts;
 use App\Data\Leads\LeadData;
-use App\Enums\LeadStatus;
+use App\Events\Leads\LeadCreated;
 use App\Models\Lead;
+use App\Models\LeadDisposition;
 use Spatie\LaravelData\DataCollection;
 
 class CreateLeadAction
 {
     use Transacts;
 
+    public function __construct(private readonly RecordConsentAction $recordConsent) {}
+
     public function execute(LeadData $data): Lead
     {
-        return $this->tx(function () use ($data) {
-            return Lead::create([
-                'status' => LeadStatus::New_,
+        $lead = $this->tx(function () use ($data) {
+            $lead = Lead::create([
+                // The operator's configured starting stage, not a hardcoded one.
+                // Falls back to the LeadStatus::New_ slug if no row is marked
+                // default — see LeadDisposition::defaultSlug().
+                'status' => LeadDisposition::defaultSlug(),
                 'first_name' => $data->first_name,
                 'last_name' => $data->last_name,
                 'email' => $data->email,
@@ -54,7 +60,52 @@ class CreateLeadAction
                 // leads without anyone inspecting the JSON.
                 'quiz_completed_at' => $data->quiz_id !== null ? now() : null,
             ]);
+
+            $this->recordConsents($lead, $data);
+
+            return $lead;
         });
+
+        // OUTSIDE the transaction, so a listener can never see — or act on — a
+        // lead whose insert then rolled back. Fires for EVERY lead, quiz or
+        // checkout; QuizCompleted is the narrower signal dispatched in addition.
+        LeadCreated::dispatch($lead);
+
+        return $lead;
+    }
+
+    /**
+     * Snapshot what was consented to, per channel.
+     *
+     * A row is written when consent was GRANTED, or when the disclosure text
+     * for that channel was supplied — because "we showed them the SMS opt-in and
+     * they left it unticked" is evidence, and losing it makes a later complaint
+     * unanswerable. Silence about a channel writes nothing: this install cannot
+     * tell the difference between "declined" and "never asked" unless the
+     * frontend says which sentence it rendered.
+     */
+    private function recordConsents(Lead $lead, LeadData $data): void
+    {
+        $disclosures = $data->consent_disclosures ?? [];
+
+        foreach (['email' => $data->email_consent, 'sms' => $data->sms_consent] as $channel => $granted) {
+            $disclosure = $disclosures[$channel] ?? null;
+
+            if (! $granted && $disclosure === null) {
+                continue;
+            }
+
+            $this->recordConsent->execute(
+                lead: $lead,
+                channel: $channel,
+                granted: $granted,
+                text: is_array($disclosure) ? ($disclosure['text'] ?? null) : null,
+                version: is_array($disclosure) ? ($disclosure['version'] ?? null) : null,
+                source: $data->quiz_id !== null ? 'quiz' : 'checkout',
+                ip: $data->ip_address,
+                userAgent: $data->user_agent,
+            );
+        }
     }
 
     /**

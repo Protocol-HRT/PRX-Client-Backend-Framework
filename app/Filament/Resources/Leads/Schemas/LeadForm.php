@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\Leads\Schemas;
 
 use App\Enums\CheckoutPath;
-use App\Enums\LeadStatus;
+use App\Models\LeadDisposition;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
@@ -13,6 +13,7 @@ use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 
@@ -40,7 +41,10 @@ class LeadForm
                                     ->dehydrated(false)
                                     ->hintIcon(Heroicon::InformationCircle, 'Internal UUID for this lead. Read-only.'),
                                 Select::make('status')
-                                    ->options(LeadStatus::class)
+                                    ->label('Disposition')
+                                    // Includes the lead's CURRENT slug even if it
+                                    // has since been deactivated — see optionsFor().
+                                    ->options(fn ($record): array => LeadDisposition::optionsFor($record?->status))
                                     ->required()
                                     ->native(false)
                                     ->hintIcon(Heroicon::InformationCircle, 'Current status of this lead in the workflow.'),
@@ -145,6 +149,17 @@ class LeadForm
                                         DateTimePicker::make('completed_at')
                                             ->hintIcon(Heroicon::InformationCircle, 'Timestamp when the full encounter was marked complete.'),
                                     ]),
+                            ]),
+
+                        // ── Quiz answers ──────────────────────────────
+                        // Read-only. These are the visitor's own words about
+                        // their health, and an admin form that let someone edit
+                        // them would make the record no longer theirs.
+                        Tab::make('Quiz answers')
+                            ->icon(Heroicon::ClipboardDocumentList)
+                            ->schema([
+                                View::make('filament.leads.quiz-answers')
+                                    ->columnSpanFull(),
                             ]),
 
                         // ── Attribution ───────────────────────────────

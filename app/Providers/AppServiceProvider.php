@@ -6,6 +6,7 @@ use App\Models\Blog\BlogCategory;
 use App\Models\Blog\BlogPost;
 use App\Models\Catalog\Category;
 use App\Models\Catalog\Package;
+use App\Models\Catalog\Plan;
 use App\Models\Catalog\Product;
 use App\Models\Cms\FlexibleSectionType;
 use App\Models\Cms\GlobalSection;
@@ -14,24 +15,24 @@ use App\Models\Cms\MenuItem;
 use App\Models\Cms\RegionItem;
 use App\Models\Content\FaqCategory;
 use App\Models\Content\FaqItem;
+use App\Models\Kb\Compound;
+use App\Models\Kb\HealthGoal;
+use App\Models\Lead;
 use App\Models\Page;
 use App\Models\PageSection;
-use App\Models\Kb\Compound;
-use App\Models\Catalog\Plan;
-use App\Models\Kb\HealthGoal;
 use App\Models\Quiz\Quiz;
 use App\Models\Quiz\QuizQuestion;
 use App\Models\Quiz\QuizQuestionOption;
 use App\Models\Quiz\QuizStep;
 use App\Observers\CmsCacheObserver;
-use Filament\Forms\Components\Repeater;
+use App\Observers\LeadObserver;
 use App\Observers\PageSectionObserver;
 use App\Services\Cms\BlockRegistry;
 use App\Services\Cms\FrontendRevalidator;
 use App\Services\Cms\PageRevisionService;
 use App\Services\Cms\SectionRegistry;
-use App\Services\Payments\PaymentGatewayManager;
 use App\Services\Mail\MailConfigurator;
+use App\Services\Payments\PaymentGatewayManager;
 use App\Settings\BrandSettings;
 use Awcodes\Curator\Config\GlideManager;
 use Awcodes\Curator\Glide\SymfonyResponseFactory;
@@ -39,6 +40,7 @@ use Dedoc\Scramble\Scramble;
 use Dedoc\Scramble\Support\RouteInfo;
 use Filament\Actions\CreateAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Repeater;
 use Filament\Support\Enums\Width;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -170,6 +172,10 @@ class AppServiceProvider extends ServiceProvider
         // row can still say ->defaultItems(1) explicitly, which now reads as a
         // decision instead of an accident.
         Repeater::configureUsing(static fn (Repeater $repeater) => $repeater->defaultItems(0));
+
+        // Watches `leads.status` so every disposition change — from an action,
+        // the Filament form, an import or a workflow — becomes one event.
+        Lead::observe(LeadObserver::class);
 
         Page::observe(CmsCacheObserver::class);
         PageSection::observe(CmsCacheObserver::class);

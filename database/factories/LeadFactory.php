@@ -17,7 +17,7 @@ class LeadFactory extends Factory
     public function definition(): array
     {
         return [
-            'status' => LeadStatus::New_,
+            'status' => LeadStatus::New_->value,
             'first_name' => fake()->firstName(),
             'last_name' => fake()->lastName(),
             'email' => fake()->safeEmail(),

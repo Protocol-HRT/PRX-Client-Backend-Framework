@@ -14,7 +14,7 @@ class MarkLeadHandedOffAction
     {
         return $this->tx(function () use ($lead, $encounterId, $patientId) {
             $lead->update([
-                'status' => LeadStatus::HandedOff,
+                'status' => LeadStatus::HandedOff->value,
                 'prescribe_rx_encounter_id' => $encounterId ?? $lead->prescribe_rx_encounter_id,
                 'prescribe_rx_patient_id' => $patientId ?? $lead->prescribe_rx_patient_id,
                 'handed_off_at' => now(),

@@ -74,5 +74,24 @@ class LeadData extends Data
         public ?string $ip_address = null,
         public ?string $notes = null,
         public ?string $cart_ulid = null,
+
+        /**
+         * The consent sentences the frontend ACTUALLY RENDERED, per channel:
+         * ['email' => ['text' => '...', 'version' => '...'], 'sms' => [...]].
+         *
+         * Supplied by the client because the client is the only party that knows
+         * what it displayed — the wording lives in editable operator copy
+         * (`quiz_questions.config`) that may have changed between page load and
+         * submit. This is the same principle as reporting what was sent rather
+         * than what was intended.
+         *
+         * NOT TRUSTED AS AUTHORISATION. It is descriptive evidence stored
+         * alongside server-derived IP and user-agent; the booleans still decide
+         * whether consent was given. A client that lies here forges only its own
+         * record of the sentence, which is why the field is text and not a flag.
+         *
+         * @var array<string, array{text?: string, version?: string}>|null
+         */
+        public ?array $consent_disclosures = null,
     ) {}
 }

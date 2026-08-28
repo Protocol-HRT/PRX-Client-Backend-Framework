@@ -3,7 +3,7 @@
 namespace App\Filament\Resources\Leads\Tables;
 
 use App\Enums\CheckoutPath;
-use App\Enums\LeadStatus;
+use App\Models\LeadDisposition;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -26,8 +26,10 @@ class LeadsTable
                     ->since()
                     ->sortable(),
                 TextColumn::make('status')
+                    ->label('Disposition')
                     ->badge()
-                    ->color(fn (LeadStatus $state): string => $state->color())
+                    ->formatStateUsing(fn (?string $state): string => LeadDisposition::labelFor($state))
+                    ->color(fn (?string $state): string => LeadDisposition::colorFor($state))
                     ->sortable(),
                 TextColumn::make('full_name')
                     ->label('Name')
@@ -63,7 +65,7 @@ class LeadsTable
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
-                SelectFilter::make('status')->options(LeadStatus::class),
+                SelectFilter::make('status')->label('Disposition')->options(LeadDisposition::options()),
                 SelectFilter::make('checkout_path')->options(CheckoutPath::class),
                 TrashedFilter::make(),
             ])

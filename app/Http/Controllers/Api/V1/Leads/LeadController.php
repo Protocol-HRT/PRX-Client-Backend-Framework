@@ -5,9 +5,9 @@ namespace App\Http\Controllers\Api\V1\Leads;
 use App\Actions\Leads\CreateLeadAction;
 use App\Data\Leads\LeadData;
 use App\Enums\CheckoutPath;
+use App\Events\Quiz\QuizCompleted;
 use App\Http\Controllers\Api\V1\ApiController;
 use App\Http\Resources\Api\V1\Leads\LeadResource;
-use App\Events\Quiz\QuizCompleted;
 use App\Models\Lead;
 use App\Models\Quiz\Quiz;
 use App\Services\Quiz\QuizAnswerValidator;
@@ -50,6 +50,14 @@ class LeadController extends ApiController
             'country' => ['nullable', 'string', 'size:2'],
             'sms_consent' => ['boolean'],
             'email_consent' => ['boolean'],
+
+            // The wording the client rendered for each consent, snapshotted into
+            // the audit. Capped hard: this is descriptive evidence supplied by an
+            // unauthenticated caller, so it gets a length bound like every other
+            // free-text field on this endpoint.
+            'consent_disclosures' => ['array'],
+            'consent_disclosures.*.text' => ['nullable', 'string', 'max:2000'],
+            'consent_disclosures.*.version' => ['nullable', 'string', 'max:64'],
             'checkout_path' => ['nullable', 'string', 'in:local,prx'],
             'cart_items' => ['nullable', 'array'],
             'cart_subtotal' => ['nullable', 'numeric', 'min:0'],
@@ -122,6 +130,7 @@ class LeadController extends ApiController
             landing_url: $validated['landing_url'] ?? null,
             user_agent: substr((string) $request->userAgent(), 0, 512),
             ip_address: $request->ip(),
+            consent_disclosures: $validated['consent_disclosures'] ?? null,
             cart_ulid: $request->header('X-Cart-Token') ?: null,
             quiz_answers: $quizAnswers,
             quiz_id: $quiz?->id,
