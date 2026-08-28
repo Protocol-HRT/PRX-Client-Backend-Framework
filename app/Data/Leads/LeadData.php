@@ -27,6 +27,11 @@ class LeadData extends Data
         #[Max(64)]
         public ?string $phone = null,
         public ?string $date_of_birth = null,
+
+        // What the intake quiz collected. Coexists with date_of_birth rather
+        // than replacing it — the quiz asks an age, a clinical intake captures
+        // a birth date, and back-computing one from the other fabricates data.
+        public ?int $age = null,
         #[Max(32)]
         public ?string $gender = null,
         #[Max(255)]
@@ -46,6 +51,12 @@ class LeadData extends Data
         #[DataCollectionOf(CartItemData::class)]
         public array|DataCollection $cart_items = [],
         public ?float $cart_subtotal = null,
+
+        // The completed quiz. Already validated against the quiz definition by
+        // QuizAnswerValidator before it reaches here, so this carries only
+        // answers to questions that were genuinely askable.
+        public ?array $quiz_answers = null,
+        public ?int $quiz_id = null,
         #[WithCast(EnumCast::class)]
         public CheckoutPath $checkout_path = CheckoutPath::PrescribeRx,
         public ?string $utm_source = null,

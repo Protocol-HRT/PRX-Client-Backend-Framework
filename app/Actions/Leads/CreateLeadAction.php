@@ -22,6 +22,7 @@ class CreateLeadAction
                 'email' => $data->email,
                 'phone' => $data->phone,
                 'date_of_birth' => $data->date_of_birth,
+                'age' => $data->age,
                 'gender' => $data->gender,
                 'address_line1' => $data->address_line1,
                 'address_line2' => $data->address_line2,
@@ -46,6 +47,12 @@ class CreateLeadAction
                 'ip_address' => $data->ip_address,
                 'notes' => $data->notes,
                 'cart_ulid' => $data->cart_ulid,
+                'quiz_answers' => $data->quiz_answers,
+                'quiz_id' => $data->quiz_id,
+                // Stamped only for a lead that actually came through the quiz,
+                // so it doubles as the flag separating funnel leads from cart
+                // leads without anyone inspecting the JSON.
+                'quiz_completed_at' => $data->quiz_id !== null ? now() : null,
             ]);
         });
     }

@@ -8,8 +8,11 @@ use App\Enums\CheckoutPath;
 use App\Http\Controllers\Api\V1\ApiController;
 use App\Http\Resources\Api\V1\Leads\LeadResource;
 use App\Models\Lead;
+use App\Models\Quiz\Quiz;
+use App\Services\Quiz\QuizAnswerValidator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 /**
  * POST /api/v1/leads        Create a lead at checkout initiation.
@@ -29,7 +32,7 @@ class LeadController extends ApiController
      *
      * @unauthenticated
      */
-    public function store(Request $request, CreateLeadAction $action): JsonResponse
+    public function store(Request $request, CreateLeadAction $action, QuizAnswerValidator $answers): JsonResponse
     {
         $validated = $request->validate([
             'first_name' => ['required', 'string', 'max:100'],
@@ -56,7 +59,39 @@ class LeadController extends ApiController
             'utm_content' => ['nullable', 'string', 'max:255'],
             'referrer' => ['nullable', 'url', 'max:2048'],
             'landing_url' => ['nullable', 'url', 'max:2048'],
+
+            // The intake quiz. `quiz_slug` rather than an id: the frontend is
+            // handed slugs everywhere else and an id would be the only place
+            // it had to know a database key.
+            'quiz_slug' => ['nullable', 'string', 'max:255'],
+            'quiz_answers' => ['nullable', 'array'],
+            'age' => ['nullable', 'integer', 'min:18', 'max:120'],
         ]);
+
+        // Answers are checked against the quiz that produced them, which is
+        // what makes `visible_when` a constraint rather than a suggestion —
+        // the browser's evaluation is a rendering decision and a submission is
+        // just an HTTP request. See QuizAnswerValidator.
+        $quiz = null;
+        $quizAnswers = null;
+
+        if (filled($validated['quiz_slug'] ?? null)) {
+            $quiz = Quiz::query()->active()->where('slug', $validated['quiz_slug'])->first();
+
+            if ($quiz === null) {
+                throw ValidationException::withMessages([
+                    'quiz_slug' => 'That quiz is not available.',
+                ]);
+            }
+
+            $result = $answers->validate($quiz, $validated['quiz_answers'] ?? []);
+
+            if ($result['errors'] !== []) {
+                throw ValidationException::withMessages($result['errors']);
+            }
+
+            $quizAnswers = $result['answers'];
+        }
 
         $data = new LeadData(
             first_name: $validated['first_name'],
@@ -64,6 +99,7 @@ class LeadController extends ApiController
             email: $validated['email'],
             phone: $validated['phone'] ?? null,
             date_of_birth: $validated['date_of_birth'] ?? null,
+            age: isset($validated['age']) ? (int) $validated['age'] : null,
             gender: $validated['gender'] ?? null,
             address_line1: $validated['address_line1'] ?? null,
             address_line2: $validated['address_line2'] ?? null,
@@ -86,6 +122,8 @@ class LeadController extends ApiController
             user_agent: substr((string) $request->userAgent(), 0, 512),
             ip_address: $request->ip(),
             cart_ulid: $request->header('X-Cart-Token') ?: null,
+            quiz_answers: $quizAnswers,
+            quiz_id: $quiz?->id,
         );
 
         $lead = $action->execute($data);

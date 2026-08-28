@@ -43,6 +43,14 @@ class LeadResource extends JsonResource
             // The frontend redirects here after lead creation when the
             // configured checkout path is 'prx'.
             'handoff_url' => route('checkout.handoff', $this->resource),
+            // The visitor's own answers, behind the same opaque UUID that
+            // gates the rest of this resource. The plan page reads them to
+            // show what was asked and what it concluded.
+            'age' => $this->age,
+            'quiz' => $this->when($this->quiz_id !== null, fn (): array => [
+                'answers' => $this->quiz_answers ?? [],
+                'completed_at' => $this->quiz_completed_at?->toIso8601String(),
+            ]),
             'cart_items' => $this->cart_items ?? [],
             'cart_subtotal' => $this->cart_subtotal,
             'handed_off_at' => $this->handed_off_at?->toISOString(),
