@@ -1,0 +1,76 @@
+# syntax=docker/dockerfile:1
+
+# ---- 1. PHP dependencies + published assets ----
+FROM composer:2 AS deps
+WORKDIR /app
+COPY . .
+RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+
+# ---- 2. Frontend assets ----
+FROM node:20-alpine AS frontend
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --ignore-scripts || npm install --ignore-scripts
+COPY . .
+RUN npm run build
+
+# ---- 3. PHP-FPM runtime ----
+FROM php:8.4-fpm-alpine
+
+RUN apk add --no-cache \
+    bash \
+    curl \
+    git \
+    unzip \
+    sqlite \
+    sqlite-dev \
+    libpng-dev \
+    libjpeg-turbo-dev \
+    freetype-dev \
+    libzip-dev \
+    icu-dev
+
+RUN git config --global --add safe.directory /var/www/html
+
+ADD https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions /usr/local/bin/
+
+RUN chmod +x /usr/local/bin/install-php-extensions && \
+    install-php-extensions \
+        bcmath \
+        ctype \
+        curl \
+        dom \
+        exif \
+        fileinfo \
+        filter \
+        gd \
+        intl \
+        mbstring \
+        opcache \
+        openssl \
+        pcntl \
+        pdo \
+        pdo_mysql \
+        pdo_sqlite \
+        posix \
+        redis \
+        session \
+        tokenizer \
+        xml \
+        zip
+
+# Production-looking PHP defaults
+RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
+
+COPY docker/php-fpm/zz-docker.conf /usr/local/etc/php-fpm.d/zz-docker.conf
+COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+WORKDIR /var/www/html
+COPY --from=deps /app /var/www/html
+COPY --from=frontend /app/public/build /var/www/html/public/build
+
+EXPOSE 9000
+
+ENTRYPOINT ["entrypoint.sh"]
+CMD ["php-fpm", "-F"]
