@@ -41,6 +41,11 @@ class CatalogRelationItemResource extends JsonResource
             'name' => $this->name,
             'slug' => $this->slug,
             'subtitle' => $this->subtitle,
+            // The rail cards carry a blurb, so the light card needs it. Both
+            // Product and Package have this column; it is trimmed to a word
+            // budget on the frontend, not here, because the cap is a layout
+            // concern that differs per surface.
+            'short_description' => $this->short_description,
             'badge_text' => $this->badge_text,
             'hero_image_url' => $this->hero_image_path ? Storage::disk('public')->url($this->hero_image_path) : null,
             'is_in_stock' => (bool) $this->is_in_stock,
