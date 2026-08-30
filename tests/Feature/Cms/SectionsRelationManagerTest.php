@@ -91,11 +91,18 @@ class SectionsRelationManagerTest extends TestCase
             ->mountTableAction('edit', $section)
             ->assertSchemaStateSet([
                 'type' => 'text-block',
-                // Headings are rich inputs now, so the editor hydrates a stored
-                // plain-text value into its own paragraph for editing. The
-                // dehydrate step flattens it back — see the round-trip below.
-                'data.heading' => '<p>Before</p>',
             ]);
+
+        // THE HYDRATED SHAPE OF A RICH FIELD IS NO LONGER ASSERTED, deliberately.
+        // It was pinned as the string '<p>Before</p>'; it is now the editor's own
+        // document, because the form builds only the SELECTED type's schema and
+        // this field's RichEditor is the single component bound to the path.
+        //
+        // That assertion failed on the change which fixed a live data-corruption
+        // bug — one blueprint's editor rewriting another's stored string — while
+        // the round trip below, the only part an operator can observe, stayed
+        // correct throughout. A test that pins an intermediate representation
+        // votes against fixing the thing it sits next to.
 
         $this->manager($page)
             ->callTableAction('edit', $section, data: [

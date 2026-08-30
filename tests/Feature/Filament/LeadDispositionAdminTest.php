@@ -137,7 +137,11 @@ class LeadDispositionAdminTest extends TestCase
         // changed a column nothing downstream reads while the audit — which
         // everything downstream does read — still said granted. The next
         // workflow run subscribed them at the destination, and reported success.
-        $lead = Lead::factory()->create();
+        //
+        // The phone is explicit because `->tel()` validates the whole form on
+        // save and the factory's random number does not always satisfy it — a
+        // test that fails on the dice rather than on the code is worse than none.
+        $lead = Lead::factory()->create(['phone' => '+15555550123']);
         app(RecordConsentAction::class)->execute($lead, 'email', true, source: 'quiz');
 
         Livewire::test(EditLead::class, ['record' => $lead->getRouteKey()])

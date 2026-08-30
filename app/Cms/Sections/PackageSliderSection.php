@@ -111,12 +111,22 @@ class PackageSliderSection extends SectionBlueprint
                     CopyFields::inline('price_recurring_label')
                         ->label('Recurring price label')
                         ->helperText('Precedes the recurring price, e.g. "Recurring". Omitted when empty.'),
-                    CopyFields::inline('cta_label')
+                    // PLAIN INPUT, not CopyFields::inline(). This was the only
+                    // blueprint of thirteen that made `cta_label` a rich editor,
+                    // and the frontend runs the value through `toPlainText()`
+                    // anyway — so any formatting an operator applied here was
+                    // discarded before it reached the page. It also carried a
+                    // state cast, and while the section form built every
+                    // blueprint at once that cast reached the other twelve
+                    // sections' `cta_label` too, turning their strings into
+                    // documents. See SectionFormBuilder's class doc.
+                    TextInput::make('cta_label')
                         ->label('Card button label')
+                        ->maxLength(60)
                         ->helperText('Use {package} for the package name, e.g. "Start my {package}". The button is hidden when empty.'),
                     TextInput::make('cta_url')
                         ->label('Card button link')
-                        ->helperText('Where every card button goes, e.g. /checkout or #get-started.')
+                        ->helperText('Fallback only — each card links to its own package detail page. Used when a package has no slug.')
                         ->maxLength(2048),
                     TextInput::make('range_aria_label')
                         ->label('Scrollbar accessible name')

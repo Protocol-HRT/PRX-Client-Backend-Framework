@@ -23,9 +23,37 @@ use Illuminate\Support\Str;
  * section's `data` payload is edited (page sections relation manager — later
  * global sections and region items).
  *
- * One Group per registered type, visible only while that type is selected in
- * a sibling `type` field, with all components nested under the JSON `data`
- * column via statePath.
+ * ONE GROUP, RESOLVED FROM THE SELECTED TYPE — not one group per type.
+ *
+ * It used to build every registered type's group at once, each gated by
+ * `visible()`. That is the obvious shape, and it silently corrupted content:
+ * **`visible()` hides a component, it does not stop its state cast.** All 27
+ * groups bind into the same `data.*` path, so wherever two blueprints spell the
+ * same key with different components, the one carrying a cast rewrote the
+ * other's value on every load.
+ *
+ * Three keys collided in practice, each with a RichEditor on one side:
+ *
+ *   heading     RichEditor in 26 types        vs  TextInput in comparison-table
+ *   cta_label   RichEditor in package-slider  vs  TextInput in 12 types
+ *   label       RichEditor in 6 types         vs  TextInput in comparison-table
+ *
+ * `RichEditorStateCast` wraps a plain string into a ProseMirror document, so a
+ * heading stored as "Our Peptides Vs. Research-Use-Only" reached a TextInput as
+ * an object. The input rendered `[object Object]`, and saving wrote the document
+ * back — which is how two live pages ended up holding a document in a field the
+ * schema declares as text, and how `[object Object]` reached a visitor inside an
+ * <h2>.
+ *
+ * A fourth key, `icon`, collides across Select / TextInput / CuratorPicker /
+ * Textarea. None of those wraps a string today so it did no damage, but it is
+ * the same latent fault — which is why the fix is structural rather than a
+ * rename of the three that happened to bite.
+ *
+ * Resolving the schema from the selected type means only that type's components
+ * exist, so no other blueprint's cast can reach the payload. It is also far less
+ * work per render: this form used to instantiate every field of every blueprint
+ * on every load.
  */
 class SectionFormBuilder
 {
@@ -36,21 +64,31 @@ class SectionFormBuilder
      */
     public static function typeGroups(string $typeField = 'type'): array
     {
-        $groups = [];
-
-        foreach (app(SectionRegistry::class)->all() as $type => $definition) {
+        return [
             // A Get bound to a Group resolves paths against the group's PARENT
             // container, so the sibling type field is addressed WITHOUT '../'.
-            $groups[] = Group::make($definition->formSchema())
+            //
+            // The schema is a closure so it is rebuilt when the type changes,
+            // and `key()` gives Filament a stable identity to swap the contents
+            // of. Only the chosen blueprint's components ever exist — see the
+            // class doc for what having them all at once did.
+            Group::make()
+                ->key('section-type-fields')
                 ->statePath('data')
-                ->visible(fn (Get $get): bool => $get($typeField) === $type);
-        }
+                ->schema(function (Get $get) use ($typeField): array {
+                    $type = $get($typeField);
 
-        $groups[] = Group::make([self::styleSection(), self::layoutSection()])
-            ->statePath('data')
-            ->visible(fn (Get $get): bool => filled($get($typeField)));
+                    if (! is_string($type) || $type === '') {
+                        return [];
+                    }
 
-        return $groups;
+                    return app(SectionRegistry::class)->resolve($type)?->formSchema() ?? [];
+                }),
+
+            Group::make([self::styleSection(), self::layoutSection()])
+                ->statePath('data')
+                ->visible(fn (Get $get): bool => filled($get($typeField))),
+        ];
     }
 
     /**
