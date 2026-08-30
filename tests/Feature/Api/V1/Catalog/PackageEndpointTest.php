@@ -74,7 +74,14 @@ class PackageEndpointTest extends TestCase
 
     public function test_package_show_computes_price_range_from_plans(): void
     {
-        $package = Package::factory()->create(['status' => CatalogStatus::Published]);
+        // The package's own price is explicit and sits INSIDE the plan span, so
+        // the range is the plans'. It used to be whatever the factory rolled,
+        // which passed only because the resource ignored it entirely.
+        $package = Package::factory()->create([
+            'status' => CatalogStatus::Published,
+            'retail_price' => 199.00,
+            'sale_price' => null,
+        ]);
         Plan::factory()->create(['package_id' => $package->id, 'status' => CatalogStatus::Published, 'sale_price' => 99.00]);
         Plan::factory()->create(['package_id' => $package->id, 'status' => CatalogStatus::Published, 'sale_price' => 249.00]);
 
@@ -83,6 +90,68 @@ class PackageEndpointTest extends TestCase
             ->assertJsonPath('data.price_range.from', 99)
             ->assertJsonPath('data.price_range.to', 249)
             ->assertJsonPath('data.price_range.currency', 'USD');
+    }
+
+    public function test_a_package_on_sale_below_its_cheapest_plan_moves_the_range(): void
+    {
+        // THE CASE THE OPERATOR ASKED ABOUT. Plans are normally the cheaper way
+        // to buy, so a range read from plans alone looks right almost always —
+        // and is wrong exactly when a single purchase is discounted beneath
+        // them, which is what putting a package on sale is for. A range that
+        // ignored it would advertise a "from" higher than the cheapest thing on
+        // the page.
+        $package = Package::factory()->create([
+            'status' => CatalogStatus::Published,
+            'retail_price' => 399.00,
+            'sale_price' => 79.00,
+        ]);
+        Plan::factory()->create(['package_id' => $package->id, 'status' => CatalogStatus::Published, 'sale_price' => 99.00]);
+        Plan::factory()->create(['package_id' => $package->id, 'status' => CatalogStatus::Published, 'sale_price' => 249.00]);
+
+        $this->getJson("/api/v1/catalog/packages/{$package->slug}")
+            ->assertOk()
+            ->assertJsonPath('data.price_range.from', 79)
+            ->assertJsonPath('data.price_range.to', 249)
+            ->assertJsonPath('data.is_on_sale', true);
+    }
+
+    public function test_a_package_with_no_plans_still_reports_its_own_price(): void
+    {
+        // A package can be a single product. Its price is then the whole range,
+        // and the detail page has something to show — where before both the
+        // price block and the range were absent.
+        $package = Package::factory()->create([
+            'status' => CatalogStatus::Published,
+            'retail_price' => 399.00,
+            'sale_price' => null,
+        ]);
+
+        $this->getJson("/api/v1/catalog/packages/{$package->slug}")
+            ->assertOk()
+            ->assertJsonPath('data.price.effective', 399)
+            ->assertJsonPath('data.price_range.from', 399)
+            ->assertJsonPath('data.price_range.to', 399);
+    }
+
+    public function test_the_package_price_block_is_served_at_all(): void
+    {
+        // The regression that started this: an operator set the package to $399,
+        // the save worked, and the storefront kept showing the default plan's
+        // price, because nothing ever emitted the package's own.
+        $package = Package::factory()->create([
+            'status' => CatalogStatus::Published,
+            'retail_price' => 399.00,
+            'sale_price' => 349.00,
+            'price_suffix' => '/mo',
+        ]);
+        Plan::factory()->create(['package_id' => $package->id, 'status' => CatalogStatus::Published, 'retail_price' => 279.99]);
+
+        $this->getJson("/api/v1/catalog/packages/{$package->slug}")
+            ->assertOk()
+            ->assertJsonPath('data.price.retail', 399)
+            ->assertJsonPath('data.price.sale', 349)
+            ->assertJsonPath('data.price.effective', 349)
+            ->assertJsonPath('data.price.suffix', '/mo');
     }
 
     public function test_package_show_returns_404_for_draft(): void

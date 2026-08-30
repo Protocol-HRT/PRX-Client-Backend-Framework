@@ -36,11 +36,34 @@ class PackageResource extends JsonResource
             'highlights' => $highlights,
             'is_featured' => (bool) $this->is_featured,
             'is_in_stock' => (bool) $this->is_in_stock,
-            'is_on_sale' => (bool) ($this->relationLoaded('plans') && $this->plans->contains(fn ($p) => $p->sale_price !== null)),
+            'is_on_sale' => (bool) ($this->sale_price !== null
+                || ($this->relationLoaded('plans') && $this->plans->contains(fn ($p) => $p->sale_price !== null))),
             'requires_lab' => (bool) $this->requires_lab,
             'sort_order' => $this->position,
+
+            // THE PACKAGE'S OWN PRICE, which used to be emitted nowhere.
+            //
+            // A package is buyable on its own — it IS a product, or a group of
+            // products — and its price is what the detail page shows. Plans are
+            // the separate, subscription-shaped offer alongside it. Until now
+            // this resource emitted only `price_range`, computed from PLAN
+            // prices, so an operator could set the package to $399, save it
+            // successfully, and watch the storefront keep showing the default
+            // plan's $279.99. Nothing failed — the value had no way out of the
+            // database, which is indistinguishable from a save that did not work.
+            'price' => [
+                'retail' => $this->retail_price !== null ? (float) $this->retail_price : null,
+                'sale' => $this->sale_price !== null ? (float) $this->sale_price : null,
+                'effective' => $this->effectivePrice(),
+                'suffix' => $this->price_suffix,
+                'currency' => 'USD',
+            ],
+
+            // Emitted whenever the plans relation was loaded, INCLUDING when it
+            // is empty: a package with no plans still has its own price, and a
+            // range of one number is the honest answer rather than no range.
             'price_range' => $this->when(
-                $this->relationLoaded('plans') && $this->plans->isNotEmpty(),
+                $this->relationLoaded('plans'),
                 fn () => $this->buildPriceRange()
             ),
             'detail_sections' => $this->when(
@@ -95,12 +118,41 @@ class PackageResource extends JsonResource
         ];
     }
 
-    /** @return array{from: float|null, to: float|null, currency: string} */
+    /** What a single purchase of the package itself costs, sale winning. */
+    private function effectivePrice(): ?float
+    {
+        $effective = $this->sale_price ?? $this->retail_price;
+
+        return $effective !== null ? (float) $effective : null;
+    }
+
+    /**
+     * The span a visitor could pay, across every way of buying this.
+     *
+     * SPANS PLANS **AND** THE PACKAGE'S OWN PRICE. Usually the plans decide it,
+     * because a subscription is discounted against a one-off purchase — so the
+     * obvious implementation, which is what this was, reads plans alone. That
+     * silently produces a wrong "from" the moment a single purchase is
+     * discounted below the cheapest plan, which is exactly what a sale on the
+     * package is for. Including the package's own effective price costs one
+     * array entry and removes the special case entirely.
+     *
+     * Only PRICED candidates count: a plan with neither retail nor sale, or a
+     * package with no price of its own, contributes nothing rather than a zero
+     * that would drag `from` to 0.00.
+     *
+     * @return array{from: float|null, to: float|null, currency: string}
+     */
     private function buildPriceRange(): array
     {
         $prices = $this->plans
             ->filter(fn ($p) => $p->sale_price !== null || $p->retail_price !== null)
-            ->map(fn ($p) => (float) ($p->sale_price ?? $p->retail_price));
+            ->map(fn ($p) => (float) ($p->sale_price ?? $p->retail_price))
+            ->values();
+
+        if (($own = $this->effectivePrice()) !== null) {
+            $prices->push($own);
+        }
 
         return [
             'from' => $prices->isNotEmpty() ? round((float) $prices->min(), 2) : null,
