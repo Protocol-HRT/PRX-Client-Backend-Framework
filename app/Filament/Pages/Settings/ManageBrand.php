@@ -156,10 +156,28 @@ class ManageBrand extends BaseSettingsPage
                             ->url()
                             ->maxLength(2048)
                             ->columnSpanFull(),
+                        // EXPLICIT value => label, NOT `options(OrganizationType::class)`.
+                        // Two things went wrong with the enum-class form. The state
+                        // came back as an OrganizationType INSTANCE, while
+                        // `BrandSettingsData::$organization_type` is a `?string`
+                        // carrying `#[Max(100)]` — so the rule ran `mb_strlen()` on
+                        // an object and the entire page refused to save with a
+                        // TypeError instead of a validation message. Separately,
+                        // this enum does not implement Filament's `HasLabel`, so the
+                        // dropdown listed raw case names ("HealthAndBeautyBusiness")
+                        // while `OrganizationType::label()` sat unused beside it.
+                        //
+                        // Mapping here keeps the value a string end to end, which is
+                        // what both the settings property and the DTO declare.
+                        // `ManageLlm` is the other valid pattern — it types the DTO
+                        // property AS the enum. What cannot work is one end saying
+                        // enum while the other says string.
                         Select::make('organization_type')
                             ->label('Organization type')
                             ->hintIcon(Heroicon::InformationCircle, 'schema.org @type for the Organization JSON-LD block. Choose the type that best describes this business.')
-                            ->options(OrganizationType::class)
+                            ->options(collect(OrganizationType::cases())
+                                ->mapWithKeys(fn (OrganizationType $type): array => [$type->value => $type->label()])
+                                ->all())
                             ->placeholder('Select type…'),
                     ]),
 
