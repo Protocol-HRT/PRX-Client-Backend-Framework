@@ -9,6 +9,7 @@ use App\Models\Catalog\Package;
 use App\Models\Catalog\Plan;
 use App\Models\Kb\HealthGoal;
 use App\Models\Quiz\Quiz;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -54,7 +55,15 @@ class QuizSchemaTest extends TestCase
 
     public function test_a_price_range_is_computed_live_and_never_authored(): void
     {
-        $package = Package::factory()->create(['status' => CatalogStatus::Published, 'tier' => 'protocol']);
+        // The package's own price is explicit and sits INSIDE the plan span, so
+        // the plans decide the range. It used to be whatever the factory rolled,
+        // which passed only while the builder ignored it.
+        $package = Package::factory()->create([
+            'status' => CatalogStatus::Published,
+            'tier' => 'protocol',
+            'retail_price' => 250,
+            'sale_price' => null,
+        ]);
         Plan::factory()->create(['package_id' => $package->id, 'status' => CatalogStatus::Published, 'retail_price' => 100, 'sale_price' => null]);
         Plan::factory()->create(['package_id' => $package->id, 'status' => CatalogStatus::Published, 'retail_price' => 500, 'sale_price' => 400]);
 
@@ -76,6 +85,35 @@ class QuizSchemaTest extends TestCase
         // No source means no range — not a zero range, which would render as
         // "$0 – $0" and read as free.
         $this->assertNull($options[1]['price_range']);
+    }
+
+    public function test_a_package_on_sale_below_its_plans_lowers_the_quiz_range(): void
+    {
+        // The quiz computes its range LIVE rather than reading PackageResource,
+        // so the two implementations have to be fixed in lockstep — a package
+        // buyable on its own for less than any plan must move the "from" a
+        // visitor is quoted, or the quiz advertises a price higher than the
+        // cheapest thing on the page it sends them to.
+        $package = Package::factory()->create([
+            'status' => CatalogStatus::Published,
+            'tier' => 'protocol',
+            'retail_price' => 500,
+            'sale_price' => 60,
+        ]);
+        Plan::factory()->create(['package_id' => $package->id, 'status' => CatalogStatus::Published, 'retail_price' => 100, 'sale_price' => null]);
+        Plan::factory()->create(['package_id' => $package->id, 'status' => CatalogStatus::Published, 'retail_price' => 400, 'sale_price' => null]);
+
+        $quiz = $this->quiz();
+        $question = $this->step($quiz)->questions()->create([
+            'slug' => 'start', 'kind' => QuizQuestionKind::SingleSelect,
+            'prompt' => 'Where?', 'position' => 1, 'is_active' => true,
+        ]);
+        $question->options()->create(['value' => 'protocol', 'label' => 'Protocol', 'price_source' => 'packages:protocol', 'position' => 1]);
+
+        $options = $this->getJson('/api/v1/quiz')->assertOk()
+            ->json('data.steps.0.questions.0.options');
+
+        $this->assertEquals(['from' => 60, 'to' => 400, 'currency' => 'USD'], $options[0]['price_range']);
     }
 
     public function test_a_tier_matching_no_package_yields_no_range_rather_than_every_package(): void
@@ -109,7 +147,7 @@ class QuizSchemaTest extends TestCase
             'slug' => 'dupe', 'kind' => QuizQuestionKind::Text, 'prompt' => 'A', 'position' => 1, 'is_active' => true,
         ]);
 
-        $this->expectException(\Illuminate\Database\QueryException::class);
+        $this->expectException(QueryException::class);
 
         $this->step($quiz, 's2')->questions()->create([
             'slug' => 'dupe', 'kind' => QuizQuestionKind::Text, 'prompt' => 'B', 'position' => 1, 'is_active' => true,

@@ -13,7 +13,6 @@ use App\Models\Commerce\CartItem;
 use App\Settings\BillingSettings;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 /**
  * Cart endpoints — token-identified via X-Cart-Token header.
@@ -131,8 +130,9 @@ class CartController extends ApiController
      *
      * Adds a product or package to the cart, optionally under one of its plans. Increments
      * quantity if the same item and plan already exist in the cart. Requires `type` and `id`;
-     * `plan_id` is required for packages and optional for products (term plans — omit it for
-     * a one-time buy-once purchase). The plan must belong to the item. Returns the updated cart.
+     * `plan_id` is OPTIONAL for both products and packages — omit it to buy the item itself
+     * once at its own price, or give it to subscribe under that plan. The plan must belong to
+     * the item. Returns the updated cart.
      *
      * @tags Cart
      *
@@ -143,7 +143,16 @@ class CartController extends ApiController
         $validated = $request->validate([
             'type' => ['required', 'in:product,package'],
             'id' => ['required', 'integer'],
-            'plan_id' => ['nullable', 'integer', Rule::requiredIf($request->input('type') === 'package')],
+            // OPTIONAL FOR PACKAGES TOO. This was
+            // `requiredIf(type === 'package')`, which made a package
+            // purchasable only as a subscription — there was no way to buy the
+            // stack itself. A package IS a product, or a group of them, with its
+            // own price; plans are the separate recurring offer alongside it.
+            //
+            // The buy-once branch below needed no change to suit this: it
+            // already read the item's own `sale_price ?? retail_price`, and was
+            // simply unreachable for packages while this rule stood.
+            'plan_id' => ['nullable', 'integer'],
             'quantity' => ['sometimes', 'integer', 'min:1', 'max:10'],
         ]);
 

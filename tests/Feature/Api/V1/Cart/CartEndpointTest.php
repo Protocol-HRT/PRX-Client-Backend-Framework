@@ -143,6 +143,64 @@ class CartEndpointTest extends TestCase
         ]);
     }
 
+    public function test_a_package_can_be_bought_on_its_own_without_a_plan(): void
+    {
+        // `plan_id` used to be `requiredIf(type === 'package')`, so a stack was
+        // purchasable ONLY as a subscription — there was no way to buy the thing
+        // itself. A package is a product, or a group of them, with its own
+        // price; plans are the separate recurring offer alongside it.
+        //
+        // Note what is asserted: the snapshot is the PACKAGE's own price, not a
+        // plan's. That branch existed all along and was simply unreachable.
+        $package = Package::factory()->create(['retail_price' => 399.00, 'sale_price' => null]);
+        Plan::factory()->create(['package_id' => $package->id, 'retail_price' => 279.99]);
+        $cart = Cart::factory()->create();
+
+        $this->postJson('/api/v1/cart/items', [
+            'type' => 'package',
+            'id' => $package->id,
+            'quantity' => 2,
+        ], ['X-Cart-Token' => $cart->ulid])->assertCreated();
+
+        $item = CartItem::query()->where('itemable_id', $package->id)->firstOrFail();
+
+        $this->assertNull($item->plan_id);
+        $this->assertSame(2, $item->quantity);
+        $this->assertSame('399.00', (string) $item->unit_price_snapshot);
+    }
+
+    public function test_a_package_sale_price_is_what_gets_snapshotted(): void
+    {
+        $package = Package::factory()->create(['retail_price' => 399.00, 'sale_price' => 349.00]);
+        $cart = Cart::factory()->create();
+
+        $this->postJson('/api/v1/cart/items', [
+            'type' => 'package',
+            'id' => $package->id,
+        ], ['X-Cart-Token' => $cart->ulid])->assertCreated();
+
+        $this->assertSame(
+            '349.00',
+            (string) CartItem::query()->where('itemable_id', $package->id)->firstOrFail()->unit_price_snapshot,
+        );
+    }
+
+    public function test_a_package_bought_once_and_the_same_package_on_a_plan_are_separate_lines(): void
+    {
+        // The dedupe key already included `plan_id`, so this needed no change —
+        // but it is the case that would silently merge a subscription into a
+        // one-off purchase, which is worth a test rather than a reading of the
+        // query.
+        $package = Package::factory()->create(['retail_price' => 399.00]);
+        $plan = Plan::factory()->create(['package_id' => $package->id, 'retail_price' => 279.99]);
+        $cart = Cart::factory()->create();
+
+        $this->postJson('/api/v1/cart/items', ['type' => 'package', 'id' => $package->id], ['X-Cart-Token' => $cart->ulid])->assertCreated();
+        $this->postJson('/api/v1/cart/items', ['type' => 'package', 'id' => $package->id, 'plan_id' => $plan->id], ['X-Cart-Token' => $cart->ulid])->assertCreated();
+
+        $this->assertSame(2, CartItem::query()->where('cart_id', $cart->id)->count());
+    }
+
     public function test_add_item_rejects_plan_belonging_to_another_item(): void
     {
         $product = Product::factory()->create(['retail_price' => 299.00]);

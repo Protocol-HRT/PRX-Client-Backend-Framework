@@ -4,12 +4,14 @@ namespace App\Services\Quiz;
 
 use App\Enums\CatalogStatus;
 use App\Enums\Quiz\QuizQuestionKind;
+use App\Models\Catalog\Package;
 use App\Models\Catalog\Plan;
 use App\Models\Kb\HealthGoal;
 use App\Models\Quiz\Quiz;
 use App\Models\Quiz\QuizQuestion;
 use App\Models\Quiz\QuizQuestionOption;
 use App\Models\Quiz\QuizStep;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -170,6 +172,21 @@ class QuizSchemaBuilder
         $prices = $query->get(['retail_price', 'sale_price'])
             ->map(fn (Plan $p): float => (float) ($p->sale_price ?? $p->retail_price));
 
+        // THE PACKAGES' OWN PRICES COUNT TOO. A package is buyable on its own,
+        // so a range built from plans alone advertises a "from" higher than the
+        // cheapest thing a visitor can actually buy the moment a single purchase
+        // is discounted below the plans — which is what a sale on a package is
+        // for.
+        //
+        // This mirrors `PackageResource::buildPriceRange()` on purpose, and the
+        // two have to move together: the quiz computes its range LIVE rather
+        // than reading that resource, so a fix in one is invisible to the other.
+        if (str_starts_with($source, 'packages')) {
+            $prices = $prices->concat($this->packageOwnPrices(
+                str_contains($source, ':') ? explode(':', $source, 2)[1] : null
+            ));
+        }
+
         if ($prices->isEmpty()) {
             return null;
         }
@@ -179,5 +196,22 @@ class QuizSchemaBuilder
             'to' => round((float) $prices->max(), 2),
             'currency' => 'USD',
         ];
+    }
+
+    /**
+     * Single-purchase prices of the published packages a source refers to.
+     *
+     * @return Collection<int, float>
+     */
+    private function packageOwnPrices(?string $tier): Collection
+    {
+        return Package::query()
+            ->where('status', CatalogStatus::Published->value)
+            ->where(fn ($q) => $q->whereNotNull('retail_price')->orWhereNotNull('sale_price'))
+            // Same rule as the plan query above: a tier that matches nothing
+            // yields no prices rather than every package's.
+            ->when($tier !== null && $tier !== '', fn ($q) => $q->where('tier', $tier))
+            ->get(['retail_price', 'sale_price'])
+            ->map(fn (Package $p): float => (float) ($p->sale_price ?? $p->retail_price));
     }
 }
