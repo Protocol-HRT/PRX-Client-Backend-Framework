@@ -81,11 +81,18 @@ class WorkflowServiceProvider extends ServiceProvider
             'POST the record to any URL. The escape hatch for a system with no first-class integration yet.',
         );
 
+        // OFFERED ONLY WHEN THIS INSTALL HAS REGISTERED A JOB, and by default
+        // none has. The allow-list starts empty on purpose — a job is arbitrary
+        // code dispatched from an operator-editable row, so `registerJob()` is
+        // the security boundary and nothing is on it until somebody deliberately
+        // puts it there. Offering the action regardless gave an operator a step
+        // whose only control was an empty dropdown.
         $registry->registerAction(
             'dispatch_job',
             DispatchJobAction::class,
             'Run a background job',
             'Dispatch one of this installation\'s registered jobs.',
+            available: fn (): bool => $registry->jobOptions() !== [],
         );
 
         // ── Capability-routed, and therefore conditional ──────────────

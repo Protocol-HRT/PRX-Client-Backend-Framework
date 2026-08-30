@@ -43,7 +43,16 @@ Steps run top to bottom. Drag to reorder.
   disposition is itself a trigger, so one workflow's update is the next workflow's start.
 - **Send a webhook** — POST the record to any URL. Use this until a proper integration for
   your CRM exists.
-- **Run a background job** — dispatch something your installation has made available.
+- **Run a background job** — dispatch something your installation has made available. **You
+  will only see this if a developer has set one up for you**, and on most installations none
+  is, so its absence is normal rather than something broken.
+
+**The list of steps changes with what you have configured, and that is deliberate.** "Send an
+email", "Send an SMS" and "Send to an integration" appear only once an integration that can do
+each is switched on. So when a step you expected is missing, the place to look is
+Settings → Integrations, not this screen — a step that could only ever fail is not offered at
+all, because building a funnel around one and discovering weeks later that it never ran is
+worse than not being offered it.
 
 **A failing step does not stop the ones after it**, on purpose: a marketing push that fails
 should not prevent the status update behind it. Turn on *Stop the workflow if this fails*

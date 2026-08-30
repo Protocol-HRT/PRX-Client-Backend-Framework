@@ -192,6 +192,9 @@ class WorkflowRegistry
      * @param  Closure|null  $configSchema  Returns Filament components for this action's config.
      *                                      Null falls back to the generic key/value editor, so the
      *                                      actions that predate per-type forms keep working.
+     * @param  Closure|null  $available  Returns false to withhold this action for a reason that is
+     *                                   not an integration capability. Evaluated per render, never
+     *                                   cached — what it tests is operator state that changes.
      */
     public function registerAction(
         string $type,
@@ -200,6 +203,7 @@ class WorkflowRegistry
         ?string $description = null,
         ?IntegrationCapability $capability = null,
         ?Closure $configSchema = null,
+        ?Closure $available = null,
     ): void {
         $this->actions[$type] = [
             'handler' => $handler,
@@ -207,6 +211,7 @@ class WorkflowRegistry
             'description' => $description,
             'capability' => $capability,
             'config_schema' => $configSchema,
+            'available' => $available,
         ];
     }
 
@@ -230,12 +235,21 @@ class WorkflowRegistry
      * loudly per run after it is switched off, rather than quietly becoming a
      * no-op that nothing explains.
      *
+     * AN INTEGRATION CAPABILITY IS NOT THE ONLY REASON TO WITHHOLD ONE, which is
+     * what `available` is for. "Run a background job" was offered on an install
+     * that registers no jobs at all: the operator picked it, met an empty
+     * dropdown, and had nowhere to go — the exact failure this method's rule
+     * already forbids, slipping through because the gate only understood
+     * integrations.
+     *
      * @return array<string, string> type => label, for a Filament select.
      */
     public function actionOptions(): array
     {
         return collect($this->actions)
             ->filter(fn (array $definition): bool => $this->capabilityIsAvailable($definition['capability'] ?? null))
+            ->filter(fn (array $definition): bool => ($definition['available'] ?? null) === null
+                || ($definition['available'])() === true)
             ->map(fn (array $definition): string => $definition['label'])
             ->all();
     }

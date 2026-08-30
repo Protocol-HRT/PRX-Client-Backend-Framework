@@ -165,7 +165,20 @@ back to `getOriginal()`.
 |---|---|---|
 | `update_field` | `{field, value}` | Bounded by the subject allow-list. Throws on an unregistered field rather than silently ignoring it. |
 | `webhook` | `{url, method?, headers?, timeout?}` | Non-2xx is a **failure**. Payload is `context->toLog()`, so it carries only registered fields. |
-| `dispatch_job` | `{job}` | Registry key only. The most dangerous action, hence its own allow-list. |
+| `dispatch_job` | `{job}` | Registry key only. The most dangerous action, hence its own allow-list — **empty until an install calls `registerJob()`, and the action is withheld from the palette while it is.** |
+
+**Nothing is registered on the Atlas install**, so "Run a background job" does not appear in
+its palette at all. That is the allow-list working rather than a gap: a job is arbitrary code
+dispatched from an operator-editable row, so the list starts empty and stays empty until
+somebody deliberately puts a class on it. It used to be offered regardless, which gave an
+operator a step whose only control was an empty dropdown — the failure `actionOptions()`
+already forbids, slipping through because that gate only understood integration capabilities.
+`registerAction(available: …)` is the general form of it.
+
+Note the two jobs this install *has* — `RevalidateFrontendJob` and
+`HandlePrescribeRxWebhookEvent` — are not candidates: `DispatchJobAction` constructs
+`new $job($context->subject)` and neither takes a subject. Registering one means giving it a
+constructor that does.
 
 **Deliberately absent: any vendor.** Klaviyo/GHL/Twilio arrive as configured integration
 instances behind one generic `push_to_integration` action, so the shipped set never names a

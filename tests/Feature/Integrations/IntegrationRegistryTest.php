@@ -127,6 +127,24 @@ class IntegrationRegistryTest extends TestCase
         $this->assertArrayHasKey('send_sms', app(WorkflowRegistry::class)->actionOptions());
     }
 
+    public function test_the_job_action_is_withheld_while_the_job_allow_list_is_empty(): void
+    {
+        // THE SAME RULE, FOR A REASON THAT IS NOT AN INTEGRATION. `registerJob()`
+        // is a security boundary — a job is arbitrary code dispatched from an
+        // operator-editable row — so the allow-list starts empty and stays empty
+        // until somebody deliberately adds to it. On this install nothing is
+        // registered, and "Run a background job" was still offered: the operator
+        // picked it and met a dropdown with nothing in it and nowhere to go.
+        $registry = app(WorkflowRegistry::class);
+
+        $this->assertSame([], $registry->jobOptions());
+        $this->assertArrayNotHasKey('dispatch_job', $registry->actionOptions());
+
+        $registry->registerJob('resend_plan', ResendPlanJob::class, 'Resend the plan email');
+
+        $this->assertArrayHasKey('dispatch_job', $registry->actionOptions());
+    }
+
     public function test_an_action_still_resolves_after_its_integration_is_switched_off(): void
     {
         // The form filters; the RUNNER does not. A workflow authored while an
@@ -245,4 +263,10 @@ class SmsOnlyDriver implements SendsSms
     {
         return ['sid' => 'SM123'];
     }
+}
+
+/** Stands in for whatever an install puts on the job allow-list. */
+class ResendPlanJob
+{
+    public function __construct(public mixed $subject = null) {}
 }
