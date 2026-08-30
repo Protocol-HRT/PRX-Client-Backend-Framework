@@ -306,9 +306,11 @@ class PackageForm
                                                 'related' => 'People Also Bought (related items)',
                                                 'stacks' => 'Stacks rail',
                                                 'associated' => 'Associated products',
+                                                'none' => 'None — hide every rail on this page',
                                             ])
                                             ->columns(3)
-                                            ->columnSpanFull(),
+                                            ->columnSpanFull()
+                                            ->hintIcon(Heroicon::InformationCircle, 'Which recommendation rails render at the bottom of this page. Leave every box unticked for the deployment default; tick "None" to show no rails at all. Those are different answers — unticked means you have not chosen, and the default can change.'),
                                     ]),
                             ]),
 

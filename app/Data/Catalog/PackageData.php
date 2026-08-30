@@ -3,9 +3,9 @@
 namespace App\Data\Catalog;
 
 use App\Enums\CatalogStatus;
-use Spatie\LaravelData\Attributes\Validation\Present;
 use Spatie\LaravelData\Attributes\Validation\Max;
 use Spatie\LaravelData\Attributes\Validation\Min;
+use Spatie\LaravelData\Attributes\Validation\Present;
 use Spatie\LaravelData\Attributes\Validation\Required;
 use Spatie\LaravelData\Attributes\WithCast;
 use Spatie\LaravelData\Casts\EnumCast;
@@ -14,8 +14,26 @@ use Spatie\LaravelData\Data;
 class PackageData extends Data
 {
     /**
+     * `detail_layout` — the per-record storefront presentation knobs:
+     * template, accordion placement, Pair With per-view counts, and which
+     * bottom rails render.
+     *
+     * NOT OPTIONAL, AND NOT DECORATIVE. This property was missing, so the five
+     * Layout selects on the form wrote into a DTO that dropped them and an
+     * update action that never referenced them. The form saved successfully
+     * and persisted nothing; every value in the column came from the fill
+     * scripts, and an operator could set a knob for months without it ever
+     * taking effect. Pinned by DetailLayoutPersistsTest.
+     *
+     * Kept as a plain array rather than a typed object because the frontend
+     * owns this vocabulary and normalizes it (`presentation.js`); the backend
+     * stores the operator's choice and does not interpret it. It IS pruned of
+     * empty values on write — see App\Support\DetailLayout for why that is
+     * load-bearing rather than tidiness.
+     *
      * @param  array<int, string>  $gallery
      * @param  array<int, array{item: string}>  $highlights
+     * @param  array<string, mixed>  $detail_layout
      * @param  array<int, int>  $category_ids
      * @param  array<int, int>  $tag_ids
      */
@@ -62,6 +80,7 @@ class PackageData extends Data
         public array $highlights = [],
         #[Present]
         public array $detail_sections = [],
+        public array $detail_layout = [],
         public bool $is_featured = false,
         public bool $is_in_stock = true,
         public bool $requires_lab = false,

@@ -188,12 +188,34 @@ Products and packages expose on their **show** endpoints:
   admin-defined flexible types — is available per record. Global blocks
   compose identically to pages: attach one block to many records, edit
   once. Disabled sections and unresolvable types are skipped.
-- `detail_layout` — nullable per-record presentation JSON, passed through
-  verbatim to the frontend's `normalizePresentation`:
+- `detail_layout` — nullable per-record presentation JSON, served verbatim to
+  the frontend's `normalizePresentation`:
   `{template: classic|conversion, accordions: {placement: side|below},
-  pair_with: {desktop: 1–4, mobile: 1–2}, rails: [related|stacks|associated]}`.
+  pair_with: {desktop: 1–4, mobile: 1–2}, rails: [related|stacks|associated|none]}`.
   Every key optional; missing = deployment default. Never invent keys
   backend-side — the frontend normalizer owns defaults.
+
+  **Pruned on WRITE, not on read.** `App\Support\DetailLayout::prune()` runs in
+  all four catalog create/update actions and strips nulls, empty strings and
+  empty arrays, plus any group left empty. This is load-bearing, not tidiness:
+  Filament hydrates an untouched Select as `null` and an untouched CheckboxList
+  as `[]` and dehydrates them the same way, so without pruning, saving a
+  product *without opening the Layout tab* wrote a full object of nulls
+  including `rails: []`. An operator fixing a typo in a subtitle would have
+  silently deleted that page's recommendation rails. Pruning is what keeps
+  "never configured" expressible after a save, and keeps the form's own
+  promise — blank means the deployment default — true.
+
+  **Consequently `rails: []` cannot mean "no rails"** — it is indistinguishable
+  from a control nobody touched, and is pruned away. "Show no rails" is the
+  explicit `none` token, the same idiom the section spacing scale uses, where
+  `none` is deliberately not redundant with leaving a knob unset. `none` beats
+  any rail selected alongside it.
+
+  Pinned by `tests/Feature/Filament/DetailLayoutPersistsTest.php`, which mounts
+  the real Filament pages — the original defect (the DTO carrying no
+  `detail_layout` at all, so every Layout select saved successfully and wrote
+  nothing) lived in the form-to-DTO seam and no action-level test could see it.
 
 Admin: shared `SectionsRelationManager` ("Page Sections" tab, drag-ordered,
 same form builder as the page builder — the statePath/`$get('type')`
