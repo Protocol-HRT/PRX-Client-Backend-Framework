@@ -391,6 +391,52 @@ Config lives in `config/cms.php` under `frontend`. The secret must match the fro
 4. Create `resources/views/components/sections/your-type.blade.php` reading `$data` with `data_get()` fallbacks.
 5. Restart the server (or `php artisan filament:cache-components`) and pick the new type from the section dropdown.
 
+### Where a section may be added — `contexts()` (2026-08-30)
+
+`SectionBlueprint::contexts()` returns the surfaces a type may be **added** to:
+`page` (CMS pages, global sections, region items) and/or `catalog` (a product
+or stack's own Page Sections tab). Both by default, which is what almost every
+blueprint wants. `SectionRegistry::options($context)` filters on it, and each
+picker passes its own context.
+
+**It gates the picker, never resolution.** A section already authored keeps
+resolving and rendering whatever the contexts later say — silently dropping
+content an operator wrote is worse than an odd entry in a dropdown.
+
+It exists because some sections are meaningless outside one surface. Today it
+only keeps `item-faqs` and `item-reviews` off CMS pages; every other blueprint
+still declares both, so a product's picker continues to offer `hero`, `quiz`
+and the rest. Narrowing those is a pending decision.
+
+### Sections that read the record — `item-faqs`, `item-reviews` (2026-08-30)
+
+Two catalog-only types whose content is the RECORD's, not the section's. They
+carry a heading and nothing else; the questions and reviews stay in the FAQs
+and Reviews relation managers where they are authored.
+
+**Why not reuse the `faq` blueprint:** that one carries its own question
+repeater, so adopting it would have meant retyping every FAQ already attached
+to a record and leaving two places to edit one answer. Reviews are moderated
+customer writing besides — a blueprint an operator could type them into would
+be a machine for fabricating testimonials.
+
+Both declare `hasIntrinsicContent()`, like `quiz`: their content is the
+relation, so they must survive `has_content` with every field blank, or an
+operator who adds one and writes no heading watches it vanish.
+
+**What they replaced.** FAQs and reviews used to be composed directly into the
+frontend's conversion template, gated on nothing but the record having some —
+no toggle, no position, no way to leave them off. The operator's summary of
+that whole class of problem: *"Data does not = display always!"*
+
+The frontend renders nothing when the record has no published FAQs or approved
+reviews, so adding one to a bare record is an absence, not an empty heading.
+The frontend counterpart takes an `item` prop on `SectionRenderer`; see
+`docs/frontend/dev.md`.
+
+**Reviews are interim.** The plan is a third-party integration or a
+syndicating widget; that changes where the rows come from, not this section.
+
 ## Refactoring an imported section to be DB-driven
 
 The imported sections (`hero`, `stats-marquee`, etc.) use top-of-file `@php` arrays. To make one DB-driven without breaking existing usage:

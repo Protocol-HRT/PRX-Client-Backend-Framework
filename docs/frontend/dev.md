@@ -348,3 +348,26 @@ The active checkout path comes from `GET /config` → `checkout.path` (`prx` | `
    prose-kind fields get a container of their own.
 5. **Respect `allow_indexing` and per-page `noindex`.**
 6. **Keep API tokens server-side.**
+
+## Catalog-only sections that read their record (2026-08-30)
+
+Two section types serve a product or stack detail page and nothing else:
+
+| type | renders |
+|---|---|
+| `item-faqs` | that record's published FAQs |
+| `item-reviews` | that record's approved reviews, plus its rating |
+
+Their `data` is presentation only — an optional inline `heading`. **The rows
+are not in the payload's section data**; they are the record's own `faqs`,
+`reviews` and `rating`, already served at the top level of the detail payload.
+So the frontend passes the record into its section renderer and those two
+components read it; every other type stays a self-contained envelope and
+nothing is duplicated.
+
+Both declare intrinsic content, so they arrive with `has_content: true` even
+with a null heading. Render nothing when the record has no FAQs/reviews.
+
+They are absent from the CMS page picker (`contexts: ['catalog']`) because a
+page has no record for them to read — but that gates authoring only, so
+anything already stored keeps resolving.
