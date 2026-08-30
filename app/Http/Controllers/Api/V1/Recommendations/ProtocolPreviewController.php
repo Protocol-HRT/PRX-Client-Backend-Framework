@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1\Recommendations;
 
+use App\Enums\CatalogStatus;
 use App\Http\Controllers\Api\V1\ApiController;
 use App\Http\Resources\Api\V1\Catalog\PackageResource;
 use App\Http\Resources\Api\V1\Catalog\ProductResource;
@@ -77,8 +78,15 @@ class ProtocolPreviewController extends ApiController
         $resolved = $goals->map(function (HealthGoal $goal) use ($request, $profile): array {
             $result = $this->resolver->resolve($goal, $profile);
 
-            $products = $result['products']->loadMissing('ingredients');
-            $packages = $result['packages']->loadMissing('products');
+            $products = $result['products']->loadMissing('ingredients', 'healthGoals');
+            $packages = $result['packages']->loadMissing([
+                // Published-only: see CatalogInliner for why an unconstrained
+                // nested products load is a content leak, not a detail.
+                'products' => fn ($q) => $q->where('products.status', CatalogStatus::Published),
+                'products.healthGoals',
+                'healthGoals',
+                'healthGoalSourceProducts.healthGoals',
+            ]);
 
             return [
                 'goal' => [

@@ -6,7 +6,6 @@ use App\Cms\Blocks\BlockBlueprint;
 use App\Cms\Support\SectionChildren;
 use App\Services\Cms\BlockRegistry;
 use App\Services\Cms\SectionRegistry;
-use App\Settings\ThemeSettings;
 use Filament\Forms\Components\Builder;
 use Filament\Forms\Components\Builder\Block;
 use Filament\Forms\Components\Select;
@@ -16,7 +15,6 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Icons\Heroicon;
-use Illuminate\Support\Str;
 
 /**
  * Builds the per-section-type Filament form groups shared by every place a
@@ -227,19 +225,7 @@ class SectionFormBuilder
      */
     private static function paletteOptions(): array
     {
-        $options = [];
-
-        foreach (app(ThemeSettings::class)->palette as $entry) {
-            $name = $entry['name'] ?? null;
-
-            if (! filled($name)) {
-                continue;
-            }
-
-            $options[$name] = Str::headline($name).' — '.($entry['color'] ?? '');
-        }
-
-        return $options;
+        return PaletteChoices::options();
     }
 
     /**
@@ -248,9 +234,7 @@ class SectionFormBuilder
      */
     private static function paletteHelp(string $base): string
     {
-        return app(ThemeSettings::class)->palette === []
-            ? 'No colours defined yet — add them under Settings → Theme → Colour palette, then pick one here.'
-            : $base;
+        return PaletteChoices::help($base);
     }
 
     /**

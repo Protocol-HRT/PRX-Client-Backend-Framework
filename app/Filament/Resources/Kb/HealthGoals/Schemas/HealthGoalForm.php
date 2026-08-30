@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Kb\HealthGoals\Schemas;
 
 use App\Cms\Support\CopyFields;
+use App\Filament\Support\PaletteChoices;
 use App\Models\Kb\HealthGoal;
 use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\FileUpload;
@@ -102,6 +103,13 @@ class HealthGoalForm
                                     ->hintIcon(Heroicon::InformationCircle, 'Optional. Leave blank for the site default — set it only to even up a glyph that reads heavier or lighter than the others in the set.'),
                                 ColorPicker::make('color')
                                     ->hintIcon(Heroicon::InformationCircle, 'Accent for this goal wherever it is shown as a card or chip.'),
+                                Select::make('badge_color')
+                                    ->label('Badge colour')
+                                    ->options(fn (): array => PaletteChoices::options())
+                                    ->placeholder('No badge colour')
+                                    ->native(false)
+                                    ->helperText(fn (): string => PaletteChoices::help('Fills the badge shown on product and stack cards for this goal. Leave blank and the badge renders in the site default.'))
+                                    ->hintIcon(Heroicon::InformationCircle, 'You do not choose the label colour and there is no control for it. It is worked out from the fill you pick — black or white, whichever stays readable — so a badge can never come out unreadable. Pick the fill you want and trust the label.'),
                                 FileUpload::make('image_path')
                                     ->image()
                                     ->disk('public')

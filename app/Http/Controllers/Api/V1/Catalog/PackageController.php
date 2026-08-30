@@ -43,6 +43,12 @@ class PackageController extends ApiController
                 'plans' => fn ($q) => $q->where('status', CatalogStatus::Published)->orderBy('position'),
                 'categories',
                 'tags',
+                // Badges are derived from the contained products unless the
+                // package overrides them, so a listing needs both edges or
+                // every card renders bare. Two extra queries for the page,
+                // not two per row.
+                'healthGoals',
+                'healthGoalSourceProducts.healthGoals',
             ])
             ->when($request->filled('category'), fn ($q) => $q->whereHas(
                 'categories',
@@ -100,6 +106,18 @@ class PackageController extends ApiController
         $package->load([
             'plans' => fn ($q) => $q->where('status', CatalogStatus::Published)->orderBy('position'),
             'products' => fn ($q) => $q->where('status', CatalogStatus::Published)->orderByPivot('sort_order'),
+            // BOTH, and they are not redundant. `healthGoalSourceProducts`
+            // feeds the PACKAGE's derived badges and is never serialized;
+            // `products.healthGoals` feeds the badges on each nested product,
+            // which is what the "What's Included" rows render. They are
+            // separate relations hydrating separate model instances, so
+            // loading one leaves the other's `relationLoaded` false and
+            // ProductResource serves `health_goals: []` — indistinguishable
+            // from an untagged product. Dropping this line is how that
+            // happened once already.
+            'products.healthGoals',
+            'healthGoalSourceProducts.healthGoals',
+            'healthGoals',
             'categories',
             'tags',
             'faqs' => fn ($q) => $q->where('is_published', true),

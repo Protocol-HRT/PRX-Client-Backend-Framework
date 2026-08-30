@@ -9,8 +9,11 @@ use Illuminate\Support\Facades\Storage;
 
 class PackageResource extends JsonResource
 {
+    use Concerns\BuildsHealthGoalBadges;
+    use Concerns\BuildsPackagePricing;
     use Concerns\BuildsRatingSummary;
     use Concerns\NormalizesDetailSections;
+    use Concerns\NormalizesHighlights;
 
     /**
      * @return array<string, mixed>
@@ -34,6 +37,7 @@ class PackageResource extends JsonResource
             'tier' => $this->tier,
             'badge_text' => $this->badge_text,
             'highlights' => $highlights,
+            'health_goals' => $this->packageHealthGoalBadges($this->resource),
             'is_featured' => (bool) $this->is_featured,
             'is_in_stock' => (bool) $this->is_in_stock,
             'is_on_sale' => (bool) ($this->sale_price !== null
@@ -121,60 +125,17 @@ class PackageResource extends JsonResource
     /** What a single purchase of the package itself costs, sale winning. */
     private function effectivePrice(): ?float
     {
-        $effective = $this->sale_price ?? $this->retail_price;
-
-        return $effective !== null ? (float) $effective : null;
+        return $this->packageEffectivePrice($this->sale_price, $this->retail_price);
     }
 
     /**
-     * The span a visitor could pay, across every way of buying this.
-     *
-     * SPANS PLANS **AND** THE PACKAGE'S OWN PRICE. Usually the plans decide it,
-     * because a subscription is discounted against a one-off purchase — so the
-     * obvious implementation, which is what this was, reads plans alone. That
-     * silently produces a wrong "from" the moment a single purchase is
-     * discounted below the cheapest plan, which is exactly what a sale on the
-     * package is for. Including the package's own effective price costs one
-     * array entry and removes the special case entirely.
-     *
-     * Only PRICED candidates count: a plan with neither retail nor sale, or a
-     * package with no price of its own, contributes nothing rather than a zero
-     * that would drag `from` to 0.00.
+     * The span a visitor could pay — see BuildsPackagePricing for the rule and
+     * for why the package's own price belongs in it.
      *
      * @return array{from: float|null, to: float|null, currency: string}
      */
     private function buildPriceRange(): array
     {
-        $prices = $this->plans
-            ->filter(fn ($p) => $p->sale_price !== null || $p->retail_price !== null)
-            ->map(fn ($p) => (float) ($p->sale_price ?? $p->retail_price))
-            ->values();
-
-        if (($own = $this->effectivePrice()) !== null) {
-            $prices->push($own);
-        }
-
-        return [
-            'from' => $prices->isNotEmpty() ? round((float) $prices->min(), 2) : null,
-            'to' => $prices->isNotEmpty() ? round((float) $prices->max(), 2) : null,
-            'currency' => 'USD',
-        ];
-    }
-
-    /**
-     * @param  array<int, array<string, string>>|null  $highlights
-     * @return list<string>
-     */
-    private function normalizeHighlights(?array $highlights): array
-    {
-        if (empty($highlights)) {
-            return [];
-        }
-
-        return collect($highlights)
-            ->pluck('item')
-            ->filter()
-            ->values()
-            ->all();
+        return $this->packagePriceRange($this->plans, $this->effectivePrice());
     }
 }

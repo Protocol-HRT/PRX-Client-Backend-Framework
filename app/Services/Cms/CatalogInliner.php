@@ -2,6 +2,7 @@
 
 namespace App\Services\Cms;
 
+use App\Enums\CatalogStatus;
 use App\Http\Resources\Api\V1\Catalog\CategoryResource;
 use App\Http\Resources\Api\V1\Catalog\PackageResource;
 use App\Http\Resources\Api\V1\Catalog\ProductResource;
@@ -35,7 +36,7 @@ class CatalogInliner
         $products = Product::query()
             ->published()
             ->whereIn('id', $ids)
-            ->with(['categories', 'tags'])
+            ->with(['categories', 'tags', 'healthGoals'])
             ->get()
             ->sortBy(fn (Product $product): int => (int) array_search($product->id, $ids))
             ->values();
@@ -50,7 +51,7 @@ class CatalogInliner
     {
         $query = Product::query()
             ->published()
-            ->with(['categories', 'tags'])
+            ->with(['categories', 'tags', 'healthGoals'])
             ->limit(max(1, min($limit, 24)));
 
         match ($mode) {
@@ -78,7 +79,21 @@ class CatalogInliner
         $packages = Package::query()
             ->published()
             ->whereIn('id', $ids)
-            ->with(['plans', 'products', 'categories', 'tags'])
+            ->with([
+                'plans',
+                // Published-only, matching the detail route. Package::products()
+                // carries no status constraint, so an unconstrained load here
+                // served every draft product inside a published stack — name,
+                // slug and price — to any visitor of a CMS page carrying a
+                // package slider. Same defect the catalog listing was fixed
+                // for; this path had it too.
+                'products' => fn ($q) => $q->where('products.status', CatalogStatus::Published),
+                'products.healthGoals',
+                'categories',
+                'tags',
+                'healthGoals',
+                'healthGoalSourceProducts.healthGoals',
+            ])
             ->get()
             ->sortBy(fn (Package $package): int => (int) array_search($package->id, $ids))
             ->values();
@@ -93,7 +108,21 @@ class CatalogInliner
     {
         $query = Package::query()
             ->published()
-            ->with(['plans', 'products', 'categories', 'tags'])
+            ->with([
+                'plans',
+                // Published-only, matching the detail route. Package::products()
+                // carries no status constraint, so an unconstrained load here
+                // served every draft product inside a published stack — name,
+                // slug and price — to any visitor of a CMS page carrying a
+                // package slider. Same defect the catalog listing was fixed
+                // for; this path had it too.
+                'products' => fn ($q) => $q->where('products.status', CatalogStatus::Published),
+                'products.healthGoals',
+                'categories',
+                'tags',
+                'healthGoals',
+                'healthGoalSourceProducts.healthGoals',
+            ])
             ->limit(max(1, min($limit, 24)));
 
         match ($mode) {

@@ -149,10 +149,28 @@ class ProductClassificationTest extends TestCase
             ->assertJsonPath('data.pairs_with.0.type', 'package');
     }
 
-    public function test_relation_light_cards_price_packages_from_default_plan_and_null_when_unpriced(): void
+    /**
+     * REWRITTEN. This used to assert that a rail card priced a package from
+     * its default plan, and it passed for as long as packages had no price
+     * columns of their own. Once they did, the assertion pinned a real defect
+     * in place: a $399 buy-once stack advertising its subscription's $279.99
+     * on every upsell card. A test that encodes yesterday's workaround stops
+     * being a safety net and becomes the thing holding the bug up.
+     *
+     * The rule now: a package prices ITSELF, and carries a range spanning its
+     * plans and its own price so a stack sold only through plans can still
+     * say "From $X" rather than showing nothing.
+     */
+    public function test_relation_light_cards_price_a_package_by_itself_with_a_range(): void
     {
         $product = Product::factory()->create(['status' => CatalogStatus::Published]);
-        $pricedPackage = Package::factory()->create(['status' => CatalogStatus::Published, 'name' => 'Priced Stack']);
+        $pricedPackage = Package::factory()->create([
+            'status' => CatalogStatus::Published,
+            'name' => 'Priced Stack',
+            'retail_price' => 399.00,
+            'sale_price' => null,
+            'price_suffix' => null,
+        ]);
         $unpricedPackage = Package::factory()->create([
             'status' => CatalogStatus::Published,
             'name' => 'Unpriced Stack',
@@ -190,14 +208,21 @@ class ProductClassificationTest extends TestCase
         $this->getJson("/api/v1/catalog/products/{$product->slug}")
             ->assertOk()
             ->assertJsonPath('data.pairs_with.0.name', 'Priced Stack')
-            ->assertJsonPath('data.pairs_with.0.price.retail', 199)
-            ->assertJsonPath('data.pairs_with.0.price.sale', 149)
-            ->assertJsonPath('data.pairs_with.0.price.effective', 149)
-            ->assertJsonPath('data.pairs_with.0.price.suffix', '/mo')
+            // Its own price, NOT the default plan's 149.
+            ->assertJsonPath('data.pairs_with.0.price.retail', 399)
+            ->assertJsonPath('data.pairs_with.0.price.effective', 399)
+            // The package sets no suffix; the plans say "/mo". Pins that the
+            // substituted plan's suffix no longer leaks onto the card either.
+            ->assertJsonPath('data.pairs_with.0.price.suffix', null)
+            // The cheapest plan's sale price through to the buy-once price.
+            ->assertJsonPath('data.pairs_with.0.price_range.from', 149)
+            ->assertJsonPath('data.pairs_with.0.price_range.to', 399)
             ->assertJsonPath('data.pairs_with.1.name', 'Unpriced Stack')
             ->assertJsonPath('data.pairs_with.1.price.retail', null)
             ->assertJsonPath('data.pairs_with.1.price.sale', null)
-            ->assertJsonPath('data.pairs_with.1.price.effective', null);
+            ->assertJsonPath('data.pairs_with.1.price.effective', null)
+            // No plans and no price of its own: an empty range, not a zero.
+            ->assertJsonPath('data.pairs_with.1.price_range.from', null);
     }
 
     public function test_inventory_status_drives_is_in_stock(): void

@@ -224,6 +224,15 @@ class ProductForm
                                 TextInput::make('position')
                                     ->numeric()->default(0)
                                     ->hintIcon(Heroicon::InformationCircle, 'Controls display order. Lower numbers appear first.'),
+                                Select::make('healthGoals')
+                                    ->label('Health goals')
+                                    ->relationship('healthGoals', 'name')
+                                    ->multiple()
+                                    ->preload()
+                                    ->searchable()
+                                    ->columnSpanFull()
+                                    ->hintIcon(Heroicon::InformationCircle, 'What this product is good for. Each one shows as a coloured badge on listing cards, on the product page, and on the rows of any stack that includes it. Pick the badge colour on the goal itself, under Knowledge base → Health goals.')
+                                    ->helperText('These are the same goals the quiz asks about, on purpose — a visitor who picks "weight management" there should see that badge here.'),
                                 Repeater::make('highlights')
                                     ->label('Highlights')
                                     ->hintIcon(Heroicon::InformationCircle, 'Bullet-point feature list displayed on the product detail page.')

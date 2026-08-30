@@ -10,8 +10,10 @@ use Illuminate\Support\Facades\Storage;
 
 class ProductResource extends JsonResource
 {
+    use Concerns\BuildsHealthGoalBadges;
     use Concerns\BuildsRatingSummary;
     use Concerns\NormalizesDetailSections;
+    use Concerns\NormalizesHighlights;
 
     /**
      * @return array<string, mixed>
@@ -33,6 +35,9 @@ class ProductResource extends JsonResource
             'status' => $this->status->value,
             'badge_text' => $this->badge_text,
             'highlights' => $highlights,
+            'health_goals' => $this->relationLoaded('healthGoals')
+                ? $this->healthGoalBadges($this->healthGoals)
+                : [],
             'is_featured' => (bool) $this->is_featured,
             'is_in_stock' => (bool) $this->is_in_stock,
             'inventory_status' => $this->inventory_status?->value,
@@ -140,24 +145,5 @@ class ProductResource extends JsonResource
             'name' => $model->name,
             'slug' => $model->slug ?? null,
         ];
-    }
-
-    /**
-     * Normalizes the Filament Repeater format [{"item": "text"}] to a flat ["text"] array.
-     *
-     * @param  array<int, array<string, string>>|null  $highlights
-     * @return list<string>
-     */
-    private function normalizeHighlights(?array $highlights): array
-    {
-        if (empty($highlights)) {
-            return [];
-        }
-
-        return collect($highlights)
-            ->pluck('item')
-            ->filter()
-            ->values()
-            ->all();
     }
 }

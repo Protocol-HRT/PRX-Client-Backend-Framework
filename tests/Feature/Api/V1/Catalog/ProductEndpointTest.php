@@ -129,6 +129,47 @@ class ProductEndpointTest extends TestCase
         $this->assertSame(['Point A', 'Point B'], $highlights);
     }
 
+    /**
+     * The fill scripts wrote bare strings, the Filament repeater writes
+     * [{item: ...}], and BOTH shapes are live in the catalog. The original
+     * pluck('item') returned null for a string entry and filtered it away, so
+     * a product with four stored highlights served an empty array — a content
+     * loss that looked exactly like an operator who had written nothing.
+     */
+    public function test_highlights_survive_the_legacy_plain_string_format(): void
+    {
+        $product = Product::factory()->create([
+            'status' => CatalogStatus::Published,
+            'highlights' => ['Physician-supervised protocol', 'Delivery kit included'],
+        ]);
+
+        $this->getJson("/api/v1/catalog/products/{$product->slug}")
+            ->assertOk()
+            ->assertJsonPath('data.highlights', [
+                'Physician-supervised protocol',
+                'Delivery kit included',
+            ]);
+    }
+
+    public function test_highlights_tolerate_a_mixed_and_malformed_repeater(): void
+    {
+        $product = Product::factory()->create([
+            'status' => CatalogStatus::Published,
+            'highlights' => [
+                ['item' => 'Repeater row'],
+                'Legacy string',
+                ['item' => ''],
+                ['item' => null],
+                '   ',
+                ['notitem' => 'dropped'],
+            ],
+        ]);
+
+        $this->getJson("/api/v1/catalog/products/{$product->slug}")
+            ->assertOk()
+            ->assertJsonPath('data.highlights', ['Repeater row', 'Legacy string']);
+    }
+
     public function test_product_show_includes_description(): void
     {
         $product = Product::factory()->create([
