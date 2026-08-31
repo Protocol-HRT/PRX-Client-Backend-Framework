@@ -28,6 +28,7 @@ class ThemeSettingsData extends Data
         public ?string $custom_css = null,
         #[Required, Max(100), Regex('/^[a-z0-9][a-z0-9-]*$/')]
         public string $frontend_template = 'default',
+        public bool $product_zoom_enabled = false,
         /** @var array<int, array{name: string, color: string}> */
         public array $palette = [],
         /**

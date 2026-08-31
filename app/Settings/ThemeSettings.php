@@ -25,6 +25,13 @@ class ThemeSettings extends Settings
     public string $frontend_template;
 
     /**
+     * Desktop hover-magnifier on the product/stack detail gallery. Off by
+     * default: the frontend implements it with drift-zoom, and "off" there
+     * means the library is never downloaded, not merely never bound.
+     */
+    public bool $product_zoom_enabled;
+
+    /**
      * The install's named colour vocabulary: a list of
      * ['name' => slug, 'color' => css color] rows. Operators name a colour
      * once here and reach for it by name from the section Style controls

@@ -42,6 +42,17 @@ Colors must be hex codes (`#0d0d0d`, `#c19a4b`). The five color tokens map onto 
 
 Font names should be the family name as used by `@font-face`. The actual font files live under `public/fonts/` and aren't editable from this UI yet.
 
+#### Frontend
+
+**Product gallery hover zoom** is off by default. Turn it on and, on desktop, hovering a
+product or stack photo on its detail page magnifies the part under the cursor. It does
+nothing on phones or tablets, which is why it is not on by default — and the site only
+downloads the code for it while the toggle is on, so leaving it off makes every page
+slightly lighter for every visitor. Turn it on if your photography rewards a close look
+(texture, printed dosage text on a pen); leave it off otherwise.
+
+The change is live on the public site within a few seconds of saving — no rebuild.
+
 #### Colour palette
 
 Below Typography is the **Color palette** panel (spelt that way on screen) — a list of

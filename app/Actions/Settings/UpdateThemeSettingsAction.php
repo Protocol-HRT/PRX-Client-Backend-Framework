@@ -40,6 +40,7 @@ class UpdateThemeSettingsAction
             $this->settings->font_body = $data->font_body;
             $this->settings->custom_css = $data->custom_css;
             $this->settings->frontend_template = $data->frontend_template;
+            $this->settings->product_zoom_enabled = $data->product_zoom_enabled;
             $this->settings->palette = $palette;
 
             // Kept in lockstep, not edited: /config still emits text_classes
