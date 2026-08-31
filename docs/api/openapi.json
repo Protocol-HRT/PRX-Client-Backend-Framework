@@ -3052,6 +3052,9 @@
                                                                 "suffix": {
                                                                     "type": "string"
                                                                 },
+                                                                "plan_id": {
+                                                                    "type": "string"
+                                                                },
                                                                 "currency": {
                                                                     "type": "string",
                                                                     "const": "USD"
@@ -3060,6 +3063,7 @@
                                                             "required": [
                                                                 "amount",
                                                                 "suffix",
+                                                                "plan_id",
                                                                 "currency"
                                                             ]
                                                         },
@@ -3072,6 +3076,9 @@
                                                                 "suffix": {
                                                                     "type": "null"
                                                                 },
+                                                                "plan_id": {
+                                                                    "type": "null"
+                                                                },
                                                                 "currency": {
                                                                     "type": "string",
                                                                     "const": "USD"
@@ -3080,6 +3087,7 @@
                                                             "required": [
                                                                 "amount",
                                                                 "suffix",
+                                                                "plan_id",
                                                                 "currency"
                                                             ]
                                                         },
@@ -4728,8 +4736,8 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {
+                                            "type": "object",
+                                            "additionalProperties": {
                                                 "type": "object",
                                                 "properties": {
                                                     "goal": {
@@ -4791,12 +4799,11 @@
                                             "type": "object",
                                             "properties": {
                                                 "goal_count": {
-                                                    "type": "integer",
-                                                    "minimum": 0
+                                                    "type": "integer"
                                                 },
                                                 "filtered": {
                                                     "type": "boolean",
-                                                    "description": "Whether any filtering was actually applied. The frontend\nuses this to decide between \"based on what you told us\" and\na neutral heading \u2014 claiming personalisation we did not do\nis worse than not claiming it."
+                                                    "description": "Whether any filtering was actually applied. A consumer must\nnot claim the result was personalised when this is false \u2014\nclaiming personalisation we did not do is worse than not\nclaiming it. Part of the documented contract\n(docs/frontend/dev.md \u00a75a); no consumer reads it today,\nbecause nothing calls this endpoint yet."
                                                 }
                                             },
                                             "required": [
@@ -6191,6 +6198,212 @@
                 "security": []
             }
         },
+        "/leads/{lead}/plan": {
+            "get": {
+                "operationId": "v1.leads.plan",
+                "summary": "The matched protocol for one lead",
+                "tags": [
+                    "Leads"
+                ],
+                "parameters": [
+                    {
+                        "name": "lead",
+                        "in": "path",
+                        "required": true,
+                        "description": "The lead UUID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "goal": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "name": {
+                                                                "type": "string"
+                                                            },
+                                                            "slug": {
+                                                                "type": "string"
+                                                            },
+                                                            "prompt": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "name",
+                                                            "slug",
+                                                            "prompt"
+                                                        ]
+                                                    },
+                                                    "products": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "$ref": "#/components/schemas/ProductResource"
+                                                        }
+                                                    },
+                                                    "packages": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "$ref": "#/components/schemas/PackageResource"
+                                                        }
+                                                    },
+                                                    "outcome": {
+                                                        "type": "string",
+                                                        "description": "Named by the resolver, not inferred here. \"restricted\" and\n\"unmapped\" both render zero products and need completely\ndifferent copy, and the distinction needs an unfiltered\nbaseline the frontend does not have \u2014 see resolve().",
+                                                        "enum": [
+                                                            "unmapped",
+                                                            "restricted"
+                                                        ]
+                                                    },
+                                                    "excluded_count": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "goal",
+                                                    "products",
+                                                    "packages",
+                                                    "outcome",
+                                                    "excluded_count"
+                                                ]
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "properties": {
+                                                "goal_count": {
+                                                    "type": "integer"
+                                                },
+                                                "filtered": {
+                                                    "type": "boolean",
+                                                    "description": "Whether the eligibility gate actually had anything to run\non. False means nothing was filtered, so a consumer must not\nclaim the plan was personalised \u2014 the same rule the preview\nendpoint states, for the same reason. Part of the documented\ncontract (docs/frontend/dev.md \u00a75a) and emitted for parity\nwith it; the plan page does not branch on it today, because\nthe sentence that would make the claim is the operator's\nauthored intro rather than anything this app composes."
+                                                },
+                                                "quiz_completed_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "description": "Separates \"took the quiz and matched nothing\" from \"this lead\n never took the quiz\". Both render zero goals and they are not\nthe same thing to say to someone."
+                                                },
+                                                "email_pending": {
+                                                    "type": "string",
+                                                    "description": "Whether a plan email is genuinely still coming. EVERY CLAUSE IS A REASON A SEND WOULD NEVER ARRIVE, and the\nflag exists because a page saying \"we'll email you shortly\"\non the strength of a consent tick alone is lying with a green\ntick. `canSend()` is the same gate the send listener consults\n(MailConfigurator), so this cannot promise a delivery an\noperator switched off, or one that would land in a log\ntransport and reach nobody.\n\n`quiz_completed_at` is the clause that is easy to miss: the\nONLY thing that sends this email is the SendPlanEmail listener\non QuizCompleted, which LeadController dispatches solely when\na lead arrives carrying a quiz. A lead created at CHECKOUT\nnever fires it \u2014 and this endpoint is deliberately reachable\nfor exactly that lead, through a recovery link. Without this\nclause such a visitor is promised a send that nothing in the\nsystem will ever perform.\n\nKNOWN GAP, RECORDED RATHER THAN PAPERED OVER: a quiz lead\nwhose listener ran while sending was disabled had its send\nskipped and logged, and nothing retries it. Once an operator\nenables mail, this flag reads true for that lead forever.\nTelling \"not sent yet\" from \"send was skipped\" needs a column\nthis change does not add, and re-dispatching on enable would\nmail every historical lead at once \u2014 worse than the stale\npromise. Close it when the email half is built."
+                                                },
+                                                "copy": {
+                                                    "description": "Operator-authored, keyed by the state it belongs to. The\nfrontend picks by outcome; it never composes a sentence.",
+                                                    "anyOf": [
+                                                        {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "heading": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "intro": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "restricted": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "unmapped": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "empty": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "heading",
+                                                                "intro",
+                                                                "restricted",
+                                                                "unmapped",
+                                                                "empty"
+                                                            ]
+                                                        },
+                                                        {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "heading": {
+                                                                    "type": "null"
+                                                                },
+                                                                "intro": {
+                                                                    "type": "null"
+                                                                },
+                                                                "restricted": {
+                                                                    "type": "null"
+                                                                },
+                                                                "unmapped": {
+                                                                    "type": "null"
+                                                                },
+                                                                "empty": {
+                                                                    "type": "null"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "heading",
+                                                                "intro",
+                                                                "restricted",
+                                                                "unmapped",
+                                                                "empty"
+                                                            ]
+                                                        }
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "goal_count",
+                                                "filtered",
+                                                "quiz_completed_at",
+                                                "email_pending",
+                                                "copy"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                },
+                "security": []
+            }
+        },
         "/orders/{uuid}": {
             "get": {
                 "operationId": "v1.orders.show",
@@ -7421,6 +7634,9 @@
                                     "suffix": {
                                         "type": "string"
                                     },
+                                    "plan_id": {
+                                        "type": "string"
+                                    },
                                     "currency": {
                                         "type": "string",
                                         "const": "USD"
@@ -7429,6 +7645,7 @@
                                 "required": [
                                     "amount",
                                     "suffix",
+                                    "plan_id",
                                     "currency"
                                 ]
                             },
@@ -7441,6 +7658,9 @@
                                     "suffix": {
                                         "type": "null"
                                     },
+                                    "plan_id": {
+                                        "type": "null"
+                                    },
                                     "currency": {
                                         "type": "string",
                                         "const": "USD"
@@ -7449,6 +7669,7 @@
                                 "required": [
                                     "amount",
                                     "suffix",
+                                    "plan_id",
                                     "currency"
                                 ]
                             },
@@ -8365,6 +8586,9 @@
                                     "suffix": {
                                         "type": "string"
                                     },
+                                    "plan_id": {
+                                        "type": "string"
+                                    },
                                     "currency": {
                                         "type": "string",
                                         "const": "USD"
@@ -8373,6 +8597,7 @@
                                 "required": [
                                     "amount",
                                     "suffix",
+                                    "plan_id",
                                     "currency"
                                 ]
                             },
@@ -8385,6 +8610,9 @@
                                     "suffix": {
                                         "type": "null"
                                     },
+                                    "plan_id": {
+                                        "type": "null"
+                                    },
                                     "currency": {
                                         "type": "string",
                                         "const": "USD"
@@ -8393,6 +8621,7 @@
                                 "required": [
                                     "amount",
                                     "suffix",
+                                    "plan_id",
                                     "currency"
                                 ]
                             }

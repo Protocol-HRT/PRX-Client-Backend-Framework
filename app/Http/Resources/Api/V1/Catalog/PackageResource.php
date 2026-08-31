@@ -152,7 +152,7 @@ class PackageResource extends JsonResource
      * The "From $X/mo" a card leads with — see BuildsPackagePricing for why
      * this is not simply the low end of the range.
      *
-     * @return array{amount: float|null, suffix: string|null, currency: string}
+     * @return array{amount: float|null, suffix: string|null, plan_id: int|null, currency: string}
      */
     private function buildPriceFrom(): array
     {

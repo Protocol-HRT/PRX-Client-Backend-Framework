@@ -138,7 +138,7 @@ class CatalogRelationItemResource extends JsonResource
      * "from" built out of those would be the mixed-unit bug this field exists
      * to avoid, pointed at products instead.
      *
-     * @return array{amount: float|null, suffix: string|null, currency: string}|null
+     * @return array{amount: float|null, suffix: string|null, plan_id: int|null, currency: string}|null
      */
     private function priceFromBlock(): ?array
     {

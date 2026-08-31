@@ -2,12 +2,9 @@
 
 namespace App\Http\Controllers\Api\V1\Recommendations;
 
-use App\Enums\CatalogStatus;
 use App\Http\Controllers\Api\V1\ApiController;
-use App\Http\Resources\Api\V1\Catalog\PackageResource;
-use App\Http\Resources\Api\V1\Catalog\ProductResource;
 use App\Models\Kb\HealthGoal;
-use App\Services\Recommendations\GoalRecommendationResolver;
+use App\Services\Recommendations\ProtocolPresenter;
 use App\Services\Recommendations\VisitorProfile;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -39,7 +36,7 @@ use Illuminate\Validation\Rule;
  */
 class ProtocolPreviewController extends ApiController
 {
-    public function __construct(private readonly GoalRecommendationResolver $resolver) {}
+    public function __construct(private readonly ProtocolPresenter $presenter) {}
 
     /**
      * Resolve a protocol preview.
@@ -75,45 +72,21 @@ class ProtocolPreviewController extends ApiController
             ->orderBy('position')
             ->get();
 
-        $resolved = $goals->map(function (HealthGoal $goal) use ($request, $profile): array {
-            $result = $this->resolver->resolve($goal, $profile);
-
-            $products = $result['products']->loadMissing('ingredients', 'healthGoals');
-            $packages = $result['packages']->loadMissing([
-                // Published-only: see CatalogInliner for why an unconstrained
-                // nested products load is a content leak, not a detail.
-                'products' => fn ($q) => $q->where('products.status', CatalogStatus::Published),
-                'products.healthGoals',
-                'healthGoals',
-                'healthGoalSourceProducts.healthGoals',
-            ]);
-
-            return [
-                'goal' => [
-                    'name' => $goal->name,
-                    'slug' => $goal->slug,
-                    'prompt' => $goal->prompt ?: $goal->name,
-                ],
-                'products' => ProductResource::collection($products)->toArray($request),
-                'packages' => PackageResource::collection($packages)->toArray($request),
-
-                // Named by the resolver, not inferred here. "restricted" and
-                // "unmapped" both render zero products and need completely
-                // different copy, and the distinction needs an unfiltered
-                // baseline the frontend does not have — see resolve().
-                'outcome' => $result['outcome'],
-                'excluded_count' => $result['excluded_count'],
-            ];
-        });
+        // Shape lives in ProtocolPresenter, shared with the saved-plan
+        // endpoint, so the live preview and the report a visitor comes back to
+        // can never disagree about the same goal.
+        $resolved = $this->presenter->present($goals, $profile, $request);
 
         return $this->success(
-            $resolved->all(),
+            $resolved,
             [
-                'goal_count' => $resolved->count(),
-                // Whether any filtering was actually applied. The frontend
-                // uses this to decide between "based on what you told us" and
-                // a neutral heading — claiming personalisation we did not do
-                // is worse than not claiming it.
+                'goal_count' => count($resolved),
+                // Whether any filtering was actually applied. A consumer must
+                // not claim the result was personalised when this is false —
+                // claiming personalisation we did not do is worse than not
+                // claiming it. Part of the documented contract
+                // (docs/frontend/dev.md §5a); no consumer reads it today,
+                // because nothing calls this endpoint yet.
                 'filtered' => ! $profile->isEmpty(),
             ],
         );

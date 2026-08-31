@@ -249,7 +249,7 @@ when a package has no plans at all.
 |---|---|---|
 | `price` | `{retail, sale, effective, suffix, currency}` | What one purchase of the package itself costs. `effective` is `sale ?? retail`, and is `null` — never `0.00` — when unpriced |
 | `price_range` | `{from, to, currency}` | The full span a visitor could pay, across plans **and** the package's own price |
-| `price_from` | `{amount, suffix, currency}` | The single figure a card leads with, and the cadence it is charged at |
+| `price_from` | `{amount, suffix, plan_id, currency}` | The single figure a card leads with, the cadence it is charged at, and the plan it came from |
 
 **`price_from` is NOT `price_range.from`, and a card must not use the range.** The range's two
 ends are routinely in different units: on a typical install the low end is a monthly rate and
@@ -269,6 +269,14 @@ false "/mo" or nothing at all. `amount` is `null` when nothing is priced.
 **Intro prices are excluded from `price_from` on purpose.** A plan's `intro_price` buys one
 billing cycle, so leading a card with it advertises a number the visitor stops paying. Render
 it on a detail page's plan picker, where the term is visible, not on a card.
+
+**`plan_id` names the plan the figure came from, and `null` is meaningful rather than missing.**
+Null means the package's OWN price won, so buying the package itself is exactly the quoted
+figure. This exists so a surface that both quotes the figure AND adds to the cart charges what
+it displayed: adding a package with no plan bills its own price, which on live data is $399
+against cards reading "From $279.99/mo". If you add to the cart from a card, send this
+`plan_id` (omit `plan_id` entirely when it is null). Do not reverse-engineer it by matching the
+rendered string against plan prices — this field is the answer the backend already computed.
 
 Products get no `price_range` and no `price_from`. A product's own `price` is the whole story
 on a card, and its term plans are 3/6/9/12-month prepay totals — a "from" built from those
@@ -356,6 +364,70 @@ than being mapped into a bucket.
 `excluded_count` is a **count, not a list**, deliberately. Which ingredients were excluded is
 not returned, because it would let anyone enumerate the sex- and age-gated substances by varying
 the request.
+
+### 5c. The saved plan — a lead's matched protocol
+
+`GET /leads/{uuid}/plan` — the same answer as 5a, for a visitor who has already submitted.
+
+This is what `/plan/{uuid}` renders and what the plan email links back to. Where 5a takes the
+answers as input, this reads them from the lead the quiz created, so the visitor can return to
+their report from a link without re-answering anything.
+
+**A GET, and that does not contradict 5a's rule.** The reason `POST /protocol/preview` must
+stay a POST is that its INPUT is a health inference — goals, sex and age in a query string get
+written into every log between browser and origin. This endpoint's input is an opaque UUID,
+which reveals nothing about the person; the answers travel only in a response body, which that
+machinery does not log.
+
+**The UUID is a bearer credential**, exactly as on `GET /leads/{uuid}`. Whoever holds it sees
+the plan — it arrived in the visitor's own redirect and their own email. Treat the page as
+private: `noindex, nofollow`, and never cache the response.
+
+**Recomputed on every read, never snapshotted.** The plan reflects the catalogue as it stands
+now, so a product withdrawn for safety stops being recommended to someone still holding the
+link. The other half of that trade is real: editing the catalogue changes what an
+already-issued link shows. Revisit this alongside a PDF, where the artefact and the page could
+otherwise disagree about the same person.
+
+`data` is **identical in shape to 5a** — same per-goal entries, same `outcome` taxonomy, same
+`excluded_count` count-not-list rule. Both are produced by one `ProtocolPresenter`, so a new
+field appears on both at once; do not write a consumer that handles one shape and not the other.
+
+`meta` carries four things beyond 5a's `filtered`:
+
+| key | meaning |
+|---|---|
+| `goal_count` | Goals resolved. **Zero is a real state**: they never took the quiz, or every goal they picked has since been withdrawn |
+| `quiz_completed_at` | Null for a lead created at checkout. Separates "answered and matched nothing" from "never answered" — different sentences |
+| `email_pending` | A plan email is genuinely still coming |
+| `copy` | The operator's results-page copy, keyed by state |
+
+**`email_pending` is not "did they consent".** All four of these must hold: they consented, an
+address is present, nothing has been sent yet, **they completed a quiz**, and sending is actually
+possible. The last clause consults the same gate the send listener does, so a page cannot promise
+a delivery an operator has switched off or that would land in a log transport. The quiz clause is
+the one that is easy to miss: the only sender is the plan-email listener on `QuizCompleted`, which
+fires solely for a lead submitted WITH a quiz — so a lead created at checkout, which reaches this
+endpoint through a recovery link, has no send coming no matter what it consented to. Render a
+future delivery only when this flag is true. A page saying "we've sent it" on the strength of a
+consent tick is lying with a green tick.
+
+**Known gap:** a quiz lead whose send was SKIPPED while mail was disabled reads `email_pending`
+true once mail is enabled — nothing retries, and nothing distinguishes "not sent yet" from "send
+was skipped".
+
+**`meta.copy` is the operator's, and the frontend never composes a sentence.** Keys map to the
+state they belong to: `heading`, `intro` (shown ONLY when something matched, so it may promise
+results), `restricted`, `unmapped`, and `empty` (no goals at all). Each is rich text and each
+may be **null** when unauthored — render nothing rather than substituting a default, which would
+put brand voice in a repo that ships to more than one brand.
+
+**`restricted` and `unmapped` must never fall back to each other.** Telling someone who was
+ruled out that "we're still building this" is false, and so is the reverse. The backend
+distinguishes them against an unfiltered baseline because the frontend cannot.
+
+**Zero matches is a designed outcome, not an error.** The eligibility gate means some visitors
+legitimately match nothing.
 
 ## 6. Commerce flow
 

@@ -96,13 +96,21 @@ trait BuildsPackagePricing
      * true.
      *
      * @param  Collection<int, mixed>  $plans
-     * @return array{amount: float|null, suffix: string|null, currency: string}
+     *                                         `plan_id` NAMES THE PLAN THE FIGURE CAME FROM, or null when the package's
+     *                                         OWN price won. A card that quotes "From $279.99/mo" and then adds a
+     *                                         different price to the cart has lied at the last possible moment, and the
+     *                                         alternative — having the frontend search the plans for one whose price
+     *                                         matches the string it rendered — is reverse-engineering an answer this
+     *                                         method already knows. Null is meaningful rather than missing: it says
+     *                                         "buy the package itself", which the cart supports.
+     * @return array{amount: float|null, suffix: string|null, plan_id: int|null, currency: string}
      */
     private function packagePriceFrom(Collection $plans, ?float $ownEffective, ?string $ownSuffix): array
     {
         $priced = $plans->filter(fn ($p) => $p->sale_price !== null || $p->retail_price !== null);
 
         $candidate = fn ($p) => [
+            'plan_id' => $p->id,
             'amount' => (float) ($p->sale_price ?? $p->retail_price),
             // An operator's authored suffix wins over the cadence's default, so
             // "/month" instead of "/mo" stays the operator's call.
@@ -117,13 +125,14 @@ trait BuildsPackagePricing
             ->values();
 
         if ($ownEffective !== null) {
-            $monthly->push(['amount' => $ownEffective, 'suffix' => $ownSuffix]);
+            // The package's own price belongs to no plan.
+            $monthly->push(['plan_id' => null, 'amount' => $ownEffective, 'suffix' => $ownSuffix]);
         }
 
         $pool = $monthly->isNotEmpty() ? $monthly : $priced->map($candidate)->values();
 
         if ($pool->isEmpty()) {
-            return ['amount' => null, 'suffix' => null, 'currency' => 'USD'];
+            return ['amount' => null, 'suffix' => null, 'plan_id' => null, 'currency' => 'USD'];
         }
 
         $cheapest = $pool->sortBy('amount')->first();
@@ -131,6 +140,7 @@ trait BuildsPackagePricing
         return [
             'amount' => round((float) $cheapest['amount'], 2),
             'suffix' => $cheapest['suffix'],
+            'plan_id' => $cheapest['plan_id'],
             'currency' => 'USD',
         ];
     }

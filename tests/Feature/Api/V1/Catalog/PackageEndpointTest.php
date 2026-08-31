@@ -171,7 +171,7 @@ class PackageEndpointTest extends TestCase
             'sale_price' => null,
             'price_suffix' => '/mo',
         ]);
-        Plan::factory()->create([
+        $monthly = Plan::factory()->create([
             'package_id' => $package->id,
             'status' => CatalogStatus::Published,
             'billing_period' => BillingPeriod::Monthly,
@@ -192,6 +192,10 @@ class PackageEndpointTest extends TestCase
             ->assertJsonPath('data.price_from.amount', 279.99)
             ->assertJsonPath('data.price_from.suffix', '/mo')
             ->assertJsonPath('data.price_from.currency', 'USD')
+            // The figure must NAME the plan it came from — the report adds that
+            // plan to the cart, so an id pointing at the 6-month plan would put
+            // $1,259.96 in the bag under a card reading $279.99/mo.
+            ->assertJsonPath('data.price_from.plan_id', $monthly->id)
             ->assertJsonPath('data.price_range.to', 1259.96);
     }
 
@@ -211,7 +215,7 @@ class PackageEndpointTest extends TestCase
             'retail_price' => null,
             'sale_price' => null,
         ]);
-        Plan::factory()->create([
+        $monthly = Plan::factory()->create([
             'package_id' => $package->id,
             'status' => CatalogStatus::Published,
             'billing_period' => BillingPeriod::Monthly,
@@ -231,6 +235,10 @@ class PackageEndpointTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.price_from.amount', 279.99)
             ->assertJsonPath('data.price_from.suffix', '/mo')
+            // And the id follows the same rule as the figure: the MONTHLY plan,
+            // not the numerically cheaper quarterly one. Asserting the amount
+            // alone cannot tell those apart once a cart adds by id.
+            ->assertJsonPath('data.price_from.plan_id', $monthly->id)
             // The range still reports the raw span, unit-blind and correct for
             // what it measures — the two fields must not collapse into one.
             ->assertJsonPath('data.price_range.from', 199);
@@ -280,7 +288,10 @@ class PackageEndpointTest extends TestCase
         $this->getJson("/api/v1/catalog/packages/{$package->slug}")
             ->assertOk()
             ->assertJsonPath('data.price_from.amount', 79)
-            ->assertJsonPath('data.price_from.suffix', '/mo');
+            ->assertJsonPath('data.price_from.suffix', '/mo')
+            // NULL IS MEANINGFUL: it says "buy the package itself". Naming the
+            // $279.99 plan here would charge more than the card quoted.
+            ->assertJsonPath('data.price_from.plan_id', null);
     }
 
     public function test_price_from_falls_back_to_any_cadence_when_nothing_is_monthly(): void
@@ -295,7 +306,7 @@ class PackageEndpointTest extends TestCase
             'retail_price' => null,
             'sale_price' => null,
         ]);
-        Plan::factory()->create([
+        $semiAnnual = Plan::factory()->create([
             'package_id' => $package->id,
             'status' => CatalogStatus::Published,
             'billing_period' => BillingPeriod::SemiAnnual,
@@ -315,7 +326,9 @@ class PackageEndpointTest extends TestCase
         $this->getJson("/api/v1/catalog/packages/{$package->slug}")
             ->assertOk()
             ->assertJsonPath('data.price_from.amount', 899)
-            ->assertJsonPath('data.price_from.suffix', '/6mo');
+            ->assertJsonPath('data.price_from.suffix', '/6mo')
+            // The fallback path carries its plan id too, not just its figure.
+            ->assertJsonPath('data.price_from.plan_id', $semiAnnual->id);
     }
 
     public function test_price_from_falls_back_to_the_cadence_suffix_when_the_operator_authored_none(): void
