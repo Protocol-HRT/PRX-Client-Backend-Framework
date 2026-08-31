@@ -95,14 +95,44 @@ trait BuildsPackagePricing
      * any cadence, with that price's suffix, so the card still says something
      * true.
      *
+     * `plan_id` NAMES THE PLAN THE FIGURE CAME FROM, or null when the package's
+     * OWN price won. A card that quotes "From $279.99/mo" and then adds a
+     * different price to the cart has lied at the last possible moment, and the
+     * alternative — having the frontend search the plans for one whose price
+     * matches the string it rendered — is reverse-engineering an answer this
+     * method already knows. Null is meaningful rather than missing: it says
+     * "buy the package itself", which the cart supports.
+     *
+     * ON AN EQUAL PRICE, THE NON-RECURRING OPTION WINS. This is not a tidiness
+     * rule, it decides what the buyer is signed up to. A package is a set group
+     * of products bought ONCE; a plan lays a monthly or prepaid REBILL over the
+     * same bundle. Downstream, prescribe-rx reads a package with no plan id as a
+     * single transaction and a plan carrying a recurring subscription as a
+     * subscription — and on a local checkout the same choice decides whether the
+     * merchant account starts auto-billing. So when a plan and the package's own
+     * price are the same number, choosing the plan silently enrols someone in a
+     * recurring commitment at a price they could have paid once.
+     *
+     * Live example this was written for: Metabolic Reset, own price 399, plan #4
+     * monthly retail 499 / sale 399 — an exact tie. Every published plan on this
+     * install is `is_recurring`, so the own price is currently the only
+     * non-recurring path; the flag is read rather than assumed so a future
+     * one-off plan behaves correctly without another change here.
+     *
+     * CAVEAT, AND IT IS A SCHEMA GAP RATHER THAN A RULE: "no plan means no
+     * rebill" holds here only because `packages` carries NO recurring column at
+     * all — every billing field (`is_recurring`, `billing_mode`,
+     * `rebill_strategy`, `trial_days`, `billing_period`, `term_months`) lives on
+     * `plans`. prescribe-rx models recurrence on the PACKAGE as well as the
+     * plan, so a recurring package with no plan is a shape that exists over
+     * there and cannot be represented here. If a package-level recurring flag is
+     * ever added, this tie-break must read it — `plan_id: null` would no longer
+     * be sufficient evidence of a single transaction.
+     *
+     * A genuinely CHEAPER recurring plan still wins — this breaks ties, it does
+     * not prefer one-time purchases over better prices.
+     *
      * @param  Collection<int, mixed>  $plans
-     *                                         `plan_id` NAMES THE PLAN THE FIGURE CAME FROM, or null when the package's
-     *                                         OWN price won. A card that quotes "From $279.99/mo" and then adds a
-     *                                         different price to the cart has lied at the last possible moment, and the
-     *                                         alternative — having the frontend search the plans for one whose price
-     *                                         matches the string it rendered — is reverse-engineering an answer this
-     *                                         method already knows. Null is meaningful rather than missing: it says
-     *                                         "buy the package itself", which the cart supports.
      * @return array{amount: float|null, suffix: string|null, plan_id: int|null, currency: string}
      */
     private function packagePriceFrom(Collection $plans, ?float $ownEffective, ?string $ownSuffix): array
@@ -111,6 +141,7 @@ trait BuildsPackagePricing
 
         $candidate = fn ($p) => [
             'plan_id' => $p->id,
+            'recurring' => (bool) $p->is_recurring,
             'amount' => (float) ($p->sale_price ?? $p->retail_price),
             // An operator's authored suffix wins over the cadence's default, so
             // "/month" instead of "/mo" stays the operator's call.
@@ -125,8 +156,14 @@ trait BuildsPackagePricing
             ->values();
 
         if ($ownEffective !== null) {
-            // The package's own price belongs to no plan.
-            $monthly->push(['plan_id' => null, 'amount' => $ownEffective, 'suffix' => $ownSuffix]);
+            // The package's own price belongs to no plan, and buying the
+            // package alone never creates a rebill.
+            $monthly->push([
+                'plan_id' => null,
+                'recurring' => false,
+                'amount' => $ownEffective,
+                'suffix' => $ownSuffix,
+            ]);
         }
 
         $pool = $monthly->isNotEmpty() ? $monthly : $priced->map($candidate)->values();
@@ -135,7 +172,12 @@ trait BuildsPackagePricing
             return ['amount' => null, 'suffix' => null, 'plan_id' => null, 'currency' => 'USD'];
         }
 
-        $cheapest = $pool->sortBy('amount')->first();
+        // Amount decides; `recurring` only breaks a tie (false sorts before
+        // true). See the note above on why that tie is a commercial choice.
+        $cheapest = $pool->sortBy([
+            ['amount', 'asc'],
+            ['recurring', 'asc'],
+        ])->first();
 
         return [
             'amount' => round((float) $cheapest['amount'], 2),

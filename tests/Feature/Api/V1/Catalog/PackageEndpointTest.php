@@ -294,6 +294,72 @@ class PackageEndpointTest extends TestCase
             ->assertJsonPath('data.price_from.plan_id', null);
     }
 
+    /**
+     * A TIE MUST NOT SIGN SOMEONE UP TO A REBILL.
+     *
+     * A package is a set group of products bought once; a plan lays a monthly or
+     * prepaid rebill over the same bundle. Downstream that distinction is real:
+     * prescribe-rx reads a package with no plan id as a single transaction, and
+     * on a local checkout the same choice decides whether the merchant account
+     * starts auto-billing. So when a recurring plan and the package's own price
+     * are the SAME number, the figure must resolve to the package — otherwise a
+     * card quotes a price the visitor could pay once and the cart enrols them in
+     * a subscription instead.
+     *
+     * This is the live Metabolic Reset shape: own 399, monthly plan retail 499
+     * with sale 399.
+     */
+    public function test_a_tie_between_a_recurring_plan_and_the_packages_own_price_resolves_to_the_package(): void
+    {
+        $package = Package::factory()->create([
+            'status' => CatalogStatus::Published,
+            'retail_price' => 399.00,
+            'sale_price' => null,
+            'price_suffix' => null,
+        ]);
+        Plan::factory()->create([
+            'package_id' => $package->id,
+            'status' => CatalogStatus::Published,
+            'billing_period' => BillingPeriod::Monthly,
+            'retail_price' => 499.00,
+            'sale_price' => 399.00,
+            'is_recurring' => true,
+        ]);
+
+        $this->getJson("/api/v1/catalog/packages/{$package->slug}")
+            ->assertOk()
+            ->assertJsonPath('data.price_from.amount', 399)
+            // NULL = buy the package itself, no rebill.
+            ->assertJsonPath('data.price_from.plan_id', null);
+    }
+
+    /**
+     * The tie-break must not become a preference. A plan that is genuinely
+     * CHEAPER still wins, recurring or not — this rule orders equals, it does
+     * not rank one-time purchases above better prices.
+     */
+    public function test_a_cheaper_recurring_plan_still_beats_the_packages_own_price(): void
+    {
+        $package = Package::factory()->create([
+            'status' => CatalogStatus::Published,
+            'retail_price' => 399.00,
+            'sale_price' => null,
+            'price_suffix' => null,
+        ]);
+        $cheaper = Plan::factory()->create([
+            'package_id' => $package->id,
+            'status' => CatalogStatus::Published,
+            'billing_period' => BillingPeriod::Monthly,
+            'retail_price' => 279.99,
+            'is_recurring' => true,
+        ]);
+
+        $this->getJson("/api/v1/catalog/packages/{$package->slug}")
+            ->assertOk()
+            ->assertJsonPath('data.price_from.amount', 279.99)
+            ->assertJsonPath('data.price_from.plan_id', $cheaper->id);
+    }
+
     public function test_price_from_falls_back_to_any_cadence_when_nothing_is_monthly(): void
     {
         // A package sold only as a prepay term has no monthly price to lead
