@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\Api\V1\Catalog\Concerns;
 
+use App\Enums\BillingPeriod;
 use Illuminate\Support\Collection;
 
 /**
@@ -61,6 +62,75 @@ trait BuildsPackagePricing
         return [
             'from' => $prices->isNotEmpty() ? round((float) $prices->min(), 2) : null,
             'to' => $prices->isNotEmpty() ? round((float) $prices->max(), 2) : null,
+            'currency' => 'USD',
+        ];
+    }
+
+    /**
+     * The single "From $X" figure a listing card leads with, and the cadence
+     * that figure is actually charged at.
+     *
+     * WHY THIS IS NOT `price_range` WITH THE TOP END DROPPED. The range spans
+     * every way of buying, and those ways are not priced in the same unit: on
+     * this install every package's cheapest offer is a monthly rate and its
+     * dearest is a multi-month PREPAY TOTAL, so the honest span reads
+     * "$279.99 - $1,259.96" and a visitor sees a stack that might cost $1,259.96
+     * a month. `price_range` is still correct for what it measures and is still
+     * emitted; a card just cannot show two numbers in two units side by side.
+     *
+     * So: the lowest MONTHLY-cadence price, carrying its OWN suffix rather than
+     * a "/mo" this method invents. A plan's cadence is structural
+     * (`billing_period`, an enum) and trustworthy. A package's own price has no
+     * cadence column at all — only the free-text `price_suffix` an operator
+     * typed — so it is always a candidate and its suffix is passed through
+     * verbatim. Nothing here fabricates a unit for a number that has none.
+     *
+     * Intro prices are excluded deliberately: `intro_price` buys one billing
+     * cycle, so leading a card with it advertises a number the visitor pays
+     * once. The detail page's plan picker is where that offer belongs.
+     *
+     * The fallback matters more than it looks. A package sold only as a
+     * 6-month prepay has no monthly price to lead with, and rendering nothing
+     * would hide a purchasable stack; it falls back to the cheapest price of
+     * any cadence, with that price's suffix, so the card still says something
+     * true.
+     *
+     * @param  Collection<int, mixed>  $plans
+     * @return array{amount: float|null, suffix: string|null, currency: string}
+     */
+    private function packagePriceFrom(Collection $plans, ?float $ownEffective, ?string $ownSuffix): array
+    {
+        $priced = $plans->filter(fn ($p) => $p->sale_price !== null || $p->retail_price !== null);
+
+        $candidate = fn ($p) => [
+            'amount' => (float) ($p->sale_price ?? $p->retail_price),
+            // An operator's authored suffix wins over the cadence's default, so
+            // "/month" instead of "/mo" stays the operator's call.
+            'suffix' => $p->price_suffix ?: ($p->billing_period instanceof BillingPeriod
+                ? $p->billing_period->suffix()
+                : null),
+        ];
+
+        $monthly = $priced
+            ->filter(fn ($p) => $p->billing_period === BillingPeriod::Monthly)
+            ->map($candidate)
+            ->values();
+
+        if ($ownEffective !== null) {
+            $monthly->push(['amount' => $ownEffective, 'suffix' => $ownSuffix]);
+        }
+
+        $pool = $monthly->isNotEmpty() ? $monthly : $priced->map($candidate)->values();
+
+        if ($pool->isEmpty()) {
+            return ['amount' => null, 'suffix' => null, 'currency' => 'USD'];
+        }
+
+        $cheapest = $pool->sortBy('amount')->first();
+
+        return [
+            'amount' => round((float) $cheapest['amount'], 2),
+            'suffix' => $cheapest['suffix'],
             'currency' => 'USD',
         ];
     }

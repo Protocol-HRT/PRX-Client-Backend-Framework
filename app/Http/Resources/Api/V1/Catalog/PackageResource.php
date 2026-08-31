@@ -70,6 +70,15 @@ class PackageResource extends JsonResource
                 $this->relationLoaded('plans'),
                 fn () => $this->buildPriceRange()
             ),
+
+            // The one figure a listing card leads with, plus the cadence it is
+            // charged at. Emitted alongside `price_range`, not instead of it —
+            // the two answer different questions, and the range's ends are in
+            // different units. See BuildsPackagePricing::packagePriceFrom().
+            'price_from' => $this->when(
+                $this->relationLoaded('plans'),
+                fn () => $this->buildPriceFrom()
+            ),
             'detail_sections' => $this->when(
                 $request->routeIs('api.v1.catalog.packages.show'),
                 fn () => $this->normalizeDetailSections($this->detail_sections)
@@ -137,5 +146,16 @@ class PackageResource extends JsonResource
     private function buildPriceRange(): array
     {
         return $this->packagePriceRange($this->plans, $this->effectivePrice());
+    }
+
+    /**
+     * The "From $X/mo" a card leads with — see BuildsPackagePricing for why
+     * this is not simply the low end of the range.
+     *
+     * @return array{amount: float|null, suffix: string|null, currency: string}
+     */
+    private function buildPriceFrom(): array
+    {
+        return $this->packagePriceFrom($this->plans, $this->effectivePrice(), $this->price_suffix);
     }
 }

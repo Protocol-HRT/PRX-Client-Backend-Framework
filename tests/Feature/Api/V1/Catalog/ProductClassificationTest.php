@@ -244,4 +244,52 @@ class ProductClassificationTest extends TestCase
         $product->update(['inventory_status' => InventoryStatus::InStock]);
         $this->assertTrue($product->fresh()->is_in_stock);
     }
+
+    public function test_inventory_status_ships_a_display_label_beside_the_raw_value(): void
+    {
+        // The storefront printed "in_stock" as the stock badge on the two
+        // products where an operator had set the field; the five with it null
+        // fell through to a hardcoded frontend string and looked right, which
+        // is why the two detail pages disagreed. Every case is asserted, not
+        // just the happy one — a label map is exactly the kind of thing that
+        // covers one case and drops three.
+        $product = Product::factory()->create([
+            'status' => CatalogStatus::Published,
+            'inventory_status' => InventoryStatus::BackOrdered,
+        ]);
+
+        $this->getJson("/api/v1/catalog/products/{$product->slug}")
+            ->assertOk()
+            ->assertJsonPath('data.inventory_status', 'back_ordered')
+            ->assertJsonPath('data.inventory_status_label', 'Back Ordered');
+
+        foreach ([
+            [InventoryStatus::InStock, 'in_stock', 'In Stock'],
+            [InventoryStatus::OutOfStock, 'out_of_stock', 'Out of Stock'],
+            [InventoryStatus::Discontinued, 'discontinued', 'Discontinued'],
+        ] as [$case, $value, $label]) {
+            $product->update(['inventory_status' => $case]);
+
+            $this->getJson("/api/v1/catalog/products/{$product->slug}")
+                ->assertOk()
+                ->assertJsonPath('data.inventory_status', $value)
+                ->assertJsonPath('data.inventory_status_label', $label);
+        }
+    }
+
+    public function test_a_product_with_no_inventory_status_ships_a_null_label(): void
+    {
+        // Most products leave it unset. The label must be null rather than an
+        // empty string, so the frontend's own fallback is reached rather than
+        // a blank badge being rendered as though it were a status.
+        $product = Product::factory()->create([
+            'status' => CatalogStatus::Published,
+            'inventory_status' => null,
+        ]);
+
+        $this->getJson("/api/v1/catalog/products/{$product->slug}")
+            ->assertOk()
+            ->assertJsonPath('data.inventory_status', null)
+            ->assertJsonPath('data.inventory_status_label', null);
+    }
 }

@@ -18,10 +18,14 @@ use Illuminate\Support\Facades\Storage;
  * its plan's $279.99 on every upsell and pairs-with card. The rule lives in
  * BuildsPackagePricing so this cannot drift from the detail page again.
  *
- * `price_range` rides along for packages because most of them have no price
- * of their own — 4 of 6 at the time of writing — and are sold through plans.
- * Dropping the plan substitution without it would leave those cards showing
- * nothing at all; the range lets a card say "From $X" honestly.
+ * `price_range` rides along for packages, so that dropping the plan
+ * substitution could not leave a plan-sold package with nothing to show.
+ *
+ * IT IS NO LONGER WHAT A CARD SHOULD READ, THOUGH. The range's two ends are in
+ * different units — a monthly rate against a multi-month prepay total — so a
+ * card leading with its floor prints an unlabelled number a visitor reads as
+ * monthly. `price_from` is the figure for that, and it carries its own suffix.
+ * The range stays because it is still the honest answer to "what could I pay".
  *
  * `effective` is null (not 0.00) when no price exists at all.
  */
@@ -51,6 +55,7 @@ class CatalogRelationItemResource extends JsonResource
             'is_in_stock' => (bool) $this->is_in_stock,
             'price' => $this->priceBlock(),
             'price_range' => $this->priceRangeBlock(),
+            'price_from' => $this->priceFromBlock(),
             'health_goals' => $this->relationBadges(),
         ];
     }
@@ -120,6 +125,33 @@ class CatalogRelationItemResource extends JsonResource
         return $this->packagePriceRange(
             $source->plans,
             $this->packageEffectivePrice($source->sale_price, $source->retail_price),
+        );
+    }
+
+    /**
+     * The "From $X/mo" figure, packages only and on the same terms as the
+     * range above: null when this is a product, or when plans were not loaded,
+     * so a card can tell "no figure" from "a figure of nothing".
+     *
+     * A PRODUCT DELIBERATELY GETS NONE. Its own price is the whole story on a
+     * card, and a product's term plans are 3/6/9/12-month prepay totals — a
+     * "from" built out of those would be the mixed-unit bug this field exists
+     * to avoid, pointed at products instead.
+     *
+     * @return array{amount: float|null, suffix: string|null, currency: string}|null
+     */
+    private function priceFromBlock(): ?array
+    {
+        $source = $this->resource;
+
+        if (! $source instanceof Package || ! $source->relationLoaded('plans')) {
+            return null;
+        }
+
+        return $this->packagePriceFrom(
+            $source->plans,
+            $this->packageEffectivePrice($source->sale_price, $source->retail_price),
+            $source->price_suffix,
         );
     }
 }

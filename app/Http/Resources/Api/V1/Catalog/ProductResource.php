@@ -41,6 +41,14 @@ class ProductResource extends JsonResource
             'is_featured' => (bool) $this->is_featured,
             'is_in_stock' => (bool) $this->is_in_stock,
             'inventory_status' => $this->inventory_status?->value,
+            // The DISPLAY string beside the machine-readable value, the same
+            // pairing PlanResource and ProfileResource use for their enums.
+            // Without it the storefront printed the raw case — "in_stock" —
+            // on the two products where an operator had actually set the
+            // field, while the five with it null fell through to a hardcoded
+            // "In Stock" in the frontend and looked correct. Copy is the
+            // backend's to own; four enum cases must not be mapped over there.
+            'inventory_status_label' => $this->inventory_status?->label(),
             'is_on_sale' => $this->sale_price !== null,
             'requires_lab' => (bool) $this->requires_lab,
             'rx_required' => (bool) $this->rx_required,

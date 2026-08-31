@@ -230,14 +230,49 @@ Route pattern: a catch-all route mapping URL path → page slug, plus `/` → sl
 
 | Endpoint | Notes |
 |---|---|
-| `GET /catalog/products` (+`/{slug}`) | Paginated; filters: `category`, `tag`, `search`, `price_min/max`, `featured`, `in_stock`, `per_page`. Prices as `{retail, sale, effective, suffix, currency}` |
-| `GET /catalog/packages` (+`/{slug}`) | Packages with member products and `plans` (billing period, term, recurring flag, trial) — model "first month vs recurring" offers from plans |
+| `GET /catalog/products` (+`/{slug}`) | Paginated; filters: `category`, `tag`, `search`, `price_min/max`, `featured`, `in_stock`, `per_page`. Prices as `{retail, sale, effective, suffix, currency}`. Stock: `is_in_stock` is the boolean to branch on; `inventory_status` is the raw enum case and `inventory_status_label` its display string — **render the label, never the bare value** — and both are null on the many products where an operator has not set one |
+| `GET /catalog/packages` (+`/{slug}`) | Packages with member products and `plans` (billing period, term, recurring flag, trial). Three separate price fields — see **Package pricing** below; do not derive one from another |
 | `GET /catalog/categories`, `/tags` | Taxonomy for navigation and filter facets |
 | `GET /blog/posts` (+`/{slug}`), `/blog/categories`, `/blog/tags` | `content` only on show route |
 | `GET /faq`, `/faq/categories` (+`/{slug}`) | Central FAQ dataset |
 | `GET /profiles` (+`/{slug}`) | People (doctors, executives, team) with typed roles |
 | `GET /health-goals` | The intake quiz's choices. Unpaginated; `all=1` includes goals withdrawn from the quiz, `tree=1` nests children. `prompt` is the visitor-facing wording and falls back to `name` — render it, not `name`. **The ingredient/product/compound mappings are deliberately absent**: recommendations are derived server-side |
 | `GET /kb/compounds` (+`/{slug}`) | Compound monographs. Paginated; filters: `search`, `peptides_only` (**defaults true**), `regulatory_status`, `sort`, `per_page` (1–100, default 24). The eight prose sections, `clinical_references` and `seo` are on the show route only — roughly 28,000 characters per compound. `provenance` ships on BOTH routes |
+
+**Package pricing — three fields, three questions, and they are not interchangeable.**
+
+A package is buyable two ways: on its own, and through a plan. Both routes emit all three
+fields whenever the `plans` relation is loaded (it always is on these endpoints), including
+when a package has no plans at all.
+
+| Field | Shape | Answers |
+|---|---|---|
+| `price` | `{retail, sale, effective, suffix, currency}` | What one purchase of the package itself costs. `effective` is `sale ?? retail`, and is `null` — never `0.00` — when unpriced |
+| `price_range` | `{from, to, currency}` | The full span a visitor could pay, across plans **and** the package's own price |
+| `price_from` | `{amount, suffix, currency}` | The single figure a card leads with, and the cadence it is charged at |
+
+**`price_from` is NOT `price_range.from`, and a card must not use the range.** The range's two
+ends are routinely in different units: on a typical install the low end is a monthly rate and
+the high end a multi-month prepay TOTAL, so rendering the span produces "$279.99 – $1,259.96"
+and tells a visitor a stack might cost $1,259.96 a month. The range is still correct for what
+it measures — it is the honest answer to "what could I pay" — but only `price_from` is safe on
+its own.
+
+`price_from` is the cheapest **monthly-cadence** price among the package's plans and its own
+price, carrying that price's own suffix rather than a `/mo` the backend invented. A plan's
+cadence is structural (`billing_period`); a package's own price has no cadence column, so its
+free-text `price_suffix` is passed through as authored and may be absent. When no monthly price
+exists — a package sold only as a prepay term — it falls back to the cheapest price of any
+cadence, again with that price's suffix, so a card renders "From $899.00/6mo" rather than a
+false "/mo" or nothing at all. `amount` is `null` when nothing is priced.
+
+**Intro prices are excluded from `price_from` on purpose.** A plan's `intro_price` buys one
+billing cycle, so leading a card with it advertises a number the visitor stops paying. Render
+it on a detail page's plan picker, where the term is visible, not on a card.
+
+Products get no `price_range` and no `price_from`. A product's own `price` is the whole story
+on a card, and its term plans are 3/6/9/12-month prepay totals — a "from" built from those
+would reintroduce the mixed-unit problem these fields exist to avoid.
 
 **Knowledge base, two things a frontend must get right:**
 
