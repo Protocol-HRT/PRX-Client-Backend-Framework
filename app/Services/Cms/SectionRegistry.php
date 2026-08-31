@@ -95,15 +95,29 @@ class SectionRegistry
      *
      * @return array<string, string>
      */
-    public function options(): array
+    /**
+     * @param  string|null  $context  'page' or 'catalog'; null offers everything.
+     */
+    public function options(?string $context = null): array
     {
         // Archived flexible types stay resolvable (existing sections keep
         // rendering) but are withheld from the picker so nothing new is
         // authored against them.
+        //
+        // Context works the same way — it filters the PICKER, never
+        // resolution, so a section already authored against a type keeps
+        // rendering whatever its contexts later say.
+        //
+        // Today it only keeps the item-scoped types (`item-faqs`,
+        // `item-reviews`) off CMS pages, which have no record for them to
+        // read. Every other blueprint still declares both contexts, so a
+        // product's picker continues to offer `hero`, `quiz` and the rest —
+        // narrowing those is a pending decision, not something this does.
         $available = array_filter(
             $this->all(),
             fn (SectionDefinition $definition): bool => ! ($definition instanceof FlexibleDefinition
-                && $definition->model()->isArchived()),
+                && $definition->model()->isArchived())
+                && ($context === null || in_array($context, $definition->contexts(), true)),
         );
 
         return array_map(

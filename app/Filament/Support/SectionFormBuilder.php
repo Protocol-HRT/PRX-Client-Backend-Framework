@@ -6,7 +6,6 @@ use App\Cms\Blocks\BlockBlueprint;
 use App\Cms\Support\SectionChildren;
 use App\Services\Cms\BlockRegistry;
 use App\Services\Cms\SectionRegistry;
-use App\Settings\ThemeSettings;
 use Filament\Forms\Components\Builder;
 use Filament\Forms\Components\Builder\Block;
 use Filament\Forms\Components\Select;
@@ -16,7 +15,6 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Icons\Heroicon;
-use Illuminate\Support\Str;
 
 /**
  * Builds the per-section-type Filament form groups shared by every place a
@@ -140,6 +138,23 @@ class SectionFormBuilder
                     ->native(false)
                     ->helperText(fn (): string => self::paletteHelp('Fills the '.$thing.' edge to edge. Panels and cards inside keep their own styling.')),
 
+                // SECTION ONLY. A block's background already stops at its own
+                // box, so there is no band to contain and the frontend defines
+                // no rule for it — offering the control would be offering one
+                // that saves and does nothing.
+                ...($nested ? [] : [
+                    Select::make('style_background_width')
+                        ->label('Background width')
+                        ->options([
+                            'full' => 'Full-bleed — reaches the viewport edge',
+                            'contained' => 'Contained — paints only the content column',
+                        ])
+                        ->placeholder('Full-bleed (default)')
+                        ->native(false)
+                        ->helperText('Where the background colour stops. Contained follows the content width and inset you set below, so the colour sits in from the page edges instead of spanning them.')
+                        ->hintIcon(Heroicon::InformationCircle, 'Needs a background colour above — on its own there is nothing to contain. It does NOT move the text; content width does that. It only decides whether the colour behind the text reaches the screen edge.'),
+                ]),
+
                 Select::make('style_text_color')
                     ->label('Text colour')
                     ->options(fn (): array => self::paletteOptions())
@@ -227,19 +242,7 @@ class SectionFormBuilder
      */
     private static function paletteOptions(): array
     {
-        $options = [];
-
-        foreach (app(ThemeSettings::class)->palette as $entry) {
-            $name = $entry['name'] ?? null;
-
-            if (! filled($name)) {
-                continue;
-            }
-
-            $options[$name] = Str::headline($name).' — '.($entry['color'] ?? '');
-        }
-
-        return $options;
+        return PaletteChoices::options();
     }
 
     /**
@@ -248,9 +251,7 @@ class SectionFormBuilder
      */
     private static function paletteHelp(string $base): string
     {
-        return app(ThemeSettings::class)->palette === []
-            ? 'No colours defined yet — add them under Settings → Theme → Colour palette, then pick one here.'
-            : $base;
+        return PaletteChoices::help($base);
     }
 
     /**

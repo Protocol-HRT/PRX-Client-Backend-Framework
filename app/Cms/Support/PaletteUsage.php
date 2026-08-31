@@ -4,6 +4,7 @@ namespace App\Cms\Support;
 
 use App\Models\Catalog\CatalogItemSection;
 use App\Models\Cms\GlobalSection;
+use App\Models\Kb\HealthGoal;
 use App\Models\PageSection;
 use Illuminate\Database\Eloquent\Model;
 
@@ -96,12 +97,62 @@ final class PaletteUsage
             }
         }
 
+        foreach (self::healthGoalsUsing($names) as $name => $labels) {
+            foreach ($labels as $label) {
+                $found[$name][] = $label;
+            }
+        }
+
         // Two sections on the same page can hold the same colour; the operator
         // needs to know the colour is in use, not to read the page twice.
         return array_map(
             static fn (array $labels): array => array_values(array_unique($labels)),
             $found,
         );
+    }
+
+    /**
+     * Health goals whose badge colour is one of $names.
+     *
+     * Badges are NOT a section knob, which is why this is a separate query
+     * rather than another entry in self::KEYS — that list is pinned as a
+     * subset of LayoutFields::KEYS by PaletteDeletionGuardTest, and a catalog
+     * column added there would fail it. It is a real column, so this is plain
+     * SQL rather than the JSON walk the section rows need.
+     *
+     * Without this the guard goes blind to badges, and deleting a colour a
+     * badge uses leaves `--palette-{name}` undefined: the declaration computes
+     * to `unset` and the chip renders with no background at all, while still
+     * claiming a colour was chosen. The frontend cannot recover from that —
+     * see the palette-deletion note in the frontend spec.
+     *
+     * Soft-deleted goals are deliberately NOT counted. "In use" has to mean
+     * something the operator can see and fix; blocking a palette edit while
+     * citing a goal they already deleted is a dead end they cannot resolve
+     * without knowing to look in the trash. A restored goal whose colour went
+     * away renders an unstyled chip, which is visible and one edit to fix.
+     *
+     * Every goal using a colour is listed, not just one. Keying by colour and
+     * overwriting would report a single goal, the operator would recolour it,
+     * save, and be blocked again by the next one sharing that colour — a fix
+     * loop with no visible end.
+     *
+     * @param  list<string>  $names
+     * @return array<string, list<string>> colour name => labels
+     */
+    private static function healthGoalsUsing(array $names): array
+    {
+        $found = [];
+
+        HealthGoal::query()
+            ->whereIn('badge_color', $names)
+            ->orderBy('name')
+            ->get(['name', 'badge_color'])
+            ->each(function (HealthGoal $goal) use (&$found): void {
+                $found[$goal->badge_color][] = 'Health goal badge: '.$goal->name;
+            });
+
+        return $found;
     }
 
     /**

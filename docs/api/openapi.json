@@ -7,7 +7,7 @@
     },
     "servers": [
         {
-            "url": "https://prx-backend.local/api/v1"
+            "url": "https://admin.atlasprotocol.com/api/v1"
         }
     ],
     "security": [
@@ -209,10 +209,32 @@
                                                 },
                                                 "roles": {
                                                     "type": "array",
-                                                    "items": {}
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "relations": {
+                                                                "type": "array",
+                                                                "prefixItems": [
+                                                                    {
+                                                                        "type": "string",
+                                                                        "const": "roles"
+                                                                    }
+                                                                ],
+                                                                "minItems": 1,
+                                                                "maxItems": 1,
+                                                                "additionalItems": false
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "relations"
+                                                        ]
+                                                    }
                                                 },
                                                 "last_login_at": {
-                                                    "type": "string"
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
                                                 }
                                             },
                                             "required": [
@@ -284,7 +306,18 @@
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/components/schemas/BlogPostResource"
+                                                "allOf": [
+                                                    {
+                                                        "$ref": "#/components/schemas/BlogPostResource"
+                                                    },
+                                                    {
+                                                        "type": "object",
+                                                        "required": [
+                                                            "categories",
+                                                            "tags"
+                                                        ]
+                                                    }
+                                                ]
                                             }
                                         },
                                         "links": {
@@ -484,10 +517,16 @@
                                                     "type": "boolean"
                                                 },
                                                 "published_at": {
-                                                    "type": "string"
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
                                                 },
                                                 "updated_at": {
-                                                    "type": "string"
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
                                                 },
                                                 "read_time_minutes": {
                                                     "type": [
@@ -1002,7 +1041,10 @@
                                                     }
                                                 },
                                                 "expires_at": {
-                                                    "type": "string"
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
                                                 }
                                             },
                                             "required": [
@@ -1070,7 +1112,10 @@
                                                     }
                                                 },
                                                 "expires_at": {
-                                                    "type": "string"
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
                                                 }
                                             },
                                             "required": [
@@ -1165,7 +1210,7 @@
         "/cart/items": {
             "post": {
                 "operationId": "v1.cart.items.add",
-                "description": "Adds a product or package to the cart, optionally under one of its plans. Increments\nquantity if the same item and plan already exist in the cart. Requires `type` and `id`;\n`plan_id` is required for packages and optional for products (term plans \u2014 omit it for\na one-time buy-once purchase). The plan must belong to the item. Returns the updated cart.",
+                "description": "Adds a product or package to the cart, optionally under one of its plans. Increments\nquantity if the same item and plan already exist in the cart. Requires `type` and `id`;\n`plan_id` is OPTIONAL for both products and packages \u2014 omit it to buy the item itself\nonce at its own price, or give it to subscribe under that plan. The plan must belong to\nthe item. Returns the updated cart.",
                 "summary": "Add an item to the cart",
                 "tags": [
                     "Cart"
@@ -1191,7 +1236,8 @@
                                         "type": [
                                             "integer",
                                             "null"
-                                        ]
+                                        ],
+                                        "description": "OPTIONAL FOR PACKAGES TOO. This was\n`requiredIf(type === 'package')`, which made a package\npurchasable only as a subscription \u2014 there was no way to buy the\nstack itself. A package IS a product, or a group of them, with its\nown price; plans are the separate recurring offer alongside it. The buy-once branch below needed no change to suit this: it\nalready read the item's own `sale_price ?? retail_price`, and was\nsimply unreachable for packages while this rule stood."
                                     },
                                     "quantity": {
                                         "type": "integer",
@@ -1240,7 +1286,10 @@
                                                     }
                                                 },
                                                 "expires_at": {
-                                                    "type": "string"
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
                                                 }
                                             },
                                             "required": [
@@ -1344,7 +1393,10 @@
                                                     }
                                                 },
                                                 "expires_at": {
-                                                    "type": "string"
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
                                                 }
                                             },
                                             "required": [
@@ -1379,7 +1431,9 @@
                                         "message": {
                                             "type": "string",
                                             "description": "Error overview.",
-                                            "example": "This item does not belong to your cart."
+                                            "examples": [
+                                                "This item does not belong to your cart."
+                                            ]
                                         }
                                     },
                                     "required": [
@@ -1449,7 +1503,10 @@
                                                     }
                                                 },
                                                 "expires_at": {
-                                                    "type": "string"
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
                                                 }
                                             },
                                             "required": [
@@ -1484,7 +1541,9 @@
                                         "message": {
                                             "type": "string",
                                             "description": "Error overview.",
-                                            "example": "This item does not belong to your cart."
+                                            "examples": [
+                                                "This item does not belong to your cart."
+                                            ]
                                         }
                                     },
                                     "required": [
@@ -1520,7 +1579,17 @@
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/components/schemas/CategoryResource"
+                                                "allOf": [
+                                                    {
+                                                        "$ref": "#/components/schemas/CategoryResource"
+                                                    },
+                                                    {
+                                                        "type": "object",
+                                                        "required": [
+                                                            "parent"
+                                                        ]
+                                                    }
+                                                ]
                                             }
                                         }
                                     },
@@ -1786,7 +1855,19 @@
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/components/schemas/ProductResource"
+                                                "allOf": [
+                                                    {
+                                                        "$ref": "#/components/schemas/ProductResource"
+                                                    },
+                                                    {
+                                                        "type": "object",
+                                                        "required": [
+                                                            "volume",
+                                                            "categories",
+                                                            "tags"
+                                                        ]
+                                                    }
+                                                ]
                                             }
                                         },
                                         "links": {
@@ -1991,7 +2072,52 @@
                                                 },
                                                 "highlights": {
                                                     "type": "array",
-                                                    "items": {}
+                                                    "items": {
+                                                        "type": [
+                                                            "object",
+                                                            "null"
+                                                        ],
+                                                        "properties": {
+                                                            "text": {
+                                                                "type": "string"
+                                                            },
+                                                            "icon": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "text",
+                                                            "icon"
+                                                        ]
+                                                    }
+                                                },
+                                                "health_goals": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "name": {
+                                                                "type": "string"
+                                                            },
+                                                            "slug": {
+                                                                "type": "string"
+                                                            },
+                                                            "badge_color": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "name",
+                                                            "slug",
+                                                            "badge_color"
+                                                        ]
+                                                    }
                                                 },
                                                 "is_featured": {
                                                     "type": "boolean"
@@ -2000,7 +2126,17 @@
                                                     "type": "boolean"
                                                 },
                                                 "inventory_status": {
-                                                    "type": "string"
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "inventory_status_label": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "description": "The DISPLAY string beside the machine-readable value, the same\npairing PlanResource and ProfileResource use for their enums.\nWithout it the storefront printed the raw case \u2014 \"in_stock\" \u2014\non the two products where an operator had actually set the\nfield, while the five with it null fell through to a hardcoded\n\"In Stock\" in the frontend and looked correct. Copy is the\nbackend's to own; four enum cases must not be mapped over there."
                                                 },
                                                 "is_on_sale": {
                                                     "type": "boolean"
@@ -2409,9 +2545,11 @@
                                                 "status",
                                                 "badge_text",
                                                 "highlights",
+                                                "health_goals",
                                                 "is_featured",
                                                 "is_in_stock",
                                                 "inventory_status",
+                                                "inventory_status_label",
                                                 "is_on_sale",
                                                 "requires_lab",
                                                 "rx_required",
@@ -2552,7 +2690,19 @@
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/components/schemas/PackageResource"
+                                                "allOf": [
+                                                    {
+                                                        "$ref": "#/components/schemas/PackageResource"
+                                                    },
+                                                    {
+                                                        "type": "object",
+                                                        "required": [
+                                                            "plans",
+                                                            "categories",
+                                                            "tags"
+                                                        ]
+                                                    }
+                                                ]
                                             }
                                         },
                                         "links": {
@@ -2748,12 +2898,60 @@
                                                 "status": {
                                                     "type": "string"
                                                 },
+                                                "tier": {
+                                                    "type": "string"
+                                                },
                                                 "badge_text": {
                                                     "type": "string"
                                                 },
                                                 "highlights": {
                                                     "type": "array",
-                                                    "items": {}
+                                                    "items": {
+                                                        "type": [
+                                                            "object",
+                                                            "null"
+                                                        ],
+                                                        "properties": {
+                                                            "text": {
+                                                                "type": "string"
+                                                            },
+                                                            "icon": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "text",
+                                                            "icon"
+                                                        ]
+                                                    }
+                                                },
+                                                "health_goals": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "name": {
+                                                                "type": "string"
+                                                            },
+                                                            "slug": {
+                                                                "type": "string"
+                                                            },
+                                                            "badge_color": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "name",
+                                                            "slug",
+                                                            "badge_color"
+                                                        ]
+                                                    }
                                                 },
                                                 "is_featured": {
                                                     "type": "boolean"
@@ -2770,7 +2968,46 @@
                                                 "sort_order": {
                                                     "type": "string"
                                                 },
+                                                "price": {
+                                                    "type": "object",
+                                                    "description": "THE PACKAGE'S OWN PRICE, which used to be emitted nowhere. A package is buyable on its own \u2014 it IS a product, or a group of\nproducts \u2014 and its price is what the detail page shows. Plans are\nthe separate, subscription-shaped offer alongside it. Until now\nthis resource emitted only `price_range`, computed from PLAN\nprices, so an operator could set the package to $399, save it\nsuccessfully, and watch the storefront keep showing the default\nplan's $279.99. Nothing failed \u2014 the value had no way out of the\ndatabase, which is indistinguishable from a save that did not work.",
+                                                    "properties": {
+                                                        "retail": {
+                                                            "type": [
+                                                                "number",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "sale": {
+                                                            "type": [
+                                                                "number",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "effective": {
+                                                            "type": [
+                                                                "number",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "suffix": {
+                                                            "type": "string"
+                                                        },
+                                                        "currency": {
+                                                            "type": "string",
+                                                            "const": "USD"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "retail",
+                                                        "sale",
+                                                        "effective",
+                                                        "suffix",
+                                                        "currency"
+                                                    ]
+                                                },
                                                 "price_range": {
+                                                    "description": "Emitted whenever the plans relation was loaded, INCLUDING when it\nis empty: a package with no plans still has its own price, and a\nrange of one number is the honest answer rather than no range.",
                                                     "anyOf": [
                                                         {
                                                             "type": "object",
@@ -2795,6 +3032,62 @@
                                                             "required": [
                                                                 "from",
                                                                 "to",
+                                                                "currency"
+                                                            ]
+                                                        },
+                                                        {
+                                                            "type": "object"
+                                                        }
+                                                    ]
+                                                },
+                                                "price_from": {
+                                                    "description": "The one figure a listing card leads with, plus the cadence it is\ncharged at. Emitted alongside `price_range`, not instead of it \u2014\nthe two answer different questions, and the range's ends are in\ndifferent units. See BuildsPackagePricing::packagePriceFrom().",
+                                                    "anyOf": [
+                                                        {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "amount": {
+                                                                    "type": "number"
+                                                                },
+                                                                "suffix": {
+                                                                    "type": "string"
+                                                                },
+                                                                "plan_id": {
+                                                                    "type": "string"
+                                                                },
+                                                                "currency": {
+                                                                    "type": "string",
+                                                                    "const": "USD"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "amount",
+                                                                "suffix",
+                                                                "plan_id",
+                                                                "currency"
+                                                            ]
+                                                        },
+                                                        {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "amount": {
+                                                                    "type": "null"
+                                                                },
+                                                                "suffix": {
+                                                                    "type": "null"
+                                                                },
+                                                                "plan_id": {
+                                                                    "type": "null"
+                                                                },
+                                                                "currency": {
+                                                                    "type": "string",
+                                                                    "const": "USD"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "amount",
+                                                                "suffix",
+                                                                "plan_id",
                                                                 "currency"
                                                             ]
                                                         },
@@ -3014,14 +3307,18 @@
                                                 "banner_image_url",
                                                 "gallery",
                                                 "status",
+                                                "tier",
                                                 "badge_text",
                                                 "highlights",
+                                                "health_goals",
                                                 "is_featured",
                                                 "is_in_stock",
                                                 "is_on_sale",
                                                 "requires_lab",
                                                 "sort_order",
+                                                "price",
                                                 "price_range",
+                                                "price_from",
                                                 "detail_sections",
                                                 "detail_layout",
                                                 "sections",
@@ -3369,7 +3666,9 @@
                                         "message": {
                                             "type": "string",
                                             "description": "Error overview.",
-                                            "example": "Cart and lead do not belong to the same session."
+                                            "examples": [
+                                                "Cart and lead do not belong to the same session."
+                                            ]
                                         }
                                     },
                                     "required": [
@@ -3511,6 +3810,20 @@
                                                         },
                                                         "frontend_template": {
                                                             "type": "string"
+                                                        },
+                                                        "product_zoom_enabled": {
+                                                            "type": "boolean",
+                                                            "description": "Desktop hover zoom on the detail gallery. The frontend\nloads its zoom library only when this is true, so this\nis a payload-weight decision, not just a behaviour one."
+                                                        },
+                                                        "palette": {
+                                                            "type": "array",
+                                                            "description": "The install's named colour vocabulary: [{name, color}].\nThe frontend exposes each as a --palette-{name} custom\nproperty and a .tx-{name} utility, and section layout\nknobs reference entries BY NAME so a colour change here\nreaches every section using it.",
+                                                            "items": {}
+                                                        },
+                                                        "text_classes": {
+                                                            "type": "array",
+                                                            "description": "Deprecated alias of `palette`, same shape, kept for\nfrontends built before it existed. Read `palette`.",
+                                                            "items": {}
                                                         }
                                                     },
                                                     "required": [
@@ -3522,7 +3835,10 @@
                                                         "font_display",
                                                         "font_body",
                                                         "custom_css",
-                                                        "frontend_template"
+                                                        "frontend_template",
+                                                        "product_zoom_enabled",
+                                                        "palette",
+                                                        "text_classes"
                                                     ]
                                                 },
                                                 "contact": {
@@ -3699,7 +4015,17 @@
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/components/schemas/ProfileResource"
+                                                "allOf": [
+                                                    {
+                                                        "$ref": "#/components/schemas/ProfileResource"
+                                                    },
+                                                    {
+                                                        "type": "object",
+                                                        "required": [
+                                                            "tags"
+                                                        ]
+                                                    }
+                                                ]
                                             }
                                         }
                                     },
@@ -3860,7 +4186,18 @@
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/components/schemas/FaqItemResource"
+                                                "allOf": [
+                                                    {
+                                                        "$ref": "#/components/schemas/FaqItemResource"
+                                                    },
+                                                    {
+                                                        "type": "object",
+                                                        "required": [
+                                                            "category",
+                                                            "tags"
+                                                        ]
+                                                    }
+                                                ]
                                             }
                                         }
                                     },
@@ -3894,7 +4231,17 @@
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/components/schemas/FaqCategoryResource"
+                                                "allOf": [
+                                                    {
+                                                        "$ref": "#/components/schemas/FaqCategoryResource"
+                                                    },
+                                                    {
+                                                        "type": "object",
+                                                        "required": [
+                                                            "items"
+                                                        ]
+                                                    }
+                                                ]
                                             }
                                         }
                                     },
@@ -3976,6 +4323,1088 @@
                                 }
                             }
                         }
+                    }
+                },
+                "security": []
+            }
+        },
+        "/health-goals": {
+            "get": {
+                "operationId": "v1.health-goals.index",
+                "summary": "List health goals",
+                "tags": [
+                    "General"
+                ],
+                "parameters": [
+                    {
+                        "name": "all",
+                        "in": "query",
+                        "description": "Include goals not offered in the quiz. Default 0.",
+                        "schema": {
+                            "type": "boolean"
+                        },
+                        "example": false
+                    },
+                    {
+                        "name": "tree",
+                        "in": "query",
+                        "description": "Nest child goals under their parent instead of returning a flat list. Default 0.",
+                        "schema": {
+                            "type": "boolean"
+                        },
+                        "example": false
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/HealthGoalResource"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "properties": {
+                                                "count": {
+                                                    "type": "integer",
+                                                    "minimum": 0
+                                                }
+                                            },
+                                            "required": [
+                                                "count"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": []
+            }
+        },
+        "/quiz/{slug}": {
+            "get": {
+                "operationId": "v1.quiz.show",
+                "summary": "The intake quiz definition",
+                "tags": [
+                    "General"
+                ],
+                "parameters": [
+                    {
+                        "name": "slug",
+                        "in": "path",
+                        "required": true,
+                        "description": "**Optional**",
+                        "schema": {
+                            "type": [
+                                "string",
+                                "null"
+                            ],
+                            "default": null
+                        },
+                        "x-optional": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "slug": {
+                                                    "type": "string"
+                                                },
+                                                "name": {
+                                                    "type": "string"
+                                                },
+                                                "steps": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "slug": {
+                                                                "type": "string"
+                                                            },
+                                                            "name": {
+                                                                "type": "string"
+                                                            },
+                                                            "heading": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "description": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "visible_when": {
+                                                                "type": "array",
+                                                                "items": {}
+                                                            },
+                                                            "questions": {
+                                                                "type": "array",
+                                                                "items": {
+                                                                    "type": "object",
+                                                                    "properties": {
+                                                                        "slug": {
+                                                                            "type": "string"
+                                                                        },
+                                                                        "kind": {
+                                                                            "type": "string"
+                                                                        },
+                                                                        "prompt": {
+                                                                            "type": "string"
+                                                                        },
+                                                                        "help": {
+                                                                            "type": [
+                                                                                "string",
+                                                                                "null"
+                                                                            ]
+                                                                        },
+                                                                        "is_required": {
+                                                                            "type": "boolean"
+                                                                        },
+                                                                        "visible_when": {
+                                                                            "type": "array",
+                                                                            "items": {}
+                                                                        },
+                                                                        "config": {
+                                                                            "type": "array",
+                                                                            "items": {}
+                                                                        },
+                                                                        "options": {
+                                                                            "anyOf": [
+                                                                                {
+                                                                                    "type": "array",
+                                                                                    "items": {
+                                                                                        "type": "object",
+                                                                                        "properties": {
+                                                                                            "value": {
+                                                                                                "type": "string"
+                                                                                            },
+                                                                                            "label": {
+                                                                                                "type": [
+                                                                                                    "string",
+                                                                                                    "null"
+                                                                                                ],
+                                                                                                "description": "The outcome-framed line, falling back to the label \u2014\nthe same rule HealthGoalResource applies, so the quiz\nand any other consumer read a goal identically."
+                                                                                            },
+                                                                                            "description": {
+                                                                                                "type": [
+                                                                                                    "string",
+                                                                                                    "null"
+                                                                                                ]
+                                                                                            },
+                                                                                            "icon": {
+                                                                                                "type": [
+                                                                                                    "string",
+                                                                                                    "null"
+                                                                                                ]
+                                                                                            },
+                                                                                            "is_exclusive": {
+                                                                                                "type": "boolean"
+                                                                                            },
+                                                                                            "price_range": {
+                                                                                                "type": "null"
+                                                                                            },
+                                                                                            "image_url": {
+                                                                                                "type": "null"
+                                                                                            }
+                                                                                        },
+                                                                                        "required": [
+                                                                                            "value",
+                                                                                            "label",
+                                                                                            "description",
+                                                                                            "icon",
+                                                                                            "is_exclusive",
+                                                                                            "price_range",
+                                                                                            "image_url"
+                                                                                        ]
+                                                                                    }
+                                                                                },
+                                                                                {
+                                                                                    "type": "array",
+                                                                                    "items": {
+                                                                                        "type": "object",
+                                                                                        "properties": {
+                                                                                            "value": {
+                                                                                                "type": "string"
+                                                                                            },
+                                                                                            "label": {
+                                                                                                "type": "string"
+                                                                                            },
+                                                                                            "description": {
+                                                                                                "type": [
+                                                                                                    "string",
+                                                                                                    "null"
+                                                                                                ]
+                                                                                            },
+                                                                                            "icon": {
+                                                                                                "type": [
+                                                                                                    "string",
+                                                                                                    "null"
+                                                                                                ]
+                                                                                            },
+                                                                                            "is_exclusive": {
+                                                                                                "type": "boolean"
+                                                                                            },
+                                                                                            "price_range": {
+                                                                                                "type": [
+                                                                                                    "object",
+                                                                                                    "null"
+                                                                                                ],
+                                                                                                "properties": {
+                                                                                                    "from": {
+                                                                                                        "type": "number"
+                                                                                                    },
+                                                                                                    "to": {
+                                                                                                        "type": "number"
+                                                                                                    },
+                                                                                                    "currency": {
+                                                                                                        "type": "string",
+                                                                                                        "const": "USD"
+                                                                                                    }
+                                                                                                },
+                                                                                                "required": [
+                                                                                                    "from",
+                                                                                                    "to",
+                                                                                                    "currency"
+                                                                                                ]
+                                                                                            },
+                                                                                            "image_url": {
+                                                                                                "type": "null"
+                                                                                            }
+                                                                                        },
+                                                                                        "required": [
+                                                                                            "value",
+                                                                                            "label",
+                                                                                            "description",
+                                                                                            "icon",
+                                                                                            "is_exclusive",
+                                                                                            "price_range",
+                                                                                            "image_url"
+                                                                                        ]
+                                                                                    }
+                                                                                }
+                                                                            ]
+                                                                        }
+                                                                    },
+                                                                    "required": [
+                                                                        "slug",
+                                                                        "kind",
+                                                                        "prompt",
+                                                                        "help",
+                                                                        "is_required",
+                                                                        "visible_when",
+                                                                        "config",
+                                                                        "options"
+                                                                    ]
+                                                                }
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "slug",
+                                                            "name",
+                                                            "heading",
+                                                            "description",
+                                                            "visible_when",
+                                                            "questions"
+                                                        ]
+                                                    }
+                                                },
+                                                "required_slugs": {
+                                                    "type": "array",
+                                                    "description": "A flat list so the walker can check completeness without\nre-walking the tree, mirroring the provider's clinical intake\nschema (`required_slugs`) rather than inventing a second shape.",
+                                                    "items": {}
+                                                }
+                                            },
+                                            "required": [
+                                                "slug",
+                                                "name",
+                                                "steps",
+                                                "required_slugs"
+                                            ]
+                                        },
+                                        "meta": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "404 rather than an empty schema: a frontend that received\n`steps: []` would render a wizard with no questions and a\nworking Continue button, which looks like a broken quiz rather\nthan an absent one.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "const": "No quiz is configured."
+                                        }
+                                    },
+                                    "required": [
+                                        "message"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": []
+            }
+        },
+        "/protocol/preview": {
+            "post": {
+                "operationId": "v1.protocol.preview",
+                "summary": "Resolve a protocol preview",
+                "tags": [
+                    "General"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "goals": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "minItems": 1,
+                                        "maxItems": 10
+                                    },
+                                    "sex": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ],
+                                        "description": "Free-form by contract, matching leads.gender. An answer that\nlands in no bucket filters nothing rather than being guessed\ninto one \u2014 see SexEligibility::normalize().",
+                                        "maxLength": 32
+                                    },
+                                    "age": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ],
+                                        "description": "The quiz slider's range. Enforced here rather than in the\ncolumn, because a boundary needs a message a person can read.",
+                                        "minimum": 18,
+                                        "maximum": 100
+                                    }
+                                },
+                                "required": [
+                                    "goals"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "goal": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "name": {
+                                                                "type": "string"
+                                                            },
+                                                            "slug": {
+                                                                "type": "string"
+                                                            },
+                                                            "prompt": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "name",
+                                                            "slug",
+                                                            "prompt"
+                                                        ]
+                                                    },
+                                                    "products": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "$ref": "#/components/schemas/ProductResource"
+                                                        }
+                                                    },
+                                                    "packages": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "$ref": "#/components/schemas/PackageResource"
+                                                        }
+                                                    },
+                                                    "outcome": {
+                                                        "type": "string",
+                                                        "description": "Named by the resolver, not inferred here. \"restricted\" and\n\"unmapped\" both render zero products and need completely\ndifferent copy, and the distinction needs an unfiltered\nbaseline the frontend does not have \u2014 see resolve().",
+                                                        "enum": [
+                                                            "unmapped",
+                                                            "restricted"
+                                                        ]
+                                                    },
+                                                    "excluded_count": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "goal",
+                                                    "products",
+                                                    "packages",
+                                                    "outcome",
+                                                    "excluded_count"
+                                                ]
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "properties": {
+                                                "goal_count": {
+                                                    "type": "integer"
+                                                },
+                                                "filtered": {
+                                                    "type": "boolean",
+                                                    "description": "Whether any filtering was actually applied. A consumer must\nnot claim the result was personalised when this is false \u2014\nclaiming personalisation we did not do is worse than not\nclaiming it. Part of the documented contract\n(docs/frontend/dev.md \u00a75a); no consumer reads it today,\nbecause nothing calls this endpoint yet."
+                                                }
+                                            },
+                                            "required": [
+                                                "goal_count",
+                                                "filtered"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/ValidationException"
+                    }
+                },
+                "security": []
+            }
+        },
+        "/kb/compounds": {
+            "get": {
+                "operationId": "v1.kb.compounds.index",
+                "summary": "List published knowledge-base compounds",
+                "tags": [
+                    "General"
+                ],
+                "parameters": [
+                    {
+                        "name": "search",
+                        "in": "query",
+                        "description": "Filter by name, tagline or synonym.",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "bpc"
+                    },
+                    {
+                        "name": "peptides_only",
+                        "in": "query",
+                        "description": "Restrict to peptides. Default true; pass 0 for the full formulary.",
+                        "schema": {
+                            "type": "boolean"
+                        },
+                        "example": true
+                    },
+                    {
+                        "name": "regulatory_status",
+                        "in": "query",
+                        "description": "Filter by regulatory status.",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "research_only"
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "description": "Sort order: name (default), -name, newest, oldest.",
+                        "schema": {
+                            "type": "string"
+                        },
+                        "example": "name"
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Results per page (1\u2013100, default 24).",
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "example": 24
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated set of `CompoundResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "allOf": [
+                                                    {
+                                                        "$ref": "#/components/schemas/CompoundResource"
+                                                    },
+                                                    {
+                                                        "type": "object",
+                                                        "required": [
+                                                            "reviewed_by",
+                                                            "products"
+                                                        ]
+                                                    }
+                                                ]
+                                            }
+                                        },
+                                        "links": {
+                                            "type": "object",
+                                            "properties": {
+                                                "first": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "last": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "prev": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "next": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "first",
+                                                "last",
+                                                "prev",
+                                                "next"
+                                            ]
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "properties": {
+                                                "current_page": {
+                                                    "type": "integer",
+                                                    "minimum": 1
+                                                },
+                                                "from": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ],
+                                                    "minimum": 1
+                                                },
+                                                "last_page": {
+                                                    "type": "integer",
+                                                    "minimum": 1
+                                                },
+                                                "links": {
+                                                    "type": "array",
+                                                    "description": "Generated paginator links.",
+                                                    "items": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "url": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            },
+                                                            "label": {
+                                                                "type": "string"
+                                                            },
+                                                            "active": {
+                                                                "type": "boolean"
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "url",
+                                                            "label",
+                                                            "active"
+                                                        ]
+                                                    }
+                                                },
+                                                "path": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "description": "Base path for paginator generated URLs."
+                                                },
+                                                "per_page": {
+                                                    "type": "integer",
+                                                    "description": "Number of items shown per page.",
+                                                    "minimum": 0
+                                                },
+                                                "to": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ],
+                                                    "description": "Number of the last item in the slice.",
+                                                    "minimum": 1
+                                                },
+                                                "total": {
+                                                    "type": "integer",
+                                                    "description": "Total number of items being paginated.",
+                                                    "minimum": 0
+                                                }
+                                            },
+                                            "required": [
+                                                "current_page",
+                                                "from",
+                                                "last_page",
+                                                "links",
+                                                "path",
+                                                "per_page",
+                                                "to",
+                                                "total"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "links",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": []
+            }
+        },
+        "/kb/compounds/{compound}": {
+            "get": {
+                "operationId": "v1.kb.compounds.show",
+                "summary": "Get a published knowledge-base compound by slug",
+                "tags": [
+                    "General"
+                ],
+                "parameters": [
+                    {
+                        "name": "compound",
+                        "in": "path",
+                        "required": true,
+                        "description": "The compound slug",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "string"
+                                                },
+                                                "name": {
+                                                    "type": "string"
+                                                },
+                                                "slug": {
+                                                    "type": "string"
+                                                },
+                                                "tagline": {
+                                                    "type": "string"
+                                                },
+                                                "is_peptide": {
+                                                    "type": "boolean"
+                                                },
+                                                "compound_class": {
+                                                    "type": "string"
+                                                },
+                                                "route_of_administration": {
+                                                    "type": "string"
+                                                },
+                                                "brand_names": {
+                                                    "type": "array",
+                                                    "items": {}
+                                                },
+                                                "synonyms": {
+                                                    "type": "array",
+                                                    "items": {}
+                                                },
+                                                "hero_image_url": {
+                                                    "type": "null"
+                                                },
+                                                "regulatory": {
+                                                    "type": [
+                                                        "object",
+                                                        "null"
+                                                    ],
+                                                    "properties": {
+                                                        "value": {
+                                                            "type": "string"
+                                                        },
+                                                        "label": {
+                                                            "type": "string"
+                                                        },
+                                                        "description": {
+                                                            "type": "string"
+                                                        },
+                                                        "is_approved_for_human_use": {
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "value",
+                                                        "label",
+                                                        "description",
+                                                        "is_approved_for_human_use"
+                                                    ]
+                                                },
+                                                "evidence": {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "tier": {
+                                                            "type": "string"
+                                                        },
+                                                        "score": {
+                                                            "type": [
+                                                                "number",
+                                                                "null"
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "tier",
+                                                        "score"
+                                                    ]
+                                                },
+                                                "reviewed_by": {
+                                                    "description": "The trust signal. Emitted on the index too, because a listing\nthat shows who reviewed each entry is doing the same job as the\ndetail page's byline.",
+                                                    "anyOf": [
+                                                        {
+                                                            "type": "null"
+                                                        },
+                                                        {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "name": {
+                                                                    "type": "string"
+                                                                },
+                                                                "title": {
+                                                                    "type": "string"
+                                                                },
+                                                                "credentials": {
+                                                                    "type": "string"
+                                                                },
+                                                                "slug": {
+                                                                    "type": "string"
+                                                                },
+                                                                "image_url": {
+                                                                    "type": "null"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "name",
+                                                                "title",
+                                                                "credentials",
+                                                                "slug",
+                                                                "image_url"
+                                                            ]
+                                                        },
+                                                        {
+                                                            "type": "object"
+                                                        }
+                                                    ]
+                                                },
+                                                "reviewed_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "published_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "updated_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "products": {
+                                                    "description": "What this pharmacy actually sells that contains the compound.\nThe reason the KB is not a generic health wiki.",
+                                                    "anyOf": [
+                                                        {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "type": "string"
+                                                            },
+                                                            "minItems": 0,
+                                                            "maxItems": 0,
+                                                            "additionalItems": false
+                                                        },
+                                                        {
+                                                            "type": "string"
+                                                        },
+                                                        {
+                                                            "type": "object"
+                                                        }
+                                                    ]
+                                                },
+                                                "description": {
+                                                    "type": "string"
+                                                },
+                                                "monograph": {
+                                                    "anyOf": [
+                                                        {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "overview": {
+                                                                    "type": "string"
+                                                                },
+                                                                "mechanism_of_action": {
+                                                                    "type": "string"
+                                                                },
+                                                                "pharmacology": {
+                                                                    "type": "string"
+                                                                },
+                                                                "clinical_evidence": {
+                                                                    "type": "string"
+                                                                },
+                                                                "dosing_guidelines": {
+                                                                    "type": "string"
+                                                                },
+                                                                "safety_profile": {
+                                                                    "type": "string"
+                                                                },
+                                                                "patient_summary": {
+                                                                    "type": "string"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "overview",
+                                                                "mechanism_of_action",
+                                                                "pharmacology",
+                                                                "clinical_evidence",
+                                                                "dosing_guidelines",
+                                                                "safety_profile",
+                                                                "patient_summary"
+                                                            ]
+                                                        },
+                                                        {
+                                                            "type": "object"
+                                                        }
+                                                    ]
+                                                },
+                                                "clinical_references": {
+                                                    "anyOf": [
+                                                        {
+                                                            "type": "array",
+                                                            "items": {}
+                                                        },
+                                                        {
+                                                            "type": "object"
+                                                        }
+                                                    ]
+                                                },
+                                                "seo": {
+                                                    "anyOf": [
+                                                        {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "meta_title": {
+                                                                    "type": "string"
+                                                                },
+                                                                "meta_description": {
+                                                                    "type": "string"
+                                                                },
+                                                                "og_image_url": {
+                                                                    "type": "null"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "meta_title",
+                                                                "meta_description",
+                                                                "og_image_url"
+                                                            ]
+                                                        },
+                                                        {
+                                                            "type": "object"
+                                                        }
+                                                    ]
+                                                },
+                                                "provenance": {
+                                                    "type": "object",
+                                                    "description": "Provenance travels with the payload, and it is a trust signal\nrather than a disclaimer: this text is summarised from the\noperator's own clinical literature corpus by a retrieval\npipeline, and `source_count` is the size of the evidence base\nbehind the page. Emitted on the index too, because a card\nshowing \"42 sources\" is doing the same job as the byline.",
+                                                    "properties": {
+                                                        "source_count": {
+                                                            "type": "string"
+                                                        },
+                                                        "reference_count": {
+                                                            "type": "integer"
+                                                        },
+                                                        "source_system": {
+                                                            "anyOf": [
+                                                                {
+                                                                    "type": "string"
+                                                                },
+                                                                {
+                                                                    "type": "object"
+                                                                }
+                                                            ]
+                                                        },
+                                                        "content_model": {
+                                                            "anyOf": [
+                                                                {
+                                                                    "type": "string"
+                                                                },
+                                                                {
+                                                                    "type": "object"
+                                                                }
+                                                            ]
+                                                        },
+                                                        "content_generated_at": {
+                                                            "anyOf": [
+                                                                {
+                                                                    "type": "string"
+                                                                },
+                                                                {
+                                                                    "type": "null"
+                                                                },
+                                                                {
+                                                                    "type": "object"
+                                                                }
+                                                            ]
+                                                        },
+                                                        "dosing_source_count": {
+                                                            "anyOf": [
+                                                                {
+                                                                    "type": "string"
+                                                                },
+                                                                {
+                                                                    "type": "null"
+                                                                },
+                                                                {
+                                                                    "type": "object"
+                                                                }
+                                                            ]
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "source_count",
+                                                        "reference_count",
+                                                        "source_system",
+                                                        "content_model",
+                                                        "content_generated_at",
+                                                        "dosing_source_count"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "id",
+                                                "name",
+                                                "slug",
+                                                "tagline",
+                                                "is_peptide",
+                                                "compound_class",
+                                                "route_of_administration",
+                                                "brand_names",
+                                                "synonyms",
+                                                "hero_image_url",
+                                                "regulatory",
+                                                "evidence",
+                                                "reviewed_by",
+                                                "reviewed_at",
+                                                "published_at",
+                                                "updated_at",
+                                                "products",
+                                                "description",
+                                                "monograph",
+                                                "clinical_references",
+                                                "seo",
+                                                "provenance"
+                                            ]
+                                        },
+                                        "meta": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
                     }
                 },
                 "security": []
@@ -4107,7 +5536,8 @@
                                             "male",
                                             "female",
                                             "other",
-                                            "prefer_not_to_say"
+                                            "prefer_not_to_say",
+                                            null
                                         ]
                                     },
                                     "address_line1": {
@@ -4159,6 +5589,29 @@
                                     "email_consent": {
                                         "type": "boolean"
                                     },
+                                    "consent_disclosures": {
+                                        "type": "array",
+                                        "description": "The wording the client rendered for each consent, snapshotted into\nthe audit. Capped hard: this is descriptive evidence supplied by an\nunauthenticated caller, so it gets a length bound like every other\nfree-text field on this endpoint.",
+                                        "items": {
+                                            "type": "object",
+                                            "properties": {
+                                                "text": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "maxLength": 2000
+                                                },
+                                                "version": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "maxLength": 64
+                                                }
+                                            }
+                                        }
+                                    },
                                     "checkout_path": {
                                         "type": [
                                             "string",
@@ -4166,7 +5619,8 @@
                                         ],
                                         "enum": [
                                             "local",
-                                            "prx"
+                                            "prx",
+                                            null
                                         ]
                                     },
                                     "cart_items": {
@@ -4235,6 +5689,31 @@
                                         ],
                                         "format": "uri",
                                         "maxLength": 2048
+                                    },
+                                    "quiz_slug": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ],
+                                        "description": "The intake quiz. `quiz_slug` rather than an id: the frontend is\nhanded slugs everywhere else and an id would be the only place\nit had to know a database key.",
+                                        "maxLength": 255
+                                    },
+                                    "quiz_answers": {
+                                        "type": [
+                                            "array",
+                                            "null"
+                                        ],
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "age": {
+                                        "type": [
+                                            "integer",
+                                            "null"
+                                        ],
+                                        "minimum": 18,
+                                        "maximum": 120
                                     }
                                 },
                                 "required": [
@@ -4261,7 +5740,8 @@
                                                     "type": "string"
                                                 },
                                                 "status": {
-                                                    "type": "string"
+                                                    "type": "string",
+                                                    "description": "A plain slug string, unchanged from when this was an enum cast.\nDispositions are operator-defined rows now, so there is no enum to\nread ->value from \u2014 and the wire format deliberately did not move,\nbecause the frontend keys off these strings."
                                                 },
                                                 "first_name": {
                                                     "type": "string"
@@ -4279,7 +5759,10 @@
                                                     ]
                                                 },
                                                 "date_of_birth": {
-                                                    "type": "string"
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
                                                 },
                                                 "gender": {
                                                     "type": [
@@ -4343,7 +5826,10 @@
                                                             "type": "boolean"
                                                         },
                                                         "given_at": {
-                                                            "type": "string"
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
                                                         }
                                                     },
                                                     "required": [
@@ -4353,11 +5839,55 @@
                                                     ]
                                                 },
                                                 "checkout_path": {
-                                                    "type": "string"
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
                                                 },
                                                 "handoff_url": {
                                                     "type": "string",
                                                     "description": "Absolute URL of the server-rendered PRX embed handoff page.\nThe frontend redirects here after lead creation when the\nconfigured checkout path is 'prx'."
+                                                },
+                                                "age": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ],
+                                                    "description": "The visitor's own answers, behind the same opaque UUID that\ngates the rest of this resource. The plan page reads them to\nshow what was asked and what it concluded."
+                                                },
+                                                "quiz": {
+                                                    "anyOf": [
+                                                        {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "answers": {
+                                                                    "type": "array",
+                                                                    "items": {}
+                                                                },
+                                                                "completed_at": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "plan_sent_at": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ],
+                                                                    "description": "A FACT, not an intention. The plan page says \"we've sent a\n copy\" only when this is set, so a failed or disabled send\nshows honest copy instead of a confident lie."
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "answers",
+                                                                "completed_at",
+                                                                "plan_sent_at"
+                                                            ]
+                                                        },
+                                                        {
+                                                            "type": "object"
+                                                        }
+                                                    ]
                                                 },
                                                 "cart_items": {
                                                     "type": "array",
@@ -4370,10 +5900,16 @@
                                                     ]
                                                 },
                                                 "handed_off_at": {
-                                                    "type": "string"
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
                                                 },
                                                 "completed_at": {
-                                                    "type": "string"
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
                                                 }
                                             },
                                             "required": [
@@ -4389,6 +5925,8 @@
                                                 "consents",
                                                 "checkout_path",
                                                 "handoff_url",
+                                                "age",
+                                                "quiz",
                                                 "cart_items",
                                                 "cart_subtotal",
                                                 "handed_off_at",
@@ -4448,7 +5986,8 @@
                                                     "type": "string"
                                                 },
                                                 "status": {
-                                                    "type": "string"
+                                                    "type": "string",
+                                                    "description": "A plain slug string, unchanged from when this was an enum cast.\nDispositions are operator-defined rows now, so there is no enum to\nread ->value from \u2014 and the wire format deliberately did not move,\nbecause the frontend keys off these strings."
                                                 },
                                                 "first_name": {
                                                     "type": "string"
@@ -4466,7 +6005,10 @@
                                                     ]
                                                 },
                                                 "date_of_birth": {
-                                                    "type": "string"
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
                                                 },
                                                 "gender": {
                                                     "type": [
@@ -4530,7 +6072,10 @@
                                                             "type": "boolean"
                                                         },
                                                         "given_at": {
-                                                            "type": "string"
+                                                            "type": [
+                                                                "string",
+                                                                "null"
+                                                            ]
                                                         }
                                                     },
                                                     "required": [
@@ -4540,11 +6085,55 @@
                                                     ]
                                                 },
                                                 "checkout_path": {
-                                                    "type": "string"
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
                                                 },
                                                 "handoff_url": {
                                                     "type": "string",
                                                     "description": "Absolute URL of the server-rendered PRX embed handoff page.\nThe frontend redirects here after lead creation when the\nconfigured checkout path is 'prx'."
+                                                },
+                                                "age": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ],
+                                                    "description": "The visitor's own answers, behind the same opaque UUID that\ngates the rest of this resource. The plan page reads them to\nshow what was asked and what it concluded."
+                                                },
+                                                "quiz": {
+                                                    "anyOf": [
+                                                        {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "answers": {
+                                                                    "type": "array",
+                                                                    "items": {}
+                                                                },
+                                                                "completed_at": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "plan_sent_at": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ],
+                                                                    "description": "A FACT, not an intention. The plan page says \"we've sent a\n copy\" only when this is set, so a failed or disabled send\nshows honest copy instead of a confident lie."
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "answers",
+                                                                "completed_at",
+                                                                "plan_sent_at"
+                                                            ]
+                                                        },
+                                                        {
+                                                            "type": "object"
+                                                        }
+                                                    ]
                                                 },
                                                 "cart_items": {
                                                     "type": "array",
@@ -4557,10 +6146,16 @@
                                                     ]
                                                 },
                                                 "handed_off_at": {
-                                                    "type": "string"
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
                                                 },
                                                 "completed_at": {
-                                                    "type": "string"
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
                                                 }
                                             },
                                             "required": [
@@ -4576,6 +6171,8 @@
                                                 "consents",
                                                 "checkout_path",
                                                 "handoff_url",
+                                                "age",
+                                                "quiz",
                                                 "cart_items",
                                                 "cart_subtotal",
                                                 "handed_off_at",
@@ -4584,6 +6181,212 @@
                                         },
                                         "meta": {
                                             "type": "string"
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/ModelNotFoundException"
+                    }
+                },
+                "security": []
+            }
+        },
+        "/leads/{lead}/plan": {
+            "get": {
+                "operationId": "v1.leads.plan",
+                "summary": "The matched protocol for one lead",
+                "tags": [
+                    "Leads"
+                ],
+                "parameters": [
+                    {
+                        "name": "lead",
+                        "in": "path",
+                        "required": true,
+                        "description": "The lead UUID",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "object",
+                                                "properties": {
+                                                    "goal": {
+                                                        "type": "object",
+                                                        "properties": {
+                                                            "name": {
+                                                                "type": "string"
+                                                            },
+                                                            "slug": {
+                                                                "type": "string"
+                                                            },
+                                                            "prompt": {
+                                                                "type": [
+                                                                    "string",
+                                                                    "null"
+                                                                ]
+                                                            }
+                                                        },
+                                                        "required": [
+                                                            "name",
+                                                            "slug",
+                                                            "prompt"
+                                                        ]
+                                                    },
+                                                    "products": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "$ref": "#/components/schemas/ProductResource"
+                                                        }
+                                                    },
+                                                    "packages": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "$ref": "#/components/schemas/PackageResource"
+                                                        }
+                                                    },
+                                                    "outcome": {
+                                                        "type": "string",
+                                                        "description": "Named by the resolver, not inferred here. \"restricted\" and\n\"unmapped\" both render zero products and need completely\ndifferent copy, and the distinction needs an unfiltered\nbaseline the frontend does not have \u2014 see resolve().",
+                                                        "enum": [
+                                                            "unmapped",
+                                                            "restricted"
+                                                        ]
+                                                    },
+                                                    "excluded_count": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "required": [
+                                                    "goal",
+                                                    "products",
+                                                    "packages",
+                                                    "outcome",
+                                                    "excluded_count"
+                                                ]
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "properties": {
+                                                "goal_count": {
+                                                    "type": "integer"
+                                                },
+                                                "filtered": {
+                                                    "type": "boolean",
+                                                    "description": "Whether the eligibility gate actually had anything to run\non. False means nothing was filtered, so a consumer must not\nclaim the plan was personalised \u2014 the same rule the preview\nendpoint states, for the same reason. Part of the documented\ncontract (docs/frontend/dev.md \u00a75a) and emitted for parity\nwith it; the plan page does not branch on it today, because\nthe sentence that would make the claim is the operator's\nauthored intro rather than anything this app composes."
+                                                },
+                                                "quiz_completed_at": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ],
+                                                    "description": "Separates \"took the quiz and matched nothing\" from \"this lead\n never took the quiz\". Both render zero goals and they are not\nthe same thing to say to someone."
+                                                },
+                                                "email_pending": {
+                                                    "type": "string",
+                                                    "description": "Whether a plan email is genuinely still coming. EVERY CLAUSE IS A REASON A SEND WOULD NEVER ARRIVE, and the\nflag exists because a page saying \"we'll email you shortly\"\non the strength of a consent tick alone is lying with a green\ntick. `canSend()` is the same gate the send listener consults\n(MailConfigurator), so this cannot promise a delivery an\noperator switched off, or one that would land in a log\ntransport and reach nobody.\n\n`quiz_completed_at` is the clause that is easy to miss: the\nONLY thing that sends this email is the SendPlanEmail listener\non QuizCompleted, which LeadController dispatches solely when\na lead arrives carrying a quiz. A lead created at CHECKOUT\nnever fires it \u2014 and this endpoint is deliberately reachable\nfor exactly that lead, through a recovery link. Without this\nclause such a visitor is promised a send that nothing in the\nsystem will ever perform.\n\nKNOWN GAP, RECORDED RATHER THAN PAPERED OVER: a quiz lead\nwhose listener ran while sending was disabled had its send\nskipped and logged, and nothing retries it. Once an operator\nenables mail, this flag reads true for that lead forever.\nTelling \"not sent yet\" from \"send was skipped\" needs a column\nthis change does not add, and re-dispatching on enable would\nmail every historical lead at once \u2014 worse than the stale\npromise. Close it when the email half is built."
+                                                },
+                                                "copy": {
+                                                    "description": "Operator-authored, keyed by the state it belongs to. The\nfrontend picks by outcome; it never composes a sentence.",
+                                                    "anyOf": [
+                                                        {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "heading": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "intro": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "restricted": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "unmapped": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                },
+                                                                "empty": {
+                                                                    "type": [
+                                                                        "string",
+                                                                        "null"
+                                                                    ]
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "heading",
+                                                                "intro",
+                                                                "restricted",
+                                                                "unmapped",
+                                                                "empty"
+                                                            ]
+                                                        },
+                                                        {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "heading": {
+                                                                    "type": "null"
+                                                                },
+                                                                "intro": {
+                                                                    "type": "null"
+                                                                },
+                                                                "restricted": {
+                                                                    "type": "null"
+                                                                },
+                                                                "unmapped": {
+                                                                    "type": "null"
+                                                                },
+                                                                "empty": {
+                                                                    "type": "null"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "heading",
+                                                                "intro",
+                                                                "restricted",
+                                                                "unmapped",
+                                                                "empty"
+                                                            ]
+                                                        }
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "goal_count",
+                                                "filtered",
+                                                "quiz_completed_at",
+                                                "email_pending",
+                                                "copy"
+                                            ]
                                         }
                                     },
                                     "required": [
@@ -4628,7 +6431,18 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/components/schemas/OrderResource"
+                                            "allOf": [
+                                                {
+                                                    "$ref": "#/components/schemas/OrderResource"
+                                                },
+                                                {
+                                                    "type": "object",
+                                                    "required": [
+                                                        "items",
+                                                        "shipments"
+                                                    ]
+                                                }
+                                            ]
                                         }
                                     },
                                     "required": [
@@ -5554,10 +7368,16 @@
                         "type": "boolean"
                     },
                     "published_at": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "updated_at": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "read_time_minutes": {
                         "type": [
@@ -5721,6 +7541,10 @@
                     "subtitle": {
                         "type": "string"
                     },
+                    "short_description": {
+                        "type": "string",
+                        "description": "The rail cards carry a blurb, so the light card needs it. Both\nProduct and Package have this column; it is trimmed to a word\nbudget on the frontend, not here, because the cap is a layout\nconcern that differs per surface."
+                    },
                     "badge_text": {
                         "type": "string"
                     },
@@ -5752,7 +7576,10 @@
                                 ]
                             },
                             "suffix": {
-                                "type": "string"
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
                             },
                             "currency": {
                                 "type": "string",
@@ -5766,6 +7593,115 @@
                             "suffix",
                             "currency"
                         ]
+                    },
+                    "price_range": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "properties": {
+                            "from": {
+                                "type": [
+                                    "number",
+                                    "null"
+                                ]
+                            },
+                            "to": {
+                                "type": [
+                                    "number",
+                                    "null"
+                                ]
+                            },
+                            "currency": {
+                                "type": "string",
+                                "const": "USD"
+                            }
+                        },
+                        "required": [
+                            "from",
+                            "to",
+                            "currency"
+                        ]
+                    },
+                    "price_from": {
+                        "anyOf": [
+                            {
+                                "type": "object",
+                                "properties": {
+                                    "amount": {
+                                        "type": "number"
+                                    },
+                                    "suffix": {
+                                        "type": "string"
+                                    },
+                                    "plan_id": {
+                                        "type": "string"
+                                    },
+                                    "currency": {
+                                        "type": "string",
+                                        "const": "USD"
+                                    }
+                                },
+                                "required": [
+                                    "amount",
+                                    "suffix",
+                                    "plan_id",
+                                    "currency"
+                                ]
+                            },
+                            {
+                                "type": "object",
+                                "properties": {
+                                    "amount": {
+                                        "type": "null"
+                                    },
+                                    "suffix": {
+                                        "type": "null"
+                                    },
+                                    "plan_id": {
+                                        "type": "null"
+                                    },
+                                    "currency": {
+                                        "type": "string",
+                                        "const": "USD"
+                                    }
+                                },
+                                "required": [
+                                    "amount",
+                                    "suffix",
+                                    "plan_id",
+                                    "currency"
+                                ]
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "health_goals": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "name": {
+                                    "type": "string"
+                                },
+                                "slug": {
+                                    "type": "string"
+                                },
+                                "badge_color": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ]
+                                }
+                            },
+                            "required": [
+                                "name",
+                                "slug",
+                                "badge_color"
+                            ]
+                        }
                     }
                 },
                 "required": [
@@ -5774,10 +7710,14 @@
                     "name",
                     "slug",
                     "subtitle",
+                    "short_description",
                     "badge_text",
                     "hero_image_url",
                     "is_in_stock",
-                    "price"
+                    "price",
+                    "price_range",
+                    "price_from",
+                    "health_goals"
                 ],
                 "title": "CatalogRelationItemResource"
             },
@@ -5870,6 +7810,268 @@
                 ],
                 "title": "CheckoutResource"
             },
+            "CompoundResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "slug": {
+                        "type": "string"
+                    },
+                    "tagline": {
+                        "type": "string"
+                    },
+                    "is_peptide": {
+                        "type": "boolean"
+                    },
+                    "compound_class": {
+                        "type": "string"
+                    },
+                    "route_of_administration": {
+                        "type": "string"
+                    },
+                    "brand_names": {
+                        "type": "array",
+                        "items": {}
+                    },
+                    "synonyms": {
+                        "type": "array",
+                        "items": {}
+                    },
+                    "hero_image_url": {
+                        "type": "null"
+                    },
+                    "regulatory": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "properties": {
+                            "value": {
+                                "type": "string"
+                            },
+                            "label": {
+                                "type": "string"
+                            },
+                            "description": {
+                                "type": "string"
+                            },
+                            "is_approved_for_human_use": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "value",
+                            "label",
+                            "description",
+                            "is_approved_for_human_use"
+                        ]
+                    },
+                    "evidence": {
+                        "type": "object",
+                        "properties": {
+                            "tier": {
+                                "type": "string"
+                            },
+                            "score": {
+                                "type": [
+                                    "number",
+                                    "null"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "tier",
+                            "score"
+                        ]
+                    },
+                    "reviewed_by": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "description": "The trust signal. Emitted on the index too, because a listing\nthat shows who reviewed each entry is doing the same job as the\ndetail page's byline.",
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            },
+                            "title": {
+                                "type": "string"
+                            },
+                            "credentials": {
+                                "type": "string"
+                            },
+                            "slug": {
+                                "type": "string"
+                            },
+                            "image_url": {
+                                "type": "null"
+                            }
+                        },
+                        "required": [
+                            "name",
+                            "title",
+                            "credentials",
+                            "slug",
+                            "image_url"
+                        ]
+                    },
+                    "reviewed_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "published_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "updated_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "products": {
+                        "description": "What this pharmacy actually sells that contains the compound.\nThe reason the KB is not a generic health wiki.",
+                        "anyOf": [
+                            {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "minItems": 0,
+                                "maxItems": 0,
+                                "additionalItems": false
+                            },
+                            {
+                                "type": "string"
+                            }
+                        ]
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "monograph": {
+                        "type": "object",
+                        "properties": {
+                            "overview": {
+                                "type": "string"
+                            },
+                            "mechanism_of_action": {
+                                "type": "string"
+                            },
+                            "pharmacology": {
+                                "type": "string"
+                            },
+                            "clinical_evidence": {
+                                "type": "string"
+                            },
+                            "dosing_guidelines": {
+                                "type": "string"
+                            },
+                            "safety_profile": {
+                                "type": "string"
+                            },
+                            "patient_summary": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "overview",
+                            "mechanism_of_action",
+                            "pharmacology",
+                            "clinical_evidence",
+                            "dosing_guidelines",
+                            "safety_profile",
+                            "patient_summary"
+                        ]
+                    },
+                    "clinical_references": {
+                        "type": "array",
+                        "items": {}
+                    },
+                    "seo": {
+                        "type": "object",
+                        "properties": {
+                            "meta_title": {
+                                "type": "string"
+                            },
+                            "meta_description": {
+                                "type": "string"
+                            },
+                            "og_image_url": {
+                                "type": "null"
+                            }
+                        },
+                        "required": [
+                            "meta_title",
+                            "meta_description",
+                            "og_image_url"
+                        ]
+                    },
+                    "provenance": {
+                        "type": "object",
+                        "description": "Provenance travels with the payload, and it is a trust signal\nrather than a disclaimer: this text is summarised from the\noperator's own clinical literature corpus by a retrieval\npipeline, and `source_count` is the size of the evidence base\nbehind the page. Emitted on the index too, because a card\nshowing \"42 sources\" is doing the same job as the byline.",
+                        "properties": {
+                            "source_count": {
+                                "type": "string"
+                            },
+                            "reference_count": {
+                                "type": "integer"
+                            },
+                            "source_system": {
+                                "type": "string"
+                            },
+                            "content_model": {
+                                "type": "string"
+                            },
+                            "content_generated_at": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "dosing_source_count": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "source_count",
+                            "reference_count"
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "slug",
+                    "tagline",
+                    "is_peptide",
+                    "compound_class",
+                    "route_of_administration",
+                    "brand_names",
+                    "synonyms",
+                    "hero_image_url",
+                    "regulatory",
+                    "evidence",
+                    "reviewed_at",
+                    "published_at",
+                    "updated_at",
+                    "description",
+                    "provenance"
+                ],
+                "title": "CompoundResource"
+            },
             "FaqCategoryResource": {
                 "type": "object",
                 "properties": {
@@ -5933,6 +8135,70 @@
                 ],
                 "title": "FaqItemResource"
             },
+            "HealthGoalResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "slug": {
+                        "type": "string"
+                    },
+                    "prompt": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "icon": {
+                        "type": "string"
+                    },
+                    "icon_size": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Null means \"use your default\" rather than zero \u2014 the frontend\nmust not read a missing correction as a size of 0."
+                    },
+                    "color": {
+                        "type": "string"
+                    },
+                    "image_url": {
+                        "type": "null"
+                    },
+                    "parent_slug": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "sort_order": {
+                        "type": "string"
+                    },
+                    "children": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/HealthGoalResource"
+                        }
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "slug",
+                    "prompt",
+                    "description",
+                    "icon",
+                    "icon_size",
+                    "color",
+                    "image_url",
+                    "sort_order"
+                ],
+                "title": "HealthGoalResource"
+            },
             "OrderItemResource": {
                 "type": "object",
                 "properties": {
@@ -5976,7 +8242,10 @@
                         "type": "string"
                     },
                     "status": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "subtotal": {
                         "type": "string"
@@ -6007,16 +8276,28 @@
                         ]
                     },
                     "placed_at": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "shipped_at": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "delivered_at": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "cancelled_at": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "prescribe_rx_order_number": {
                         "type": "string"
@@ -6073,7 +8354,10 @@
                         "type": "string"
                     },
                     "status": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "carrier": {
                         "type": "string"
@@ -6085,13 +8369,22 @@
                         "type": "string"
                     },
                     "shipped_at": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "delivered_at": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "exception_at": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
                     },
                     "exception_reason": {
                         "type": "string"
@@ -6146,12 +8439,60 @@
                     "status": {
                         "type": "string"
                     },
+                    "tier": {
+                        "type": "string"
+                    },
                     "badge_text": {
                         "type": "string"
                     },
                     "highlights": {
                         "type": "array",
-                        "items": {}
+                        "items": {
+                            "type": [
+                                "object",
+                                "null"
+                            ],
+                            "properties": {
+                                "text": {
+                                    "type": "string"
+                                },
+                                "icon": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ]
+                                }
+                            },
+                            "required": [
+                                "text",
+                                "icon"
+                            ]
+                        }
+                    },
+                    "health_goals": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "name": {
+                                    "type": "string"
+                                },
+                                "slug": {
+                                    "type": "string"
+                                },
+                                "badge_color": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ]
+                                }
+                            },
+                            "required": [
+                                "name",
+                                "slug",
+                                "badge_color"
+                            ]
+                        }
                     },
                     "is_featured": {
                         "type": "boolean"
@@ -6168,8 +8509,47 @@
                     "sort_order": {
                         "type": "string"
                     },
+                    "price": {
+                        "type": "object",
+                        "description": "THE PACKAGE'S OWN PRICE, which used to be emitted nowhere. A package is buyable on its own \u2014 it IS a product, or a group of\nproducts \u2014 and its price is what the detail page shows. Plans are\nthe separate, subscription-shaped offer alongside it. Until now\nthis resource emitted only `price_range`, computed from PLAN\nprices, so an operator could set the package to $399, save it\nsuccessfully, and watch the storefront keep showing the default\nplan's $279.99. Nothing failed \u2014 the value had no way out of the\ndatabase, which is indistinguishable from a save that did not work.",
+                        "properties": {
+                            "retail": {
+                                "type": [
+                                    "number",
+                                    "null"
+                                ]
+                            },
+                            "sale": {
+                                "type": [
+                                    "number",
+                                    "null"
+                                ]
+                            },
+                            "effective": {
+                                "type": [
+                                    "number",
+                                    "null"
+                                ]
+                            },
+                            "suffix": {
+                                "type": "string"
+                            },
+                            "currency": {
+                                "type": "string",
+                                "const": "USD"
+                            }
+                        },
+                        "required": [
+                            "retail",
+                            "sale",
+                            "effective",
+                            "suffix",
+                            "currency"
+                        ]
+                    },
                     "price_range": {
                         "type": "object",
+                        "description": "Emitted whenever the plans relation was loaded, INCLUDING when it\nis empty: a package with no plans still has its own price, and a\nrange of one number is the honest answer rather than no range.",
                         "properties": {
                             "from": {
                                 "type": [
@@ -6192,6 +8572,59 @@
                             "from",
                             "to",
                             "currency"
+                        ]
+                    },
+                    "price_from": {
+                        "description": "The one figure a listing card leads with, plus the cadence it is\ncharged at. Emitted alongside `price_range`, not instead of it \u2014\nthe two answer different questions, and the range's ends are in\ndifferent units. See BuildsPackagePricing::packagePriceFrom().",
+                        "anyOf": [
+                            {
+                                "type": "object",
+                                "properties": {
+                                    "amount": {
+                                        "type": "number"
+                                    },
+                                    "suffix": {
+                                        "type": "string"
+                                    },
+                                    "plan_id": {
+                                        "type": "string"
+                                    },
+                                    "currency": {
+                                        "type": "string",
+                                        "const": "USD"
+                                    }
+                                },
+                                "required": [
+                                    "amount",
+                                    "suffix",
+                                    "plan_id",
+                                    "currency"
+                                ]
+                            },
+                            {
+                                "type": "object",
+                                "properties": {
+                                    "amount": {
+                                        "type": "null"
+                                    },
+                                    "suffix": {
+                                        "type": "null"
+                                    },
+                                    "plan_id": {
+                                        "type": "null"
+                                    },
+                                    "currency": {
+                                        "type": "string",
+                                        "const": "USD"
+                                    }
+                                },
+                                "required": [
+                                    "amount",
+                                    "suffix",
+                                    "plan_id",
+                                    "currency"
+                                ]
+                            }
                         ]
                     },
                     "detail_sections": {
@@ -6342,13 +8775,16 @@
                     "banner_image_url",
                     "gallery",
                     "status",
+                    "tier",
                     "badge_text",
                     "highlights",
+                    "health_goals",
                     "is_featured",
                     "is_in_stock",
                     "is_on_sale",
                     "requires_lab",
                     "sort_order",
+                    "price",
                     "provider"
                 ],
                 "title": "PackageResource"
@@ -6408,7 +8844,10 @@
                                 "type": "number"
                             },
                             "suffix": {
-                                "type": "string"
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
                             },
                             "currency": {
                                 "type": "string",
@@ -6428,16 +8867,28 @@
                         "type": "object",
                         "properties": {
                             "period": {
-                                "type": "string"
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
                             },
                             "period_label": {
-                                "type": "string"
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
                             },
                             "mode": {
-                                "type": "string"
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
                             },
                             "mode_label": {
-                                "type": "string"
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
                             },
                             "term_months": {
                                 "type": [
@@ -6449,10 +8900,16 @@
                                 "type": "boolean"
                             },
                             "rebill_strategy": {
-                                "type": "string"
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
                             },
                             "rebill_strategy_label": {
-                                "type": "string"
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
                             },
                             "trial_days": {
                                 "type": [
@@ -6587,7 +9044,52 @@
                     },
                     "highlights": {
                         "type": "array",
-                        "items": {}
+                        "items": {
+                            "type": [
+                                "object",
+                                "null"
+                            ],
+                            "properties": {
+                                "text": {
+                                    "type": "string"
+                                },
+                                "icon": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ]
+                                }
+                            },
+                            "required": [
+                                "text",
+                                "icon"
+                            ]
+                        }
+                    },
+                    "health_goals": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "name": {
+                                    "type": "string"
+                                },
+                                "slug": {
+                                    "type": "string"
+                                },
+                                "badge_color": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ]
+                                }
+                            },
+                            "required": [
+                                "name",
+                                "slug",
+                                "badge_color"
+                            ]
+                        }
                     },
                     "is_featured": {
                         "type": "boolean"
@@ -6596,7 +9098,17 @@
                         "type": "boolean"
                     },
                     "inventory_status": {
-                        "type": "string"
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "inventory_status_label": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "The DISPLAY string beside the machine-readable value, the same\npairing PlanResource and ProfileResource use for their enums.\nWithout it the storefront printed the raw case \u2014 \"in_stock\" \u2014\non the two products where an operator had actually set the\nfield, while the five with it null fell through to a hardcoded\n\"In Stock\" in the frontend and looked correct. Copy is the\nbackend's to own; four enum cases must not be mapped over there."
                     },
                     "is_on_sale": {
                         "type": "boolean"
@@ -6927,9 +9439,11 @@
                     "status",
                     "badge_text",
                     "highlights",
+                    "health_goals",
                     "is_featured",
                     "is_in_stock",
                     "inventory_status",
+                    "inventory_status_label",
                     "is_on_sale",
                     "requires_lab",
                     "rx_required",

@@ -10,6 +10,7 @@ use App\Models\Concerns\HasFulfillmentCenter;
 use App\Models\Concerns\HasItemSections;
 use App\Models\Concerns\HasReviews;
 use App\Models\Concerns\HasTags;
+use App\Models\Kb\HealthGoal;
 use App\Models\User;
 use Database\Factories\Catalog\PackageFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -101,6 +102,44 @@ class Package extends Model implements Sortable
         return $this->belongsToMany(Product::class, 'package_product')
             ->withPivot('sort_order', 'is_included')
             ->orderByPivot('sort_order');
+    }
+
+    /**
+     * The products badge derivation reads, and NOTHING else.
+     *
+     * A separate relation from products() for two reasons, both learned the
+     * hard way:
+     *
+     * 1. PackageResource serializes `whenLoaded('products')`. Eager-loading
+     *    products on the LISTING purely to derive badges therefore switched on
+     *    a full nested ProductResource payload for every package in the index —
+     *    a public contract change nobody asked for, carrying SKUs and flags the
+     *    listing had never served.
+     * 2. products() carries no status constraint. The show route filters to
+     *    published explicitly; the index did not, so a draft product attached
+     *    to a published stack would have had its name, slug and price served
+     *    to any visitor, and would have badged a card whose detail page showed
+     *    no such badge.
+     *
+     * Constraining it here means every derivation path agrees, rather than
+     * each caller remembering to filter.
+     */
+    public function healthGoalSourceProducts(): BelongsToMany
+    {
+        return $this->products()->where('products.status', CatalogStatus::Published);
+    }
+
+    /**
+     * Badge OVERRIDE only — see HealthGoal::packages() for why this is not the
+     * source of truth. Empty (the normal case) means the storefront shows the
+     * union of the contained products' goals; rows here REPLACE that set.
+     */
+    public function healthGoals(): BelongsToMany
+    {
+        return $this->belongsToMany(HealthGoal::class, 'health_goal_package')
+            ->withPivot(['position'])
+            ->withTimestamps()
+            ->orderByPivot('position');
     }
 
     protected static function newFactory(): PackageFactory

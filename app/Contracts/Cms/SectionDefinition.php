@@ -91,5 +91,16 @@ interface SectionDefinition
      */
     public function hasIntrinsicContent(): bool;
 
+    /**
+     * Where this section may be ADDED: 'page' (CMS pages and global sections)
+     * and/or 'catalog' (a product or stack's own sections).
+     *
+     * Gates the picker only, never rendering — a section already authored
+     * against a type keeps resolving whatever its contexts say.
+     *
+     * @return list<string>
+     */
+    public function contexts(): array;
+
     public function isFlexible(): bool;
 }

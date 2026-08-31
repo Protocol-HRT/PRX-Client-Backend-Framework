@@ -98,10 +98,14 @@ class ConfigEndpointTest extends TestCase
         $this->getJson('/api/v1/config')
             ->assertJsonStructure([
                 'data' => [
-                    'theme' => ['custom_css', 'frontend_template'],
+                    'theme' => ['custom_css', 'frontend_template', 'product_zoom_enabled'],
                 ],
             ])
-            ->assertJsonPath('data.theme.frontend_template', 'default');
+            ->assertJsonPath('data.theme.frontend_template', 'default')
+            // Pinned as a VALUE, not just a key: the frontend gates a library
+            // download on this, so a key that silently stopped being emitted
+            // would read as `false` there and look like a working default.
+            ->assertJsonPath('data.theme.product_zoom_enabled', false);
     }
 
     /**

@@ -22,12 +22,13 @@ use App\Http\Controllers\Api\V1\Content\ProfileController;
 use App\Http\Controllers\Api\V1\Intake\IntakeSchemaController;
 use App\Http\Controllers\Api\V1\Kb\CompoundController;
 use App\Http\Controllers\Api\V1\Kb\HealthGoalController;
-use App\Http\Controllers\Api\V1\Quiz\QuizController;
-use App\Http\Controllers\Api\V1\Recommendations\ProtocolPreviewController;
 use App\Http\Controllers\Api\V1\Leads\LeadController;
+use App\Http\Controllers\Api\V1\Leads\LeadPlanController;
 use App\Http\Controllers\Api\V1\Orders\OrderController;
 use App\Http\Controllers\Api\V1\Patient\AuthController as PatientAuthController;
 use App\Http\Controllers\Api\V1\Patient\PortalController;
+use App\Http\Controllers\Api\V1\Quiz\QuizController;
+use App\Http\Controllers\Api\V1\Recommendations\ProtocolPreviewController;
 use App\Http\Controllers\Api\V1\Webhooks\PrescribeRxWebhookController;
 use Illuminate\Support\Facades\Route;
 
@@ -162,6 +163,12 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
     Route::prefix('leads')->name('leads.')->middleware('throttle:api')->group(function (): void {
         Route::post('/', [LeadController::class, 'store'])->name('store');
         Route::get('{lead:uuid}', [LeadController::class, 'show'])->name('show');
+
+        // The matched protocol for a lead. Separate from `show` because it
+        // resolves the catalogue live and `show` must stay a cheap read of the
+        // row — the plan page fetches both and the quiz submit response wants
+        // only the second.
+        Route::get('{lead:uuid}/plan', [LeadPlanController::class, 'show'])->name('plan');
     });
 
     // ── Intake ────────────────────────────────────────────────────────────

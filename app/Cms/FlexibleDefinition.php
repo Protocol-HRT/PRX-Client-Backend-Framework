@@ -194,6 +194,18 @@ class FlexibleDefinition implements SectionDefinition
             : $data;
     }
 
+    /**
+     * Admin-defined types stay available in both contexts, which is the
+     * behaviour that existed before contexts did. Narrowing one is a field on
+     * the flexible-type form when somebody actually needs it.
+     *
+     * @return list<string>
+     */
+    public function contexts(): array
+    {
+        return ['page', 'catalog'];
+    }
+
     public function isFlexible(): bool
     {
         return true;

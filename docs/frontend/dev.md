@@ -29,7 +29,7 @@ Keep the token server-side (env var). Never ship it in client-side JavaScript.
 | Key | Contents | Frontend responsibility |
 |---|---|---|
 | `brand` | name, tagline, logo variants, favicon, hero image, announcement | Render chrome; never hardcode a brand string or logo file |
-| `theme` | `primary_color`, `accent_color`, `accent_secondary_color`, `background_color`, `text_color`, `font_display`, `font_body`, `custom_css`, `frontend_template`, `palette`, `text_classes` | Map colors/fonts to CSS custom properties on `<html>`; inject `custom_css` **after** your own styles; switch component/layout variants on `frontend_template` |
+| `theme` | `primary_color`, `accent_color`, `accent_secondary_color`, `background_color`, `text_color`, `font_display`, `font_body`, `custom_css`, `frontend_template`, `product_zoom_enabled`, `palette`, `text_classes` | Map colors/fonts to CSS custom properties on `<html>`; inject `custom_css` **after** your own styles; switch component/layout variants on `frontend_template`. `product_zoom_enabled` (bool, default `false`) asks for a hover magnifier on catalog detail imagery — treat it as a payload-weight decision, not a CSS one: load whatever library implements it **dynamically**, so `false` means the code is never downloaded rather than merely never bound |
 | `contact` | emails, phone, address, business hours, social links | Contact page, footer, JSON-LD |
 | `seo` | default title/description, OG image, `google_analytics_id`, `google_tag_manager_id`, `facebook_pixel_id`, `tiktok_pixel_id`, `custom_head_scripts`, `custom_body_scripts`, `allow_indexing` | Metadata defaults, robots handling, analytics bootstrapping. Inject the custom script fields verbatim (head / end-of-body) |
 | `provider` | telehealth provider name/slug, `supports_embed`, `supports_patient_portal_auth` | Feature-gate checkout embed and patient portal |
@@ -79,6 +79,7 @@ Each section **envelope** is `{ type, origin, anchor, global, has_content, data,
 | `style_border_width` | `none` `sm` `md` `lg` | Border thickness; inert without a colour |
 | `style_radius` | `none` `sm` `md` `lg` | Corner radius of the section band. A rounded band is a CARD: it stops running edge to edge and comes to rest inside the page gutter, because a radius at the viewport edge reads as a curve cut out of the page. `none` is not the same as unset — it explicitly keeps the band full-bleed |
 | `style_background_color` | a `palette` entry **name** | Background colour of the section band |
+| `style_background_width` | `full` `contained` | Where that colour stops. `full` (default, and what an unset value means) reaches the viewport edge; `contained` paints the content column instead, so the colour follows `content_width` and `content_inset` rather than spanning past them. Inert without a colour. **Section-level only** — a block's background already stops at its own box. A section with no `.sx-content` (`stats-marquee`) degrades to full-bleed rather than losing its colour |
 | `style_text_color` | a `palette` entry **name** | Colour copy inherits within the section |
 | `style_accent_color` | a `palette` entry **name** | Eyebrows, emphasised words, stat figures |
 | `style_button_color` | a `palette` entry **name** | Button fill; the label colour is derived, not stored |
@@ -229,14 +230,57 @@ Route pattern: a catch-all route mapping URL path → page slug, plus `/` → sl
 
 | Endpoint | Notes |
 |---|---|
-| `GET /catalog/products` (+`/{slug}`) | Paginated; filters: `category`, `tag`, `search`, `price_min/max`, `featured`, `in_stock`, `per_page`. Prices as `{retail, sale, effective, suffix, currency}` |
-| `GET /catalog/packages` (+`/{slug}`) | Packages with member products and `plans` (billing period, term, recurring flag, trial) — model "first month vs recurring" offers from plans |
+| `GET /catalog/products` (+`/{slug}`) | Paginated; filters: `category`, `tag`, `search`, `price_min/max`, `featured`, `in_stock`, `per_page`. Prices as `{retail, sale, effective, suffix, currency}`. Stock: `is_in_stock` is the boolean to branch on; `inventory_status` is the raw enum case and `inventory_status_label` its display string — **render the label, never the bare value** — and both are null on the many products where an operator has not set one |
+| `GET /catalog/packages` (+`/{slug}`) | Packages with member products and `plans` (billing period, term, recurring flag, trial). Three separate price fields — see **Package pricing** below; do not derive one from another |
 | `GET /catalog/categories`, `/tags` | Taxonomy for navigation and filter facets |
 | `GET /blog/posts` (+`/{slug}`), `/blog/categories`, `/blog/tags` | `content` only on show route |
 | `GET /faq`, `/faq/categories` (+`/{slug}`) | Central FAQ dataset |
 | `GET /profiles` (+`/{slug}`) | People (doctors, executives, team) with typed roles |
 | `GET /health-goals` | The intake quiz's choices. Unpaginated; `all=1` includes goals withdrawn from the quiz, `tree=1` nests children. `prompt` is the visitor-facing wording and falls back to `name` — render it, not `name`. **The ingredient/product/compound mappings are deliberately absent**: recommendations are derived server-side |
 | `GET /kb/compounds` (+`/{slug}`) | Compound monographs. Paginated; filters: `search`, `peptides_only` (**defaults true**), `regulatory_status`, `sort`, `per_page` (1–100, default 24). The eight prose sections, `clinical_references` and `seo` are on the show route only — roughly 28,000 characters per compound. `provenance` ships on BOTH routes |
+
+**Package pricing — three fields, three questions, and they are not interchangeable.**
+
+A package is buyable two ways: on its own, and through a plan. Both routes emit all three
+fields whenever the `plans` relation is loaded (it always is on these endpoints), including
+when a package has no plans at all.
+
+| Field | Shape | Answers |
+|---|---|---|
+| `price` | `{retail, sale, effective, suffix, currency}` | What one purchase of the package itself costs. `effective` is `sale ?? retail`, and is `null` — never `0.00` — when unpriced |
+| `price_range` | `{from, to, currency}` | The full span a visitor could pay, across plans **and** the package's own price |
+| `price_from` | `{amount, suffix, plan_id, currency}` | The single figure a card leads with, the cadence it is charged at, and the plan it came from |
+
+**`price_from` is NOT `price_range.from`, and a card must not use the range.** The range's two
+ends are routinely in different units: on a typical install the low end is a monthly rate and
+the high end a multi-month prepay TOTAL, so rendering the span produces "$279.99 – $1,259.96"
+and tells a visitor a stack might cost $1,259.96 a month. The range is still correct for what
+it measures — it is the honest answer to "what could I pay" — but only `price_from` is safe on
+its own.
+
+`price_from` is the cheapest **monthly-cadence** price among the package's plans and its own
+price, carrying that price's own suffix rather than a `/mo` the backend invented. A plan's
+cadence is structural (`billing_period`); a package's own price has no cadence column, so its
+free-text `price_suffix` is passed through as authored and may be absent. When no monthly price
+exists — a package sold only as a prepay term — it falls back to the cheapest price of any
+cadence, again with that price's suffix, so a card renders "From $899.00/6mo" rather than a
+false "/mo" or nothing at all. `amount` is `null` when nothing is priced.
+
+**Intro prices are excluded from `price_from` on purpose.** A plan's `intro_price` buys one
+billing cycle, so leading a card with it advertises a number the visitor stops paying. Render
+it on a detail page's plan picker, where the term is visible, not on a card.
+
+**`plan_id` names the plan the figure came from, and `null` is meaningful rather than missing.**
+Null means the package's OWN price won, so buying the package itself is exactly the quoted
+figure. This exists so a surface that both quotes the figure AND adds to the cart charges what
+it displayed: adding a package with no plan bills its own price, which on live data is $399
+against cards reading "From $279.99/mo". If you add to the cart from a card, send this
+`plan_id` (omit `plan_id` entirely when it is null). Do not reverse-engineer it by matching the
+rendered string against plan prices — this field is the answer the backend already computed.
+
+Products get no `price_range` and no `price_from`. A product's own `price` is the whole story
+on a card, and its term plans are 3/6/9/12-month prepay totals — a "from" built from those
+would reintroduce the mixed-unit problem these fields exist to avoid.
 
 **Knowledge base, two things a frontend must get right:**
 
@@ -321,6 +365,70 @@ than being mapped into a bucket.
 not returned, because it would let anyone enumerate the sex- and age-gated substances by varying
 the request.
 
+### 5c. The saved plan — a lead's matched protocol
+
+`GET /leads/{uuid}/plan` — the same answer as 5a, for a visitor who has already submitted.
+
+This is what `/plan/{uuid}` renders and what the plan email links back to. Where 5a takes the
+answers as input, this reads them from the lead the quiz created, so the visitor can return to
+their report from a link without re-answering anything.
+
+**A GET, and that does not contradict 5a's rule.** The reason `POST /protocol/preview` must
+stay a POST is that its INPUT is a health inference — goals, sex and age in a query string get
+written into every log between browser and origin. This endpoint's input is an opaque UUID,
+which reveals nothing about the person; the answers travel only in a response body, which that
+machinery does not log.
+
+**The UUID is a bearer credential**, exactly as on `GET /leads/{uuid}`. Whoever holds it sees
+the plan — it arrived in the visitor's own redirect and their own email. Treat the page as
+private: `noindex, nofollow`, and never cache the response.
+
+**Recomputed on every read, never snapshotted.** The plan reflects the catalogue as it stands
+now, so a product withdrawn for safety stops being recommended to someone still holding the
+link. The other half of that trade is real: editing the catalogue changes what an
+already-issued link shows. Revisit this alongside a PDF, where the artefact and the page could
+otherwise disagree about the same person.
+
+`data` is **identical in shape to 5a** — same per-goal entries, same `outcome` taxonomy, same
+`excluded_count` count-not-list rule. Both are produced by one `ProtocolPresenter`, so a new
+field appears on both at once; do not write a consumer that handles one shape and not the other.
+
+`meta` carries four things beyond 5a's `filtered`:
+
+| key | meaning |
+|---|---|
+| `goal_count` | Goals resolved. **Zero is a real state**: they never took the quiz, or every goal they picked has since been withdrawn |
+| `quiz_completed_at` | Null for a lead created at checkout. Separates "answered and matched nothing" from "never answered" — different sentences |
+| `email_pending` | A plan email is genuinely still coming |
+| `copy` | The operator's results-page copy, keyed by state |
+
+**`email_pending` is not "did they consent".** All four of these must hold: they consented, an
+address is present, nothing has been sent yet, **they completed a quiz**, and sending is actually
+possible. The last clause consults the same gate the send listener does, so a page cannot promise
+a delivery an operator has switched off or that would land in a log transport. The quiz clause is
+the one that is easy to miss: the only sender is the plan-email listener on `QuizCompleted`, which
+fires solely for a lead submitted WITH a quiz — so a lead created at checkout, which reaches this
+endpoint through a recovery link, has no send coming no matter what it consented to. Render a
+future delivery only when this flag is true. A page saying "we've sent it" on the strength of a
+consent tick is lying with a green tick.
+
+**Known gap:** a quiz lead whose send was SKIPPED while mail was disabled reads `email_pending`
+true once mail is enabled — nothing retries, and nothing distinguishes "not sent yet" from "send
+was skipped".
+
+**`meta.copy` is the operator's, and the frontend never composes a sentence.** Keys map to the
+state they belong to: `heading`, `intro` (shown ONLY when something matched, so it may promise
+results), `restricted`, `unmapped`, and `empty` (no goals at all). Each is rich text and each
+may be **null** when unauthored — render nothing rather than substituting a default, which would
+put brand voice in a repo that ships to more than one brand.
+
+**`restricted` and `unmapped` must never fall back to each other.** Telling someone who was
+ruled out that "we're still building this" is false, and so is the reverse. The backend
+distinguishes them against an unfiltered baseline because the frontend cannot.
+
+**Zero matches is a designed outcome, not an error.** The eligibility gate means some visitors
+legitimately match nothing.
+
 ## 6. Commerce flow
 
 The active checkout path comes from `GET /config` → `checkout.path` (`prx` | `local`). Branch the whole flow on it — never assume one.
@@ -348,3 +456,26 @@ The active checkout path comes from `GET /config` → `checkout.path` (`prx` | `
    prose-kind fields get a container of their own.
 5. **Respect `allow_indexing` and per-page `noindex`.**
 6. **Keep API tokens server-side.**
+
+## Catalog-only sections that read their record (2026-08-30)
+
+Two section types serve a product or stack detail page and nothing else:
+
+| type | renders |
+|---|---|
+| `item-faqs` | that record's published FAQs |
+| `item-reviews` | that record's approved reviews, plus its rating |
+
+Their `data` is presentation only — an optional inline `heading`. **The rows
+are not in the payload's section data**; they are the record's own `faqs`,
+`reviews` and `rating`, already served at the top level of the detail payload.
+So the frontend passes the record into its section renderer and those two
+components read it; every other type stays a self-contained envelope and
+nothing is duplicated.
+
+Both declare intrinsic content, so they arrive with `has_content: true` even
+with a null heading. Render nothing when the record has no FAQs/reviews.
+
+They are absent from the CMS page picker (`contexts: ['catalog']`) because a
+page has no record for them to read — but that gates authoring only, so
+anything already stored keeps resolving.

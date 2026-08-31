@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Catalog\Packages;
 use App\Filament\Resources\Catalog\Packages\Pages\CreatePackage;
 use App\Filament\Resources\Catalog\Packages\Pages\EditPackage;
 use App\Filament\Resources\Catalog\Packages\Pages\ListPackages;
+use App\Filament\Resources\Catalog\Packages\RelationManagers\HealthGoalsRelationManager;
 use App\Filament\Resources\Catalog\Packages\RelationManagers\PlansRelationManager;
 use App\Filament\Resources\Catalog\Packages\Schemas\PackageForm;
 use App\Filament\Resources\Catalog\Packages\Tables\PackagesTable;
@@ -48,6 +49,7 @@ class PackageResource extends Resource
     {
         return [
             PlansRelationManager::class,
+            HealthGoalsRelationManager::class,
             CatalogRelationsRelationManager::class,
             FaqsRelationManager::class,
             ReviewsRelationManager::class,

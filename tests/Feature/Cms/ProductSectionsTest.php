@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Cms;
 
+use App\Enums\CatalogStatus;
 use App\Models\Catalog\Category;
 use App\Models\Catalog\Package;
 use App\Models\Catalog\Plan;
@@ -190,6 +191,26 @@ class ProductSectionsTest extends TestCase
 
         $this->assertCount(1, $packages);
         $this->assertSame($featured->id, $packages[0]['id']);
+    }
+
+    /**
+     * A package slider on a CMS page embeds each package's products. That load
+     * was unconstrained, while Package::products() carries no status filter of
+     * its own — so a draft product attached to a published stack had its name,
+     * slug and price served to any visitor of the home page. It was invisible
+     * because the catalog happened to be entirely published.
+     */
+    public function test_package_slider_does_not_inline_unpublished_products(): void
+    {
+        $package = Package::factory()->create(['status' => CatalogStatus::Published]);
+        $live = Product::factory()->create(['status' => CatalogStatus::Published, 'name' => 'On Sale']);
+        $draft = Product::factory()->create(['status' => CatalogStatus::Draft, 'name' => 'Not Announced Yet']);
+        $package->products()->attach([$live->id, $draft->id]);
+
+        $inlined = app(CatalogInliner::class)->packagesByIds([$package->id]);
+
+        $names = array_column($inlined[0]['products'], 'name');
+        $this->assertSame(['On Sale'], $names);
     }
 
     public function test_package_slider_inlines_plan_pricing_with_intro_price(): void

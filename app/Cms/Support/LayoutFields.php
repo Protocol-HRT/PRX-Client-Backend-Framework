@@ -41,6 +41,7 @@ final class LayoutFields
         'content_align_md',
         'content_align_lg',
         'media_width',
+        'style_background_width',
         // NAMESPACED, and it must stay that way. `background_image` was tried
         // bare first and collided head-on with an authored content field of
         // the same name on hero, cta-banner and image-callout-banner: the

@@ -10,15 +10,17 @@ use Illuminate\Support\Facades\Storage;
 
 class ProductResource extends JsonResource
 {
+    use Concerns\BuildsHealthGoalBadges;
     use Concerns\BuildsRatingSummary;
     use Concerns\NormalizesDetailSections;
+    use Concerns\NormalizesHighlights;
 
     /**
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array
     {
-        /** @var list<string> $highlights */
+        /** @var list<array{text: string, icon: string|null}> $highlights */
         $highlights = $this->normalizeHighlights($this->highlights);
 
         return [
@@ -33,9 +35,20 @@ class ProductResource extends JsonResource
             'status' => $this->status->value,
             'badge_text' => $this->badge_text,
             'highlights' => $highlights,
+            'health_goals' => $this->relationLoaded('healthGoals')
+                ? $this->healthGoalBadges($this->healthGoals)
+                : [],
             'is_featured' => (bool) $this->is_featured,
             'is_in_stock' => (bool) $this->is_in_stock,
             'inventory_status' => $this->inventory_status?->value,
+            // The DISPLAY string beside the machine-readable value, the same
+            // pairing PlanResource and ProfileResource use for their enums.
+            // Without it the storefront printed the raw case — "in_stock" —
+            // on the two products where an operator had actually set the
+            // field, while the five with it null fell through to a hardcoded
+            // "In Stock" in the frontend and looked correct. Copy is the
+            // backend's to own; four enum cases must not be mapped over there.
+            'inventory_status_label' => $this->inventory_status?->label(),
             'is_on_sale' => $this->sale_price !== null,
             'requires_lab' => (bool) $this->requires_lab,
             'rx_required' => (bool) $this->rx_required,
@@ -140,24 +153,5 @@ class ProductResource extends JsonResource
             'name' => $model->name,
             'slug' => $model->slug ?? null,
         ];
-    }
-
-    /**
-     * Normalizes the Filament Repeater format [{"item": "text"}] to a flat ["text"] array.
-     *
-     * @param  array<int, array<string, string>>|null  $highlights
-     * @return list<string>
-     */
-    private function normalizeHighlights(?array $highlights): array
-    {
-        if (empty($highlights)) {
-            return [];
-        }
-
-        return collect($highlights)
-            ->pluck('item')
-            ->filter()
-            ->values()
-            ->all();
     }
 }

@@ -6,6 +6,7 @@ use App\Enums\CatalogRelationType;
 use App\Enums\CatalogStatus;
 use App\Models\Catalog\CatalogRelation;
 use App\Models\Catalog\Package;
+use App\Models\Catalog\Product;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
@@ -40,7 +41,15 @@ trait HasCatalogRelations
         return $this->catalogRelations()
             ->where('relation_type', $type->value)
             ->with(['related' => fn (MorphTo $morphTo) => $morphTo->morphWith([
-                Package::class => ['plans' => fn ($q) => $q->where('status', CatalogStatus::Published)->orderBy('position')],
+                Package::class => [
+                    'plans' => fn ($q) => $q->where('status', CatalogStatus::Published)->orderBy('position'),
+                    // Badges: the package's own override, else derived from
+                    // the products it contains. Both edges or rail cards
+                    // render bare.
+                    'healthGoals',
+                    'healthGoalSourceProducts.healthGoals',
+                ],
+                Product::class => ['healthGoals'],
             ])])
             ->get()
             ->pluck('related')

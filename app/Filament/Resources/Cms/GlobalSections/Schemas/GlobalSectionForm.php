@@ -49,7 +49,7 @@ class GlobalSectionForm
                                     ->disabledOn('edit')
                                     ->helperText('Stable identifier used as a CSS hook by the frontend. Cannot be changed after creation.'),
                                 Select::make('type')
-                                    ->options($registry->options())
+                                    ->options($registry->options('page'))
                                     ->required()
                                     ->reactive()
                                     ->native(false)

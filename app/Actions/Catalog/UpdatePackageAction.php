@@ -5,6 +5,7 @@ namespace App\Actions\Catalog;
 use App\Actions\Concerns\Transacts;
 use App\Data\Catalog\PackageData;
 use App\Models\Catalog\Package;
+use App\Support\DetailLayout;
 use Illuminate\Support\Facades\Auth;
 
 class UpdatePackageAction
@@ -35,6 +36,7 @@ class UpdatePackageAction
                 'badge_text' => $data->badge_text,
                 'highlights' => $data->highlights,
                 'detail_sections' => $data->detail_sections,
+                'detail_layout' => DetailLayout::prune($data->detail_layout),
                 'is_featured' => $data->is_featured,
                 'is_in_stock' => $data->is_in_stock,
                 'requires_lab' => $data->requires_lab,

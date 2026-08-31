@@ -77,7 +77,7 @@ class SectionsRelationManager extends RelationManager
                             ->visible(fn (Get $get, string $operation): bool => $operation !== 'edit' && $get('source') === 'global')
                             ->required(fn (Get $get, string $operation): bool => $operation !== 'edit' && $get('source') === 'global'),
                         Select::make('type')
-                            ->options($registry->options())
+                            ->options($registry->options('page'))
                             ->reactive()
                             ->disabledOn('edit')
                             ->native(false)
@@ -133,7 +133,7 @@ class SectionsRelationManager extends RelationManager
             ])
             ->filters([
                 SelectFilter::make('type')
-                    ->options($registry->options()),
+                    ->options($registry->options('page')),
             ])
             ->headerActions([
                 CreateAction::make()

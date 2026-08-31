@@ -11,6 +11,7 @@ use Filament\Forms\Components\ColorPicker;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -114,6 +115,9 @@ class ManageTheme extends BaseSettingsPage
                             ->maxLength(100)
                             ->regex('/^[a-z0-9][a-z0-9-]*$/')
                             ->hintIcon(Heroicon::InformationCircle, 'Template/layout variant slug the frontend maps to its own component set, e.g. "default" or "atlas". The backend stores the choice; the frontend defines what it looks like.'),
+                        Toggle::make('product_zoom_enabled')
+                            ->label('Product gallery hover zoom')
+                            ->hintIcon(Heroicon::InformationCircle, 'Magnifies the product or stack photo under the cursor on the detail page (desktop only). The frontend implements this with the drift-zoom library and downloads it only while this is on, so leaving it off keeps every visitor\'s page lighter.'),
                         Textarea::make('custom_css')
                             ->label('Custom CSS')
                             ->rows(8)

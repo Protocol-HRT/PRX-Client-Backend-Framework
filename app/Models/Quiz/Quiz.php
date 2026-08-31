@@ -23,7 +23,31 @@ class Quiz extends Model
 {
     use HasSlug, SoftDeletes;
 
-    protected $fillable = ['name', 'slug', 'description', 'is_active', 'is_default'];
+    protected $fillable = [
+        'name', 'slug', 'description', 'is_active', 'is_default',
+        'result_heading', 'result_intro', 'result_restricted_body',
+        'result_unmapped_body', 'result_empty_body',
+    ];
+
+    /**
+     * The results-page copy, in the shape the plan endpoint serves it.
+     *
+     * Grouped here rather than assembled at the call site so the frontend
+     * contract has one owner: adding a state to the results page means adding
+     * a column and a key here, and every consumer sees it at once.
+     *
+     * @return array<string, string|null>
+     */
+    public function resultCopy(): array
+    {
+        return [
+            'heading' => $this->result_heading,
+            'intro' => $this->result_intro,
+            'restricted' => $this->result_restricted_body,
+            'unmapped' => $this->result_unmapped_body,
+            'empty' => $this->result_empty_body,
+        ];
+    }
 
     protected function casts(): array
     {

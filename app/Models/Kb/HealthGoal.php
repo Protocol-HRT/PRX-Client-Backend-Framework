@@ -70,6 +70,7 @@ class HealthGoal extends Model implements Sortable
         'icon',
         'icon_size',
         'color',
+        'badge_color',
         'image_path',
         'parent_id',
         'is_active',
@@ -150,13 +151,54 @@ class HealthGoal extends Model implements Sortable
             ->orderByPivot('relevance_weight', 'desc');
     }
 
-    /** The direct override — a product pinned to a goal whatever its ingredients say. */
+    /**
+     * The direct override — a product pinned to a goal whatever its
+     * ingredients say.
+     *
+     * THIS EDGE NOW HAS A SECOND JOB. It was built as a recommendation
+     * override, on the reasoning that pinning products by hand means the
+     * ingredient mappings are what is actually missing. Health-goal badges
+     * (the chips a storefront shows on a product card) read the same edge,
+     * deliberately: the quiz and the badges naming the same goal is the whole
+     * point, and a second product-to-goal vocabulary would guarantee they
+     * drift apart.
+     *
+     * The consequence to watch: badge tagging means most products WILL be
+     * pinned here, at the default relevance weight. GoalRecommendationResolver
+     * resolves through health_goal_ingredient and does not read this edge
+     * today. If it ever starts to, every badge becomes a recommendation
+     * override overnight — split the two with a pivot flag before that lands,
+     * not after.
+     */
     public function products(): BelongsToMany
     {
         return $this->belongsToMany(Product::class, 'health_goal_product')
             ->withPivot(['relevance_weight', 'is_first_line', 'relevance_note', 'position'])
             ->withTimestamps()
             ->orderByPivot('relevance_weight', 'desc');
+    }
+
+    /**
+     * The badge OVERRIDE for packages — display only.
+     *
+     * A package's badges are normally derived from the goals of the products
+     * inside it, so tagging a product once updates every stack containing it
+     * and a stack cannot claim something its contents do not. Rows here exist
+     * for the one case derivation cannot express: a stack marketed for a
+     * single goal, which must show that goal ALONE rather than the union of
+     * everything its parts treat. When this relation has rows they REPLACE the
+     * derived set; they never add to it.
+     *
+     * Never read this for recommendations. Packages are not mapped directly to
+     * goals for resolution — see GoalRecommendationResolver — and this table
+     * does not change that.
+     */
+    public function packages(): BelongsToMany
+    {
+        return $this->belongsToMany(Package::class, 'health_goal_package')
+            ->withPivot(['position'])
+            ->withTimestamps()
+            ->orderByPivot('position');
     }
 
     /** The education edge — what the knowledge base shows on a monograph. */

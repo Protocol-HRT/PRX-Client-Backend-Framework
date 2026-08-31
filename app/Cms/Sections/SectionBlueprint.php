@@ -91,6 +91,31 @@ abstract class SectionBlueprint
      * See SectionDefinition::hasIntrinsicContent(). False for every editorial
      * section, which is almost all of them.
      */
+    /**
+     * Where this section may be ADDED.
+     *
+     * `page` is the CMS page builder and global sections; `catalog` is the
+     * "Page Sections" tab on a product or stack. Both by default, which is
+     * what almost every blueprint wants.
+     *
+     * It exists because some sections are meaningless outside one of them. A
+     * section that renders "this item's FAQs" has no item on a CMS page, and
+     * before this the picker offered every registered type everywhere — an
+     * operator editing a product was shown `hero` and `quiz` alongside the
+     * handful that make sense there.
+     *
+     * This gates the PICKER, never rendering: a section already authored
+     * against a type keeps resolving if its contexts change, because silently
+     * dropping content an operator wrote is worse than an odd entry in a
+     * dropdown.
+     *
+     * @return list<string>
+     */
+    public function contexts(): array
+    {
+        return ['page', 'catalog'];
+    }
+
     public function hasIntrinsicContent(): bool
     {
         return false;

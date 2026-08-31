@@ -9,6 +9,7 @@ use App\Data\Settings\ThemeSettingsData;
 use App\Models\Catalog\CatalogItemSection;
 use App\Models\Catalog\Product;
 use App\Models\Cms\GlobalSection;
+use App\Models\Kb\HealthGoal;
 use App\Models\PageSection;
 use App\Settings\ThemeSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -211,6 +212,37 @@ class PaletteDeletionGuardTest extends TestCase
         $this->expectExceptionMessageMatches('/sand/');
 
         $this->save([['name' => 'ink', 'color' => '#111111']]);
+    }
+
+    public function test_removing_a_color_used_by_a_health_goal_badge_is_blocked(): void
+    {
+        $this->seedPalette();
+
+        // Badges are NOT a section knob, so this reaches a different branch
+        // of PaletteUsage than every other test here: a plain column query
+        // rather than the JSON walk. Delete healthGoalsUsing() and only this
+        // test notices, while every badge on the storefront quietly loses its
+        // background.
+        HealthGoal::factory()->create(['name' => 'Weight Management', 'badge_color' => 'sand']);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessageMatches('/sand/');
+
+        $this->save([['name' => 'ink', 'color' => '#111111']]);
+    }
+
+    public function test_a_soft_deleted_health_goal_does_not_block_a_color(): void
+    {
+        $this->seedPalette();
+
+        HealthGoal::factory()->create(['name' => 'Retired', 'badge_color' => 'sand'])->delete();
+
+        $this->save([['name' => 'ink', 'color' => '#111111']]);
+
+        $this->assertSame(
+            ['ink'],
+            array_column($this->app->make(ThemeSettings::class)->palette, 'name')
+        );
     }
 
     public function test_a_section_with_null_data_is_skipped_without_error(): void

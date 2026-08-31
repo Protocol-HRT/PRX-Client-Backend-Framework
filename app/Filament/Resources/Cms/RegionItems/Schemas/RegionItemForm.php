@@ -56,7 +56,7 @@ class RegionItemForm
                                     ->helperText('Cannot change after creation — delete and re-add.'),
                                 Select::make('section_type')
                                     ->label('Section type')
-                                    ->options($registry->options())
+                                    ->options($registry->options('page'))
                                     ->reactive()
                                     ->native(false)
                                     ->disabledOn('edit')

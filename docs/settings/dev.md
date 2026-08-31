@@ -171,6 +171,10 @@ DTO validation throws `Illuminate\Validation\ValidationException` on bad input. 
 
 ## Theme text classes (added 2026-08-16)
 
+## Frontend behaviour flags
+
+`ThemeSettings.product_zoom_enabled` — a boolean (Settings → Theme → Frontend → "Product gallery hover zoom"), default **false**, served as `/api/v1/config` → `theme.product_zoom_enabled`. It gates the desktop hover magnifier on catalog detail galleries. The default is off on purpose and the frontend contract is stricter than "don't bind": the consuming app must load its zoom library behind a dynamic import so an install that leaves this off ships none of that weight. Adding a field here means six edits in lockstep — the settings class, `ThemeSettingsData`, the assignment block in `UpdateThemeSettingsAction`, the `ManageTheme` form, `ConfigController`, and a settings migration under `database/settings/`. Skip the action and you get a form field that reports success and writes nothing; skip the migration and a fresh install throws `MissingSettings` on `/config`. `ManageThemeFrontendTogglesTest` drives the toggle through the real form save in both directions, which is the only place the first of those two is catchable.
+
 `ThemeSettings.text_classes` — a repeater of `{name, color}` rows (Settings → Theme → "Text color classes"). Exposed via `/api/v1/config` → `theme.text_classes`; the frontend generates a `.tx-{name}` CSS rule per row so admins can color rich-text runs (`<span class="tx-gold">…</span>`) without frontend changes. `UpdateThemeSettingsAction` drops incomplete rows and clears the config cache on save. Note: the settings class property carries **no `@var` array-shape docblock** — spatie/laravel-settings reflects property docblocks for casts and its parser rejects array-shape syntax.
 
 ## Future work

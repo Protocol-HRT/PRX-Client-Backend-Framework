@@ -43,7 +43,7 @@ class ProductController extends ApiController
 
         $products = Product::query()
             ->where('status', CatalogStatus::Published)
-            ->with(['categories', 'tags', 'productClass', 'productType', 'productForm', 'administrationMethod', 'volumeUnit'])
+            ->with(['categories', 'tags', 'healthGoals', 'productClass', 'productType', 'productForm', 'administrationMethod', 'volumeUnit'])
             ->when($request->filled('category'), fn ($q) => $q->whereHas(
                 'categories',
                 fn ($q) => $q->where('slug', $request->string('category'))
@@ -112,7 +112,12 @@ class ProductController extends ApiController
         $product->load([
             'categories',
             'tags',
-            'packages.plans',
+            'healthGoals',
+            // `packages.plans` used to be loaded here. ProductResource
+            // serializes no `packages` key and the controller does nothing
+            // else with the product, so it was two queries per detail request
+            // feeding nothing. Removed 2026-08-30; if a "sold in these stacks"
+            // block ever lands, it comes back WITH the resource field.
             'plans' => fn ($q) => $q->where('status', CatalogStatus::Published)->orderBy('position'),
             'productClass',
             'productType',

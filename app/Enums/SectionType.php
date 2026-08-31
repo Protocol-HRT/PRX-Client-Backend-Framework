@@ -14,18 +14,20 @@ use App\Cms\Sections\FinalCtaSection;
 use App\Cms\Sections\HeroSection;
 use App\Cms\Sections\HighlightBannerSection;
 use App\Cms\Sections\HowItWorksSection;
+use App\Cms\Sections\HtmlBlockSection;
 use App\Cms\Sections\ImageCalloutBannerSection;
 use App\Cms\Sections\ImageTextSplitSection;
+use App\Cms\Sections\ItemFaqsSection;
+use App\Cms\Sections\ItemReviewsSection;
 use App\Cms\Sections\PackagePricingComparisonSection;
 use App\Cms\Sections\PackageSliderSection;
 use App\Cms\Sections\PhysiciansSection;
 use App\Cms\Sections\PricingTiersSection;
-use App\Cms\Sections\HtmlBlockSection;
-use App\Cms\Sections\QuizCtaSection;
-use App\Cms\Sections\QuizSection;
 use App\Cms\Sections\ProductCalloutSection;
 use App\Cms\Sections\ProductGridSection;
 use App\Cms\Sections\ProductSliderSection;
+use App\Cms\Sections\QuizCtaSection;
+use App\Cms\Sections\QuizSection;
 use App\Cms\Sections\ResultsStatsSection;
 use App\Cms\Sections\SectionBlueprint;
 use App\Cms\Sections\StatsMarqueeSection;
@@ -51,6 +53,8 @@ enum SectionType: string
     case Testimonials = 'testimonials';
     case Transformed = 'transformed';
     case Faq = 'faq';
+    case ItemFaqs = 'item-faqs';
+    case ItemReviews = 'item-reviews';
     case FinalCta = 'final-cta';
 
     // 5 generic Tailwind blocks
@@ -96,6 +100,8 @@ enum SectionType: string
             self::Testimonials => app(TestimonialsSection::class),
             self::Transformed => app(TransformedSection::class),
             self::Faq => app(FaqSection::class),
+            self::ItemFaqs => app(ItemFaqsSection::class),
+            self::ItemReviews => app(ItemReviewsSection::class),
             self::FinalCta => app(FinalCtaSection::class),
             self::TextBlock => app(TextBlockSection::class),
             self::ImageTextSplit => app(ImageTextSplitSection::class),

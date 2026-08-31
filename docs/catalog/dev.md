@@ -55,7 +55,26 @@ resource** — regression-tested in `ProductClassificationTest`.
 
 ### Highlights format
 
-The Filament Repeater stores highlights as `[{"item":"First point"}, {"item":"Second point"}]`. The API Resources normalize this to `["First point", "Second point"]` via `collect()->pluck('item')`.
+The Filament Repeater stores `[{"item": "...", "icon": "ti ti-truck"}]`; the API
+normalizes it to **`[{text, icon}]`**, `icon` being a Tabler class or `null`.
+
+THREE STORED SHAPES ARE LIVE and `NormalizesHighlights` tolerates all of them:
+the current `{item, icon}`, an older `{item}` alone, and a bare string written
+by the fill scripts. The original implementation was a plain `pluck('item')`,
+which returns null for a string entry and then filtered it away — so
+`performance-stack` held four highlights and served `[]`, indistinguishable
+from an operator who had written none.
+
+The icon arrived when highlights became the **credibility list in the buy box**
+("Physician-supervised", "Licensed pharmacy") — an icon list needs an icon per
+row. Rows authored before the field carry `icon: null` and the frontend falls
+back to a check mark, so adding it touched no records.
+
+**Highlights are NOT the benefits diagram.** They used to be: a hardcoded
+diagram rendered on the detail page whenever this field was non-empty, so
+adding one line made a large radial block appear and the only way to remove it
+was to delete the line. The diagram is now the `benefits-diagram` SECTION, added
+under Page Sections like anything else. Do not re-couple them.
 
 ### Provider encounter type resolution (at intake time)
 
@@ -131,8 +150,17 @@ potency e.g. `"10 mg / 3 ml"`), `coas` (visible only —
 `plans` (published product term plans, position-ordered — same PlanResource
 shape as package plans; drives the detail-page deal grid, with the product's
 own `price` as the one-time/buy-once option). A plan belongs to a package OR
-a product, never both. Relation light cards price packages from their
-default plan; `price.effective` is `null` (never `0.00`) when unpriced.
+a product, never both.
+
+**Relation light cards price a package by ITSELF**, and carry a `price_range`
+alongside `price`. They used to substitute the package with its default plan,
+which was correct only while packages had no price columns of their own; once
+they did, a $399 buy-once stack advertised its subscription's price on every
+upsell and pairs-with card. The range spans the package's plans and its own
+price, so a stack sold only through plans — most of them — can still be shown
+as "From $X" rather than blank. `price.effective` is `null` (never `0.00`)
+when unpriced, and `price_range` is `null` for products (a product's own price
+is the whole story on a rail card).
 Also includes `faqs` — see [Polymorphic FAQs](#polymorphic-faqs).
 
 ### `GET /api/v1/catalog/packages`
@@ -179,12 +207,34 @@ Products and packages expose on their **show** endpoints:
   admin-defined flexible types — is available per record. Global blocks
   compose identically to pages: attach one block to many records, edit
   once. Disabled sections and unresolvable types are skipped.
-- `detail_layout` — nullable per-record presentation JSON, passed through
-  verbatim to the frontend's `normalizePresentation`:
+- `detail_layout` — nullable per-record presentation JSON, served verbatim to
+  the frontend's `normalizePresentation`:
   `{template: classic|conversion, accordions: {placement: side|below},
-  pair_with: {desktop: 1–4, mobile: 1–2}, rails: [related|stacks|associated]}`.
+  pair_with: {desktop: 1–4, mobile: 1–2}, rails: [related|stacks|associated|none]}`.
   Every key optional; missing = deployment default. Never invent keys
   backend-side — the frontend normalizer owns defaults.
+
+  **Pruned on WRITE, not on read.** `App\Support\DetailLayout::prune()` runs in
+  all four catalog create/update actions and strips nulls, empty strings and
+  empty arrays, plus any group left empty. This is load-bearing, not tidiness:
+  Filament hydrates an untouched Select as `null` and an untouched CheckboxList
+  as `[]` and dehydrates them the same way, so without pruning, saving a
+  product *without opening the Layout tab* wrote a full object of nulls
+  including `rails: []`. An operator fixing a typo in a subtitle would have
+  silently deleted that page's recommendation rails. Pruning is what keeps
+  "never configured" expressible after a save, and keeps the form's own
+  promise — blank means the deployment default — true.
+
+  **Consequently `rails: []` cannot mean "no rails"** — it is indistinguishable
+  from a control nobody touched, and is pruned away. "Show no rails" is the
+  explicit `none` token, the same idiom the section spacing scale uses, where
+  `none` is deliberately not redundant with leaving a knob unset. `none` beats
+  any rail selected alongside it.
+
+  Pinned by `tests/Feature/Filament/DetailLayoutPersistsTest.php`, which mounts
+  the real Filament pages — the original defect (the DTO carrying no
+  `detail_layout` at all, so every Layout select saved successfully and wrote
+  nothing) lived in the form-to-DTO seam and no action-level test could see it.
 
 Admin: shared `SectionsRelationManager` ("Page Sections" tab, drag-ordered,
 same form builder as the page builder — the statePath/`$get('type')`
@@ -320,9 +370,12 @@ forgotten.
 Measured before choosing: 10 of 11 products had ingredients attached. The eleventh was
 `testosterone-cypionate`, whose pivot row was simply missing — a data gap, not a case against.
 
-**There is deliberately no product-level override column.** `health_goal_product` has 0 rows,
-so there is no demand, and a second place to state one clinical fact fails silently when the two
-disagree. If a combination product ever needs looser eligibility than its strictest ingredient,
+**There is deliberately no product-level override column** for eligibility. A second place to
+state one clinical fact fails silently when the two disagree.
+
+(`health_goal_product` is no longer empty — it is now also the edge that drives health-goal
+**badges**, which is a display concern and not an eligibility one. See
+[Health-goal badges](#health-goal-badges) below.) If a combination product ever needs looser eligibility than its strictest ingredient,
 that is one migration adding an explicit nullable column where null keeps meaning "derive".
 
 ### Resolution
@@ -386,3 +439,104 @@ layer and exists because the resolver tests all passed while the endpoint 500'd:
 returned `collect()` (a `Support\Collection`, no `->loadMissing()`) from its empty paths, so the
 controller threw on the first genuinely `restricted` result — the exact outcome the feature was
 built to produce. Frontend smoke check: `atlas-protocol-web/scripts/quiz-flow-check.mjs`.
+
+## Health-goal badges
+
+The chips a storefront shows on a catalog item — "weight loss", "sleep &
+recovery", what the thing is *good for*. Served as `health_goals[]` on
+`ProductResource`, `PackageResource` and `CatalogRelationItemResource`:
+
+```json
+"health_goals": [
+  { "name": "Weight Management", "slug": "weight-management", "badge_color": "moss" }
+]
+```
+
+**One vocabulary, deliberately.** These are the same `health_goals` rows the
+quiz asks about, reached through the existing `health_goal_product` pivot. A
+second tag table would let the quiz and the storefront name the same goal
+differently, which is the one outcome worth ruling out. The consequence is that
+the pivot now has two jobs — it was built as a recommendation *override* — and
+`GoalRecommendationResolver` still resolves through `health_goal_ingredient`
+and does not read it. **If the resolver ever starts reading that edge, every
+badge becomes a recommendation override**; split them with a pivot flag before
+that lands, not after. Noted on `HealthGoal::products()`.
+
+### Colour
+
+`health_goals.badge_color` holds a palette **name**, never a hex — the frontend
+resolves it through `--palette-{name}`, so retuning a colour in the admin moves
+every badge using it. The pre-existing `health_goals.color` hex column is a
+different thing and is left alone; it is already on the public API surface and
+other prx-backend frontends may read it.
+
+**There is no badge text-colour column, and that is a decision.** The label
+derives from `--palette-{name}-contrast`, the black-or-white companion the
+frontend computes from the same hex, exactly as `style_button_color` does — so
+a badge cannot be authored unreadable. The cost, weighed and accepted: brand
+pairings like dark-green-on-pale-green are not expressible. Adding a picker is
+one nullable column, one Select and one guard key.
+
+`PaletteUsage::find()` knows about badges, so deleting or renaming a palette
+colour a badge uses is blocked like any section knob. It is a plain column
+query rather than the JSON walk, and it deliberately sits *outside*
+`PaletteUsage::KEYS` — that list is pinned as a subset of `LayoutFields::KEYS`
+and a catalog column would break the test that pins it. Soft-deleted goals do
+not block.
+
+### Packages: derived, with an override
+
+A package shows the **union of the health goals of the products inside it**, so
+tagging a product once updates every stack containing it and a stack cannot
+claim a goal its contents do not treat. `health_goal_package` exists for the
+one case derivation cannot express — a stack *marketed* for a single goal — and
+when it has rows they **replace** the derived set rather than adding to it.
+Display only; the resolver never reads it (packages are not mapped directly to
+goals for recommendation).
+
+**Derivation reads `Package::healthGoalSourceProducts()`, never `products()`,
+and this matters.** `PackageResource` serializes `whenLoaded('products')`, so
+eager-loading `products` on the listing purely to derive badges switched on a
+full nested `ProductResource` payload for every package in the index — a public
+contract change nobody asked for. `products()` also carries no status
+constraint, so a draft product inside a published stack would have leaked and
+would have badged a card whose own detail page showed no such badge. The
+dedicated relation is published-only and is not serialized. Pinned by
+`HealthGoalBadgeTest::test_the_package_listing_does_not_embed_its_products`
+and `..._an_unpublished_product_does_not_badge_its_package`.
+
+Every path that derives must eager-load `healthGoalSourceProducts.healthGoals`
+plus `healthGoals`: both `PackageController` actions, `HasCatalogRelations`,
+`CatalogInliner` (CMS sliders) and `ProtocolPreviewController` (quiz results).
+
+**Anywhere the nested `products` array is also serialized — the show route,
+the CMS sliders, the quiz — load `products.healthGoals` as well.** It is not
+redundant with the line above: `healthGoalSourceProducts` and `products` are
+separate relations hydrating separate model instances, so loading one leaves
+the other's `relationLoaded()` false. That sibling load is what puts badges on
+each product inside a stack, which is what the "What's Included" rows render.
+
+A missing load yields `[]`, which is indistinguishable from "untagged" — no
+test fails, nothing errors, the badges are simply absent. That is precisely how
+the show route lost its per-product badges once already, past a green suite.
+`HealthGoalBadgeTest::test_the_products_inside_a_package_carry_their_own_badges`
+is the compensating control; keep one like it for any new surface.
+
+### Where badges are deliberately absent
+
+**Cart lines carry no badges.** `CartItemResource` wraps the itemable in a full
+`ProductResource`/`PackageResource`, and the cart controllers load
+`items.itemable` bare — so cart payloads serve `health_goals: []` (and, for
+package lines, omit `price_range` and `products` entirely, their `whenLoaded`
+gates staying shut). That is a decision, not the same forgotten-load accident
+twice over: badges answer "is this for me?", which is a question asked while
+browsing, not after the thing is already in the basket. If the cart drawer ever
+should badge its lines, add the eager loads there — do not assume the empty
+array means the feature is broken.
+
+### Authoring
+
+Products: a **Health goals** multi-select on the product form's Merchandising
+tab, or the "Pinned products" relation manager on the goal itself. Packages:
+the **Badge override** relation manager on the package, empty by default.
+Colour: the **Badge colour** select on the health goal.

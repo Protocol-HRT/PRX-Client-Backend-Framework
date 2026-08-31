@@ -93,7 +93,10 @@ class ProductEndpointTest extends TestCase
         $this->getJson("/api/v1/catalog/products/{$product->slug}")
             ->assertOk()
             ->assertJsonPath('data.slug', $product->slug)
-            ->assertJsonPath('data.highlights', ['Fast shipping', 'Physician reviewed']);
+            ->assertJsonPath('data.highlights', [
+                ['text' => 'Fast shipping', 'icon' => null],
+                ['text' => 'Physician reviewed', 'icon' => null],
+            ]);
     }
 
     public function test_product_show_returns_404_for_draft(): void
@@ -119,14 +122,67 @@ class ProductEndpointTest extends TestCase
     {
         $product = Product::factory()->create([
             'status' => CatalogStatus::Published,
-            'highlights' => [['item' => 'Point A'], ['item' => 'Point B']],
+            'highlights' => [
+                ['item' => 'Point A', 'icon' => 'ti ti-shield-check'],
+                ['item' => 'Point B'],
+            ],
         ]);
 
         $response = $this->getJson("/api/v1/catalog/products/{$product->slug}");
-        $highlights = $response->json('data.highlights');
 
-        $this->assertIsArray($highlights);
-        $this->assertSame(['Point A', 'Point B'], $highlights);
+        $this->assertSame([
+            ['text' => 'Point A', 'icon' => 'ti ti-shield-check'],
+            // Authored before the icon field existed — null, not dropped.
+            ['text' => 'Point B', 'icon' => null],
+        ], $response->json('data.highlights'));
+    }
+
+    /**
+     * The fill scripts wrote bare strings, the Filament repeater writes
+     * [{item: ...}], and BOTH shapes are live in the catalog. The original
+     * pluck('item') returned null for a string entry and filtered it away, so
+     * a product with four stored highlights served an empty array — a content
+     * loss that looked exactly like an operator who had written nothing.
+     */
+    public function test_highlights_survive_the_legacy_plain_string_format(): void
+    {
+        $product = Product::factory()->create([
+            'status' => CatalogStatus::Published,
+            'highlights' => ['Physician-supervised protocol', 'Delivery kit included'],
+        ]);
+
+        $this->getJson("/api/v1/catalog/products/{$product->slug}")
+            ->assertOk()
+            ->assertJsonPath('data.highlights', [
+                ['text' => 'Physician-supervised protocol', 'icon' => null],
+                ['text' => 'Delivery kit included', 'icon' => null],
+            ]);
+    }
+
+    public function test_highlights_tolerate_a_mixed_and_malformed_repeater(): void
+    {
+        $product = Product::factory()->create([
+            'status' => CatalogStatus::Published,
+            'highlights' => [
+                ['item' => 'Repeater row', 'icon' => 'ti ti-check'],
+                'Legacy string',
+                ['item' => '', 'icon' => 'ti ti-x'],
+                ['item' => null],
+                '   ',
+                ['notitem' => 'dropped'],
+                ['item' => 'Blank icon', 'icon' => '   '],
+            ],
+        ]);
+
+        $this->getJson("/api/v1/catalog/products/{$product->slug}")
+            ->assertOk()
+            ->assertJsonPath('data.highlights', [
+                ['text' => 'Repeater row', 'icon' => 'ti ti-check'],
+                ['text' => 'Legacy string', 'icon' => null],
+                // An icon without text is not a highlight; a blank icon is
+                // null rather than an empty class attribute.
+                ['text' => 'Blank icon', 'icon' => null],
+            ]);
     }
 
     public function test_product_show_includes_description(): void

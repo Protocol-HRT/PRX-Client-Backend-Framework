@@ -70,6 +70,10 @@ class ConfigController extends ApiController
                     'font_body' => $theme->font_body,
                     'custom_css' => $theme->custom_css,
                     'frontend_template' => $theme->frontend_template,
+                    // Desktop hover zoom on the detail gallery. The frontend
+                    // loads its zoom library only when this is true, so this
+                    // is a payload-weight decision, not just a behaviour one.
+                    'product_zoom_enabled' => $theme->product_zoom_enabled,
                     // The install's named colour vocabulary: [{name, color}].
                     // The frontend exposes each as a --palette-{name} custom
                     // property and a .tx-{name} utility, and section layout
