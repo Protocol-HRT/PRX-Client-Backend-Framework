@@ -3,7 +3,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")"
 
-COMPOSE="docker compose -f docker-compose.prod.yml"
+COMPOSE="docker compose --env-file .env.prod -f docker-compose.prod.yml"
 
 if ! command -v docker >/dev/null 2>&1; then
   echo "ERROR: docker not found. Install Docker first." >&2
@@ -17,13 +17,8 @@ if [ ! -f .env.prod ]; then
   exit 1
 fi
 
-# Expose .env.prod values to docker compose interpolation (DB_*, REDIS_PASSWORD, APP_PORT, …)
-set -a
-# shellcheck disable=SC1091
-source .env.prod
-set +a
-
-if [ -z "${APP_KEY:-}" ]; then
+# docker compose --env-file .env.prod reads .env.prod for interpolation.
+if [ -z "$(sed -n 's/^APP_KEY=//p' .env.prod | tail -1)" ]; then
   echo "ERROR: APP_KEY is empty in .env.prod"
   echo "  openssl rand -base64 32   # paste the result into APP_KEY="
   exit 1
@@ -31,6 +26,10 @@ fi
 
 echo "==> Building images"
 $COMPOSE build
+
+echo "==> Refreshing shared code volume (fresh copy of the new image)"
+$COMPOSE rm -sf app nginx horizon scheduler 2>/dev/null || true
+docker volume rm --force prx-backend-prod_app-code 2>/dev/null || true
 
 echo "==> Starting mysql, redis, app, nginx, horizon, scheduler"
 $COMPOSE up -d
@@ -42,17 +41,17 @@ done
 echo "    MySQL is up"
 
 echo "==> Migrations"
-$COMPOSE exec -T app php artisan migrate --force
+$COMPOSE exec -T --user www-data app php artisan migrate --force
 
 echo "==> Seed base data only on a fresh database (no users yet)"
-$COMPOSE exec -T app php artisan tinker --execute="
+$COMPOSE exec -T --user www-data app php artisan tinker --execute="
 if (\Illuminate\Support\Facades\DB::table('users')->count() === 0) {
     \Illuminate\Support\Facades\Artisan::call('db:seed', ['--force' => true]);
 }
 " || true
 
 echo "==> Refresh caches with the real APP_KEY, then restart workers"
-$COMPOSE exec -T app php artisan optimize:clear >/dev/null 2>&1 || true
+$COMPOSE exec -T --user www-data app php artisan optimize:clear >/dev/null 2>&1 || true
 $COMPOSE restart 2>/dev/null || true
 
 $COMPOSE ps

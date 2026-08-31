@@ -1,26 +1,15 @@
 # syntax=docker/dockerfile:1
 
-# ---- 1. PHP dependencies + published assets ----
-FROM composer:2 AS deps
-WORKDIR /app
-COPY . .
-RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
-
-# ---- 2. Frontend assets ----
-FROM node:20-alpine AS frontend
-WORKDIR /app
-COPY package.json package-lock.json ./
-RUN npm ci --ignore-scripts || npm install --ignore-scripts
-COPY . .
-RUN npm run build
-
-# ---- 3. PHP-FPM runtime ----
-FROM php:8.4-fpm-alpine
+# ---- Base: PHP-FPM image with every extension the app needs.
+#      Both Composer and the final runtime inherit from this stage so the
+#      platform matches the lock file requirements (intl, pcntl, redis, …).
+FROM php:8.4-fpm-alpine AS php-base
 
 RUN apk add --no-cache \
     bash \
     curl \
     git \
+    su-exec \
     unzip \
     sqlite \
     sqlite-dev \
@@ -63,6 +52,32 @@ RUN chmod +x /usr/local/bin/install-php-extensions && \
 RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 
 COPY docker/php-fpm/zz-docker.conf /usr/local/etc/php-fpm.d/zz-docker.conf
+
+# ---- 1. PHP dependencies + published assets ----
+FROM php-base AS deps
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+WORKDIR /app
+COPY . .
+# Build-time only: the post-autoload-dump scripts (package:discover,
+# filament:upgrade) compile views, so the framework dirs they need must
+# already exist and be writable here. Runtime dirs are recreated by
+# docker/entrypoint.sh.
+RUN mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
+RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+
+# ---- 2. Frontend assets ----
+# Vite build imports Filament's CSS from vendor/filament/… so the deps
+# stage's vendor is copied in (build-time only; not part of the runtime).
+FROM node:20-alpine AS frontend
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci --ignore-scripts || npm install --ignore-scripts
+COPY . .
+COPY --from=deps /app/vendor /app/vendor
+RUN npm run build
+
+# ---- 3. PHP-FPM runtime ----
+FROM php-base AS runtime
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 

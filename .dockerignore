@@ -22,10 +22,6 @@ CLAUDE.local.md
 docs
 hk_docs
 tests
-storage/*.key
-storage/pail
+storage
 public/storage
-public/build
-storage/app/public/*
-storage/logs/*
 docker-compose.y*ml
