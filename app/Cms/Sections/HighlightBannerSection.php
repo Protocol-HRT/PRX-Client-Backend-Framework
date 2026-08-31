@@ -7,8 +7,10 @@ use App\Enums\SectionType;
 use App\Filament\Support\SectionImagePicker;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
+use Filament\Support\Icons\Heroicon;
 
 class HighlightBannerSection extends SectionBlueprint
 {
@@ -29,7 +31,7 @@ class HighlightBannerSection extends SectionBlueprint
 
     public function description(): ?string
     {
-        return 'Slim band of short icon + text highlights (trust markers, key benefits). Column count controls item width per row.';
+        return 'Slim band of short icon + text highlights (trust markers, key benefits). Columns never exceed the number of highlights, so the row always fills evenly.';
     }
 
     public function defaults(): array
@@ -70,7 +72,15 @@ class HighlightBannerSection extends SectionBlueprint
             Repeater::make('items')
                 ->label('Highlights')
                 ->schema([
-                    SectionImagePicker::make('icon')->label('Icon'),
+                    TextInput::make('icon_class')
+                        ->label('Icon')
+                        ->maxLength(64)
+                        ->placeholder('ti ti-truck')
+                        ->hintIcon(Heroicon::InformationCircle, 'A Tabler icon class — browse them at tabler.io/icons and use "ti ti-" plus the icon name. An emoji works too. This is the usual choice; use the image below only when you need a specific piece of artwork.')
+                        ->helperText('Used in preference to the image, if both are set.'),
+                    SectionImagePicker::make('icon')
+                        ->label('Icon image')
+                        ->helperText('Optional. An SVG or PNG, for when an icon class will not do.'),
                     CopyFields::inline('text')
                         ->required()
                         ->helperText('Line breaks are kept — two short lines render as in the design.'),

@@ -32,7 +32,7 @@ class PackageData extends Data
      * load-bearing rather than tidiness.
      *
      * @param  array<int, string>  $gallery
-     * @param  array<int, array{item: string}>  $highlights
+     * @param  array<int, array{item: string, icon?: string|null}>  $highlights
      * @param  array<string, mixed>  $detail_layout
      * @param  array<int, int>  $category_ids
      * @param  array<int, int>  $tag_ids

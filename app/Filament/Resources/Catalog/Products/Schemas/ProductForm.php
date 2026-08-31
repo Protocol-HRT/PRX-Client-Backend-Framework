@@ -235,13 +235,18 @@ class ProductForm
                                     ->helperText('These are the same goals the quiz asks about, on purpose — a visitor who picks "weight management" there should see that badge here.'),
                                 Repeater::make('highlights')
                                     ->label('Highlights')
-                                    ->hintIcon(Heroicon::InformationCircle, 'Bullet-point feature list displayed on the product detail page.')
-                                    ->helperText('One bullet per line.')
+                                    ->hintIcon(Heroicon::InformationCircle, 'The short credibility list under the Add to Cart button — physician-supervised, licensed pharmacy, and so on. These are NOT the benefits diagram; that is a section you add under Page Sections.')
+                                    ->helperText('Keep each line short — they sit in the narrow buy column.')
                                     ->schema([
                                         TextInput::make('item')
                                             ->label('Highlight')
                                             ->required()
-                                            ->hintIcon(Heroicon::InformationCircle, 'One feature or benefit bullet point.'),
+                                            ->hintIcon(Heroicon::InformationCircle, 'One short credibility line, shown under the Add to Cart button.'),
+                                        TextInput::make('icon')
+                                            ->label('Icon')
+                                            ->maxLength(64)
+                                            ->placeholder('ti ti-shield-check')
+                                            ->hintIcon(Heroicon::InformationCircle, 'A Tabler icon class, shown to the left of this line. Browse them at tabler.io/icons — the class is "ti ti-" plus the icon name. An emoji works too. Leave blank for a plain check mark.'),
                                     ])
                                     ->columnSpanFull()
                                     ->reorderable()
@@ -303,6 +308,16 @@ class ProductForm
                                             ])
                                             ->native(false)
                                             ->placeholder('Deployment default'),
+                                        Select::make('detail_layout.highlights_position')
+                                            ->label('Highlights position')
+                                            ->options([
+                                                'above' => 'Above the Add to Cart button',
+                                                'below' => 'Below the Add to Cart button',
+                                                'none' => 'Do not show them',
+                                            ])
+                                            ->native(false)
+                                            ->placeholder('Deployment default (above)')
+                                            ->hintIcon(Heroicon::InformationCircle, 'Where the Merchandising tab’s highlights render in the buy box — the short credibility lines with icons. "None" hides them without deleting them, which is different from leaving this blank.'),
                                         Select::make('detail_layout.pair_with.desktop')
                                             ->label('Pair With per view (desktop)')
                                             ->options([1 => '1', 2 => '2', 3 => '3', 4 => '4'])

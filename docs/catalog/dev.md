@@ -55,7 +55,26 @@ resource** — regression-tested in `ProductClassificationTest`.
 
 ### Highlights format
 
-The Filament Repeater stores highlights as `[{"item":"First point"}, {"item":"Second point"}]`. The API Resources normalize this to `["First point", "Second point"]` via `collect()->pluck('item')`.
+The Filament Repeater stores `[{"item": "...", "icon": "ti ti-truck"}]`; the API
+normalizes it to **`[{text, icon}]`**, `icon` being a Tabler class or `null`.
+
+THREE STORED SHAPES ARE LIVE and `NormalizesHighlights` tolerates all of them:
+the current `{item, icon}`, an older `{item}` alone, and a bare string written
+by the fill scripts. The original implementation was a plain `pluck('item')`,
+which returns null for a string entry and then filtered it away — so
+`performance-stack` held four highlights and served `[]`, indistinguishable
+from an operator who had written none.
+
+The icon arrived when highlights became the **credibility list in the buy box**
+("Physician-supervised", "Licensed pharmacy") — an icon list needs an icon per
+row. Rows authored before the field carry `icon: null` and the frontend falls
+back to a check mark, so adding it touched no records.
+
+**Highlights are NOT the benefits diagram.** They used to be: a hardcoded
+diagram rendered on the detail page whenever this field was non-empty, so
+adding one line made a large radial block appear and the only way to remove it
+was to delete the line. The diagram is now the `benefits-diagram` SECTION, added
+under Page Sections like anything else. Do not re-couple them.
 
 ### Provider encounter type resolution (at intake time)
 

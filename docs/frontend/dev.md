@@ -79,6 +79,7 @@ Each section **envelope** is `{ type, origin, anchor, global, has_content, data,
 | `style_border_width` | `none` `sm` `md` `lg` | Border thickness; inert without a colour |
 | `style_radius` | `none` `sm` `md` `lg` | Corner radius of the section band. A rounded band is a CARD: it stops running edge to edge and comes to rest inside the page gutter, because a radius at the viewport edge reads as a curve cut out of the page. `none` is not the same as unset — it explicitly keeps the band full-bleed |
 | `style_background_color` | a `palette` entry **name** | Background colour of the section band |
+| `style_background_width` | `full` `contained` | Where that colour stops. `full` (default, and what an unset value means) reaches the viewport edge; `contained` paints the content column instead, so the colour follows `content_width` and `content_inset` rather than spanning past them. Inert without a colour. **Section-level only** — a block's background already stops at its own box. A section with no `.sx-content` (`stats-marquee`) degrades to full-bleed rather than losing its colour |
 | `style_text_color` | a `palette` entry **name** | Colour copy inherits within the section |
 | `style_accent_color` | a `palette` entry **name** | Eyebrows, emphasised words, stat figures |
 | `style_button_color` | a `palette` entry **name** | Button fill; the label colour is derived, not stored |

@@ -138,6 +138,23 @@ class SectionFormBuilder
                     ->native(false)
                     ->helperText(fn (): string => self::paletteHelp('Fills the '.$thing.' edge to edge. Panels and cards inside keep their own styling.')),
 
+                // SECTION ONLY. A block's background already stops at its own
+                // box, so there is no band to contain and the frontend defines
+                // no rule for it — offering the control would be offering one
+                // that saves and does nothing.
+                ...($nested ? [] : [
+                    Select::make('style_background_width')
+                        ->label('Background width')
+                        ->options([
+                            'full' => 'Full-bleed — reaches the viewport edge',
+                            'contained' => 'Contained — paints only the content column',
+                        ])
+                        ->placeholder('Full-bleed (default)')
+                        ->native(false)
+                        ->helperText('Where the background colour stops. Contained follows the content width and inset you set below, so the colour sits in from the page edges instead of spanning them.')
+                        ->hintIcon(Heroicon::InformationCircle, 'Needs a background colour above — on its own there is nothing to contain. It does NOT move the text; content width does that. It only decides whether the colour behind the text reaches the screen edge.'),
+                ]),
+
                 Select::make('style_text_color')
                     ->label('Text colour')
                     ->options(fn (): array => self::paletteOptions())

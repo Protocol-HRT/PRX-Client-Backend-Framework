@@ -93,7 +93,10 @@ class ProductEndpointTest extends TestCase
         $this->getJson("/api/v1/catalog/products/{$product->slug}")
             ->assertOk()
             ->assertJsonPath('data.slug', $product->slug)
-            ->assertJsonPath('data.highlights', ['Fast shipping', 'Physician reviewed']);
+            ->assertJsonPath('data.highlights', [
+                ['text' => 'Fast shipping', 'icon' => null],
+                ['text' => 'Physician reviewed', 'icon' => null],
+            ]);
     }
 
     public function test_product_show_returns_404_for_draft(): void
@@ -119,14 +122,19 @@ class ProductEndpointTest extends TestCase
     {
         $product = Product::factory()->create([
             'status' => CatalogStatus::Published,
-            'highlights' => [['item' => 'Point A'], ['item' => 'Point B']],
+            'highlights' => [
+                ['item' => 'Point A', 'icon' => 'ti ti-shield-check'],
+                ['item' => 'Point B'],
+            ],
         ]);
 
         $response = $this->getJson("/api/v1/catalog/products/{$product->slug}");
-        $highlights = $response->json('data.highlights');
 
-        $this->assertIsArray($highlights);
-        $this->assertSame(['Point A', 'Point B'], $highlights);
+        $this->assertSame([
+            ['text' => 'Point A', 'icon' => 'ti ti-shield-check'],
+            // Authored before the icon field existed — null, not dropped.
+            ['text' => 'Point B', 'icon' => null],
+        ], $response->json('data.highlights'));
     }
 
     /**
@@ -146,8 +154,8 @@ class ProductEndpointTest extends TestCase
         $this->getJson("/api/v1/catalog/products/{$product->slug}")
             ->assertOk()
             ->assertJsonPath('data.highlights', [
-                'Physician-supervised protocol',
-                'Delivery kit included',
+                ['text' => 'Physician-supervised protocol', 'icon' => null],
+                ['text' => 'Delivery kit included', 'icon' => null],
             ]);
     }
 
@@ -156,18 +164,25 @@ class ProductEndpointTest extends TestCase
         $product = Product::factory()->create([
             'status' => CatalogStatus::Published,
             'highlights' => [
-                ['item' => 'Repeater row'],
+                ['item' => 'Repeater row', 'icon' => 'ti ti-check'],
                 'Legacy string',
-                ['item' => ''],
+                ['item' => '', 'icon' => 'ti ti-x'],
                 ['item' => null],
                 '   ',
                 ['notitem' => 'dropped'],
+                ['item' => 'Blank icon', 'icon' => '   '],
             ],
         ]);
 
         $this->getJson("/api/v1/catalog/products/{$product->slug}")
             ->assertOk()
-            ->assertJsonPath('data.highlights', ['Repeater row', 'Legacy string']);
+            ->assertJsonPath('data.highlights', [
+                ['text' => 'Repeater row', 'icon' => 'ti ti-check'],
+                ['text' => 'Legacy string', 'icon' => null],
+                // An icon without text is not a highlight; a blank icon is
+                // null rather than an empty class attribute.
+                ['text' => 'Blank icon', 'icon' => null],
+            ]);
     }
 
     public function test_product_show_includes_description(): void

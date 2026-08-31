@@ -20,7 +20,7 @@ class ProductResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        /** @var list<string> $highlights */
+        /** @var list<array{text: string, icon: string|null}> $highlights */
         $highlights = $this->normalizeHighlights($this->highlights);
 
         return [
