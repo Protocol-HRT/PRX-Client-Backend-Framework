@@ -7,7 +7,7 @@
 ## Overview
 
 The intake quiz asks a visitor a few questions and then shows them a **plan**: the products and
-stacks that match the goals they picked, filtered by what is safe for their sex and age.
+packages that match the goals they picked, filtered by what is safe for their sex and age.
 
 The plan lives at a private link of the form `/plan/{a long code}`. That link is how the
 visitor returns to their results, and it is what a plan email points at. Treat it as private —
@@ -16,12 +16,13 @@ anyone holding the link can see that plan.
 **You do not choose what is recommended here.** The matches come from the ingredient and health
 goal mappings in the catalog. What you control on this page is what the visitor is *told*.
 
-**Both products and stacks add straight to the cart from this page.** A stack is added on the
-plan its card quotes — the "From $X/mo" figure — so the price the visitor was shown is the price
-they are charged. They can still open the stack's own page from the card if they want a
-different term. Note this is deliberately different from the rest of the site, where a stack
-sends you to its page to pick a plan first; the report is the end of the funnel, so it does not
-put another page in the way.
+**Both products and packages add straight to the cart from this page.** A package is added on
+the plan its card quotes — the "from" figure — so the price the visitor was shown is the price
+they are charged; if the package's own one-time price is the figure quoted, it is added with no
+plan and no recurring billing. They can still open the package's own page from the card if they
+want a different term. A storefront may deliberately do this differently elsewhere, sending a
+visitor to the package page to pick a plan first; the report is the end of the funnel, so it
+does not put another page in the way.
 
 **How it looks follows your theme**, not this page — see **Settings → Theme** for colours,
 fonts and the colour palette. There are no per-section layout controls here, because the plan
@@ -90,9 +91,9 @@ This is the part most worth getting right.
 The system tells these apart for you and picks the right field. You only have to write two
 honest sentences rather than one that tries to cover both.
 
-**A visitor matching nothing is a normal outcome, not a fault.** The catalog carries no
-female-specific ingredients today, so some visitors genuinely reach a plan with nothing on it.
-That page still has to be worth reading.
+**A visitor matching nothing is a normal outcome, not a fault.** Eligibility is set per
+ingredient, so depending on how your catalog is mapped there will be combinations of goal, sex
+and age that genuinely match nothing. That page still has to be worth reading.
 
 ---
 
