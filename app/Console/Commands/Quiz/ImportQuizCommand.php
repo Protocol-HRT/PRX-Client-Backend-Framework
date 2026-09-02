@@ -3,6 +3,7 @@
 namespace App\Console\Commands\Quiz;
 
 use App\Enums\Quiz\QuizQuestionKind;
+use App\Models\Kb\HealthGoal;
 use App\Models\Quiz\Quiz;
 use App\Models\Quiz\QuizQuestion;
 use App\Models\Quiz\QuizQuestionOption;
@@ -19,7 +20,11 @@ use RuntimeException;
  *     php artisan quiz:import database/seeders/data/default-quiz.json --force
  *
  * The JSON structure:
- *   { name, slug, description, is_active, is_default, steps: [
+ *   { name, slug, description, is_active, is_default,
+ *     health_goals: [
+ *       { name, slug, prompt, description, icon, show_in_quiz, position }
+ *     ],
+ *     steps: [
  *       { slug, name, heading, description, position, visible_when, questions: [
  *           { slug, kind, prompt, help, is_required, position, visible_when, config, options: [
  *               { value, label, description, icon, is_exclusive, price_source, position }
@@ -64,6 +69,20 @@ class ImportQuizCommand extends Command
             return self::FAILURE;
         }
 
+        // Validate no empty steps
+        foreach ($data['steps'] as $i => $step) {
+            $questions = $step['questions'] ?? [];
+            if (count($questions) === 0) {
+                $this->error(sprintf(
+                    'Step #%d ("%s") has no questions. Every step must have at least one question.',
+                    $i,
+                    $step['name'] ?? $step['slug'] ?? "step-{$i}"
+                ));
+
+                return self::FAILURE;
+            }
+        }
+
         $this->components->info(sprintf(
             'Importing quiz "%s" from %s%s',
             $data['name'],
@@ -81,8 +100,8 @@ class ImportQuizCommand extends Command
 
         $this->newLine();
         $this->table(
-            ['Created', 'Updated', 'Steps', 'Questions', 'Options'],
-            [[$stats['created'], $stats['updated'], $stats['steps'], $stats['questions'], $stats['options']]]
+            ['Health Goals', 'Quiz Created', 'Quiz Updated', 'Steps', 'Questions', 'Options'],
+            [[$stats['health_goals'], $stats['created'], $stats['updated'], $stats['steps'], $stats['questions'], $stats['options']]]
         );
 
         if ($dryRun) {
@@ -94,11 +113,16 @@ class ImportQuizCommand extends Command
 
     /**
      * @param  array<string, mixed>  $data
-     * @return array{created: int, updated: int, steps: int, questions: int, options: int}
+     * @return array{created: int, updated: int, steps: int, questions: int, options: int, health_goals: int}
      */
     private function import(array $data, bool $dryRun, bool $force): array
     {
-        $stats = ['created' => 0, 'updated' => 0, 'steps' => 0, 'questions' => 0, 'options' => 0];
+        $stats = ['created' => 0, 'updated' => 0, 'steps' => 0, 'questions' => 0, 'options' => 0, 'health_goals' => 0];
+
+        // Seed health goals if provided
+        if (isset($data['health_goals']) && is_array($data['health_goals'])) {
+            $stats['health_goals'] = $this->importHealthGoals($data['health_goals'], $dryRun);
+        }
 
         $existing = Quiz::withTrashed()->where('slug', $data['slug'] ?? str($data['name'])->slug()->value())->first();
 
@@ -114,6 +138,11 @@ class ImportQuizCommand extends Command
                 $data['name'],
                 $existing ? 'update' : 'create'
             ));
+
+            if (isset($data['health_goals']) && is_array($data['health_goals'])) {
+                $this->line(sprintf('  Health Goals: %d to seed', count($data['health_goals']));
+            }
+
             $this->previewSteps($data['steps'], $stats);
 
             return $stats;
@@ -196,6 +225,56 @@ class ImportQuizCommand extends Command
         ));
 
         return $stats;
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $goals
+     */
+    private function importHealthGoals(array $goals, bool $dryRun): int
+    {
+        $count = 0;
+
+        foreach ($goals as $goalData) {
+            $slug = $goalData['slug'] ?? str($goalData['name'])->slug()->value();
+            $existing = HealthGoal::withTrashed()->where('slug', $slug)->first();
+
+            if ($dryRun) {
+                $this->line(sprintf(
+                    '  Health Goal: %s — would %s',
+                    $goalData['name'],
+                    $existing ? 'update' : 'create'
+                ));
+                $count++;
+
+                continue;
+            }
+
+            $attributes = [
+                'name' => $goalData['name'],
+                'slug' => $slug,
+                'prompt' => $goalData['prompt'] ?? null,
+                'description' => $goalData['description'] ?? null,
+                'icon' => $goalData['icon'] ?? null,
+                'color' => $goalData['color'] ?? null,
+                'is_active' => $goalData['is_active'] ?? true,
+                'show_in_quiz' => $goalData['show_in_quiz'] ?? true,
+                'position' => $goalData['position'] ?? 0,
+            ];
+
+            if ($existing) {
+                $existing->update($attributes);
+            } else {
+                HealthGoal::create($attributes);
+            }
+
+            $count++;
+        }
+
+        if (! $dryRun && $count > 0) {
+            $this->components->info("Imported {$count} health goals.");
+        }
+
+        return $count;
     }
 
     /**

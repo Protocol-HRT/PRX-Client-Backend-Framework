@@ -1,23 +1,124 @@
 {
-  "name": "IGNITE Intake Assessment",
-  "slug": "ignite-intake",
+  "name": "Atlas intake",
+  "slug": "atlas-intake",
   "description": "Default intake quiz for protocol recommendations.",
   "is_active": true,
   "is_default": true,
+  "health_goals": [
+    {
+      "name": "Weight Management",
+      "slug": "weight-management",
+      "prompt": "Lose Weight",
+      "description": "Drop the lb's, reduce BMI and increase overall wellness",
+      "icon": "scale",
+      "show_in_quiz": true,
+      "position": 0
+    },
+    {
+      "name": "Hormone Balance",
+      "slug": "hormone-balance",
+      "prompt": "Manage Hormones",
+      "description": "Manage Hormones Through HRT/TRT protocols",
+      "icon": "gender-bigender",
+      "show_in_quiz": true,
+      "position": 1
+    },
+    {
+      "name": "Sexual Wellness",
+      "slug": "sexual-wellness",
+      "prompt": "Increase Libido",
+      "description": "Increase Libido, Sexual Desire and Performance",
+      "icon": "heart",
+      "show_in_quiz": true,
+      "position": 2
+    },
+    {
+      "name": "Anti-Aging & Longevity",
+      "slug": "anti-aging-longevity",
+      "prompt": "Turn Back Time",
+      "description": "Turn Back Time with anti-aging & Longevity Protocols",
+      "icon": "hourglass",
+      "show_in_quiz": true,
+      "position": 3
+    },
+    {
+      "name": "Energy & Focus",
+      "slug": "energy-focus",
+      "prompt": "Increase Energy & Vitality",
+      "description": "Explore stacks and protocols that may help increase energy and vitality",
+      "icon": "bolt",
+      "show_in_quiz": true,
+      "position": 4
+    },
+    {
+      "name": "Cognitive Enhancement",
+      "slug": "cognitive-enhancement",
+      "prompt": "Increase Cognitive Function",
+      "description": "Explore peptides that may assist in enhancing cognitive function including focus, mindfulness and mental acuity",
+      "icon": "brain",
+      "show_in_quiz": true,
+      "position": 5
+    },
+    {
+      "name": "Muscle & Strength",
+      "slug": "muscle-strength",
+      "prompt": "Increase Lean Muscle Mass & Strength",
+      "description": "Explore peptide stacks and protocols that may help build lean muscle, reduce visceral body fat and increase strength and stamina",
+      "icon": "barbell",
+      "show_in_quiz": true,
+      "position": 6
+    },
+    {
+      "name": "Sleep & Recovery",
+      "slug": "sleep-recovery",
+      "prompt": "Better Sleep and Faster Recovery",
+      "description": "See if one of the many peptides that may induce sleep and speed up recovery is right for you",
+      "icon": "moon",
+      "show_in_quiz": true,
+      "position": 7
+    },
+    {
+      "name": "Immune Support",
+      "slug": "immune-support",
+      "prompt": "Increase Immunity & Resist Sickness",
+      "description": "Many peptides may help increase your bodies natural immune system & help you fight off illnesses",
+      "icon": "shield-check",
+      "show_in_quiz": true,
+      "position": 8
+    },
+    {
+      "name": "Metabolic Health",
+      "slug": "metabolic-health",
+      "prompt": "Metabolic health & Support",
+      "description": "See which peptides may help support your bodies metabolic systems",
+      "icon": "flame",
+      "show_in_quiz": true,
+      "position": 9
+    },
+    {
+      "name": "Pain & Inflammation",
+      "slug": "pain-inflammation",
+      "prompt": "Decrease Pain & Inflammation",
+      "description": "Look at peptides that may help decrease inflammation and reduce pain",
+      "icon": "first-aid-kit",
+      "show_in_quiz": true,
+      "position": 10
+    }
+  ],
   "steps": [
     {
       "slug": "about-you",
       "name": "About you",
-      "heading": "First, tell us about yourself",
-      "description": "This determines which compounds are safe and appropriate for you.",
+      "heading": "First, a little about you",
+      "description": "This decides which treatments are appropriate to show you.",
       "position": 0,
       "visible_when": [],
       "questions": [
         {
           "slug": "sex",
           "kind": "sex",
-          "prompt": "What is your biological sex?",
-          "help": "Required for clinical eligibility screening.",
+          "prompt": "Which applies to you?",
+          "help": null,
           "is_required": true,
           "position": 0,
           "visible_when": [],
@@ -27,14 +128,14 @@
           "slug": "age",
           "kind": "age",
           "prompt": "How old are you?",
-          "help": "Certain peptides and hormones have age-specific protocols.",
+          "help": "Some treatments are only appropriate within certain age ranges.",
           "is_required": true,
           "position": 1,
           "visible_when": [],
           "config": {
             "min": 18,
             "max": 100,
-            "default": 32
+            "default": 30
           }
         }
       ]
@@ -42,15 +143,15 @@
     {
       "slug": "goals",
       "name": "Your goals",
-      "heading": "What are you trying to achieve?",
-      "description": "Select everything that applies. We'll build your stack around your goals.",
+      "heading": "What are you working on?",
+      "description": "Pick as many as apply.",
       "position": 1,
       "visible_when": [],
       "questions": [
         {
           "slug": "health_goals",
           "kind": "health_goals",
-          "prompt": "What are your primary goals?",
+          "prompt": "What are you working on?",
           "help": null,
           "is_required": true,
           "position": 0,
@@ -62,15 +163,15 @@
     {
       "slug": "experience",
       "name": "Experience",
-      "heading": "How experienced are you?",
-      "description": "This helps us dial in the right dosage and onboarding protocol.",
+      "heading": "Tried peptides before?",
+      "description": "No wrong answer. Most people start from zero.",
       "position": 2,
       "visible_when": [],
       "questions": [
         {
           "slug": "peptide_experience",
           "kind": "single_select",
-          "prompt": "Your peptide experience level",
+          "prompt": "Tried peptides before?",
           "help": null,
           "is_required": true,
           "position": 0,
@@ -79,26 +180,26 @@
           "options": [
             {
               "value": "none",
-              "label": "Complete Beginner",
-              "description": "Never touched a peptide in my life",
-              "icon": "seedling",
+              "label": "This would be my first time",
+              "description": null,
+              "icon": "seeding",
               "is_exclusive": false,
               "price_source": null,
               "position": 0
             },
             {
               "value": "some",
-              "label": "Some Experience",
-              "description": "Tried 1-2 compounds, still learning",
-              "icon": "sprout",
+              "label": "I've dipped a toe in",
+              "description": "One or two",
+              "icon": "droplet",
               "is_exclusive": false,
               "price_source": null,
               "position": 1
             },
             {
               "value": "experienced",
-              "label": "Advanced User",
-              "description": "Running multiple compounds, know my stuff",
+              "label": "I use them already",
+              "description": null,
               "icon": "flame",
               "is_exclusive": false,
               "price_source": null,
@@ -111,8 +212,8 @@
     {
       "slug": "today",
       "name": "Where you are today",
-      "heading": "Current stats",
-      "description": "Be honest — this is for clinical dosing, not judgment.",
+      "heading": "Roughly where are you today?",
+      "description": "Close enough is fine — this is for context, not a medical record.",
       "position": 3,
       "visible_when": [],
       "questions": [
@@ -151,15 +252,15 @@
         {
           "slug": "goal_weight",
           "kind": "measurement",
-          "prompt": "Target weight",
-          "help": "Optional — helps us pace your protocol.",
+          "prompt": "Where would you like to be?",
+          "help": "Optional. A target helps us pace the plan.",
           "is_required": false,
           "position": 2,
           "visible_when": [
             {
               "field": "health_goals",
               "operator": "contains",
-              "value": "fat-loss"
+              "value": "weight-management"
             }
           ],
           "config": {
@@ -174,16 +275,16 @@
     },
     {
       "slug": "flags",
-      "name": "Health flags",
-      "heading": "Any red flags?",
-      "description": "This disqualifies nothing — it tells our doctors what to watch.",
+      "name": "Anything to flag",
+      "heading": "Anything to flag?",
+      "description": "This never disqualifies you — it tells the specialist what to look at.",
       "position": 4,
       "visible_when": [],
       "questions": [
         {
           "slug": "flags",
           "kind": "multi_select",
-          "prompt": "Check all that apply",
+          "prompt": "Anything to flag?",
           "help": null,
           "is_required": false,
           "position": 0,
@@ -191,55 +292,55 @@
           "config": null,
           "options": [
             {
-              "value": "blood-pressure",
-              "label": "High Blood Pressure",
+              "value": "extra-weight",
+              "label": "Carrying extra weight",
               "description": null,
-              "icon": "heartbeat",
+              "icon": "scale",
               "is_exclusive": false,
               "price_source": null,
               "position": 0
             },
             {
-              "value": "cholesterol",
-              "label": "Cholesterol Issues",
+              "value": "blood-pressure",
+              "label": "Blood pressure",
               "description": null,
-              "icon": "activity",
+              "icon": "heartbeat",
               "is_exclusive": false,
               "price_source": null,
               "position": 1
             },
             {
-              "value": "blood-sugar",
-              "label": "Blood Sugar / Diabetes",
+              "value": "cholesterol",
+              "label": "Cholesterol",
               "description": null,
-              "icon": "droplet",
+              "icon": "activity-heartbeat",
               "is_exclusive": false,
               "price_source": null,
               "position": 2
             },
             {
-              "value": "liver",
-              "label": "Liver Concerns",
+              "value": "blood-sugar",
+              "label": "Blood sugar",
               "description": null,
-              "icon": "liver",
+              "icon": "droplet-half-2",
               "is_exclusive": false,
               "price_source": null,
               "position": 3
             },
             {
-              "value": "heart",
-              "label": "Heart Condition",
+              "value": "liver",
+              "label": "Liver",
               "description": null,
-              "icon": "heart-pulse",
+              "icon": "flask",
               "is_exclusive": false,
               "price_source": null,
               "position": 4
             },
             {
               "value": "none",
-              "label": "None — I'm clean",
-              "description": "No known health issues",
-              "icon": "check-circle",
+              "label": "None of these",
+              "description": null,
+              "icon": "ban",
               "is_exclusive": true,
               "price_source": null,
               "position": 5
@@ -251,15 +352,15 @@
     {
       "slug": "medications",
       "name": "Medications",
-      "heading": "Currently on anything?",
-      "description": "Prescriptions, OTC, supplements — we need the full picture.",
+      "heading": "On any medications right now?",
+      "description": "Including anything prescribed, and anything you take regularly.",
       "position": 5,
       "visible_when": [],
       "questions": [
         {
           "slug": "medications",
           "kind": "single_select",
-          "prompt": "Current medications or supplements",
+          "prompt": "On any medications right now?",
           "help": null,
           "is_required": true,
           "position": 0,
@@ -268,17 +369,17 @@
           "options": [
             {
               "value": "no",
-              "label": "Nothing right now",
-              "description": "Clean slate",
-              "icon": "off",
+              "label": "No",
+              "description": null,
+              "icon": "pill-off",
               "is_exclusive": false,
               "price_source": null,
               "position": 0
             },
             {
-              "value": "supplements",
-              "label": "Just supplements",
-              "description": "Vitamins, protein, creatine, etc.",
+              "value": "not-now",
+              "label": "Not right now",
+              "description": null,
               "icon": "pill",
               "is_exclusive": false,
               "price_source": null,
@@ -286,9 +387,9 @@
             },
             {
               "value": "yes",
-              "label": "Yes, prescriptions too",
-              "description": "TRT, blood pressure meds, etc.",
-              "icon": "bottle",
+              "label": "Yes, I take something",
+              "description": null,
+              "icon": "vaccine-bottle",
               "is_exclusive": false,
               "price_source": null,
               "position": 2
@@ -300,15 +401,15 @@
     {
       "slug": "routine",
       "name": "Your routine",
-      "heading": "What does your day look like?",
-      "description": "Training frequency affects dosing and compound selection.",
+      "heading": "What does a normal day look like?",
+      "description": null,
       "position": 6,
       "visible_when": [],
       "questions": [
         {
           "slug": "activity_level",
           "kind": "single_select",
-          "prompt": "Training frequency",
+          "prompt": "What does a normal day look like?",
           "help": null,
           "is_required": true,
           "position": 0,
@@ -316,9 +417,9 @@
           "config": null,
           "options": [
             {
-              "value": "sedentary",
-              "label": "Sedentary",
-              "description": "Desk job, minimal exercise",
+              "value": "desk",
+              "label": "Mostly at a desk",
+              "description": null,
               "icon": "armchair",
               "is_exclusive": false,
               "price_source": null,
@@ -326,30 +427,21 @@
             },
             {
               "value": "moderate",
-              "label": "3-4x per week",
-              "description": "Consistent but not obsessive",
-              "icon": "dumbbell",
+              "label": "Moving a few times a week",
+              "description": null,
+              "icon": "walk",
               "is_exclusive": false,
               "price_source": null,
               "position": 1
             },
             {
-              "value": "intense",
-              "label": "5-6x per week",
-              "description": "Heavy training, serious about gains",
-              "icon": "fire",
+              "value": "active",
+              "label": "On my feet most days",
+              "description": null,
+              "icon": "run",
               "is_exclusive": false,
               "price_source": null,
               "position": 2
-            },
-            {
-              "value": "athlete",
-              "label": "Daily / Twice a day",
-              "description": "Competition prep or pro-level",
-              "icon": "trophy",
-              "is_exclusive": false,
-              "price_source": null,
-              "position": 3
             }
           ]
         }
@@ -358,15 +450,15 @@
     {
       "slug": "starting-point",
       "name": "Where to start",
-      "heading": "How do you want to start?",
-      "description": "You can always upgrade later. Start where you're comfortable.",
+      "heading": "Where would you like to start?",
+      "description": "You can change this later — nothing here is a commitment.",
       "position": 7,
       "visible_when": [],
       "questions": [
         {
           "slug": "starting_point",
           "kind": "single_select",
-          "prompt": "Your starting point",
+          "prompt": "Where would you like to start?",
           "help": null,
           "is_required": true,
           "position": 0,
@@ -375,36 +467,36 @@
           "options": [
             {
               "value": "single",
-              "label": "Single Peptide",
-              "description": "One compound, test the waters",
-              "icon": "vial",
+              "label": "One peptide",
+              "description": "Start simple, add later",
+              "icon": "vaccine-bottle",
               "is_exclusive": false,
               "price_source": "packages:protocol",
               "position": 0
             },
             {
               "value": "protocol",
-              "label": "Full Protocol",
-              "description": "Stacked compounds, clinical protocol",
-              "icon": "stack",
+              "label": "Start with a protocol",
+              "description": "A few peptides designed to run together",
+              "icon": "capsule",
               "is_exclusive": false,
               "price_source": "packages:protocol",
               "position": 1
             },
             {
               "value": "stack",
-              "label": "Elite Stack",
-              "description": "Maximum results, everything included",
-              "icon": "crown",
+              "label": "Start with a full stack",
+              "description": "The complete system",
+              "icon": "stack-2",
               "is_exclusive": false,
               "price_source": "packages:stack",
               "position": 2
             },
             {
               "value": "advise",
-              "label": "Concierge Decision",
-              "description": "Let the doctor decide for me",
-              "icon": "user-md",
+              "label": "Let the team advise me",
+              "description": "We'll suggest what fits",
+              "icon": "users",
               "is_exclusive": false,
               "price_source": null,
               "position": 3
@@ -416,28 +508,28 @@
     {
       "slug": "contact",
       "name": "Your plan",
-      "heading": "Where should we send your protocol?",
-      "description": "Your personalized stack is ready. Tell us where to deliver it.",
+      "heading": "Where should we send it?",
+      "description": "Your plan is ready. Tell us where it should go.",
       "position": 8,
       "visible_when": [],
       "questions": [
         {
           "slug": "contact",
           "kind": "contact",
-          "prompt": "Delivery details",
+          "prompt": "Where should we send it?",
           "help": null,
           "is_required": true,
           "position": 0,
           "visible_when": [],
           "config": {
-            "legal": "By continuing you agree to receive your personalized protocol, clinical notes, and follow-up communications via email or SMS.",
-            "cta_label": "Unlock My Protocol",
+            "legal": "By continuing you agree to receive your report, and follow-up about it, by email or SMS depending on what you chose above.",
+            "cta_label": "Open my plan",
             "name_label": "Full name",
-            "email_label": "Email address",
-            "phone_label": "Phone (optional)",
+            "email_label": "Email",
+            "phone_label": "Phone",
             "phone_required": false,
-            "sms_consent_label": "Text me protocol updates",
-            "email_consent_label": "Email me my full protocol + clinical notes"
+            "sms_consent_label": "Text me about my plan",
+            "email_consent_label": "Email me my plan and follow-ups about it"
           }
         }
       ]
