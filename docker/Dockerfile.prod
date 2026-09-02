@@ -64,6 +64,7 @@ COPY . .
 # docker/entrypoint.sh.
 RUN mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
 RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+RUN php artisan livewire:publish --assets
 
 # ---- 2. Frontend assets ----
 # Vite build imports Filament's CSS from vendor/filament/… so the deps
