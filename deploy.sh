@@ -53,8 +53,9 @@ if (\Illuminate\Support\Facades\DB::table('users')->count() === 0) {
 " || true
 
 echo "==> Refresh caches with the real APP_KEY, then restart workers"
-$COMPOSE exec -T --user www-data app php artisan optimize:clear >/dev/null 2>&1 || true
-$COMPOSE restart 2>/dev/null || true
+$COMPOSE exec -T --user www-data app php artisan optimize:clear >/dev/null 2>&1 || true                            
+$COMPOSE exec -T --user www-data app php artisan optimize                                                          
+$COMPOSE restart 2>/dev/null || true 
 
 $COMPOSE ps
 
