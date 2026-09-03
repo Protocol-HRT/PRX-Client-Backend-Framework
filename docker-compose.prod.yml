@@ -18,10 +18,8 @@ services:
       CACHE_STORE: redis
       QUEUE_CONNECTION: redis
     volumes:
-      - app-code:/var/www/html
       - ./storage:/var/www/html/storage
       - ./bootstrap/cache:/var/www/html/bootstrap/cache
-      - app-build:/var/www/html/public/build
     depends_on:
       mysql:
         condition: service_healthy
@@ -49,8 +47,7 @@ services:
     volumes:
       - ./docker/nginx:/etc/nginx/conf.d:ro
       - ./docker/nginx-entrypoint.sh:/docker-entrypoint.sh:ro
-      - app-code:/var/www/html:ro
-      - app-build:/var/www/html/public/build:ro
+      - ./:/var/www/html:ro
       - certbot-certs:/etc/letsencrypt
       - certbot-webroot:/var/www/certbot:ro
     depends_on:
@@ -167,8 +164,6 @@ services:
   #     - prx
 
 volumes:
-  app-code:
-  app-build:
   mysql-data:
   redis-data:
   certbot-certs:

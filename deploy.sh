@@ -27,12 +27,11 @@ fi
 echo "==> Building images (includes composer + npm build)"
 $COMPOSE build --no-cache app
 
-echo "==> Syncing code and assets to Docker volumes"
-# Create a temporary container that copies everything to the volumes
-$COMPOSE run --rm \
-  -v prx-backend-prod_app-code:/code \
-  -v prx-backend-prod_app-build:/build \
-  app sh -c "cp -r /var/www/html/. /code/ && cp -r /var/www/html/public/build/* /build/"
+echo "==> Copying built frontend assets to host"
+# Create temp container from image (not running), copy build, then remove
+TEMP_ID=$($COMPOSE create app)
+docker cp "${TEMP_ID}":/var/www/html/public/build ./public/build
+docker rm "${TEMP_ID}" >/dev/null
 
 echo "==> Restarting services"
 $COMPOSE up -d --force-recreate app nginx horizon scheduler
