@@ -18,7 +18,7 @@ services:
       CACHE_STORE: redis
       QUEUE_CONNECTION: redis
     volumes:
-      - app-code:/var/www/html
+      - ./:/var/www/html
       - app-storage:/var/www/html/storage/app
     depends_on:
       mysql:
@@ -47,7 +47,7 @@ services:
     volumes:
       - ./docker/nginx:/etc/nginx/conf.d:ro
       - ./docker/nginx-entrypoint.sh:/docker-entrypoint.sh:ro
-      - app-code:/var/www/html:ro
+      - ./:/var/www/html:ro
       - app-storage:/var/www/html/storage/app:ro
       - certbot-certs:/etc/letsencrypt
       - certbot-webroot:/var/www/certbot:ro
@@ -59,12 +59,16 @@ services:
 
   certbot:
     image: certbot/certbot:latest
+    env_file: .env.prod
     volumes:
       - certbot-certs:/etc/letsencrypt
       - certbot-webroot:/var/www/certbot
       - /var/run/docker.sock:/var/run/docker.sock
       - ./docker/certbot-renew.sh:/certbot-renew.sh:ro
+      - ./docker/nginx/init-letsencrypt.sh:/init-letsencrypt.sh:ro
     # Renew every 12h; the deploy-hook script reloads nginx via Docker socket.
+    # For first-time issuance, override the entrypoint:
+    #   docker compose run --rm --entrypoint /init-letsencrypt.sh certbot
     entrypoint: "/bin/sh -c 'trap exit TERM; while :; do /certbot-renew.sh; sleep 12h & wait $${!}; done'"
 
   mysql:
@@ -109,6 +113,9 @@ services:
       REDIS_HOST: redis
       CACHE_STORE: redis
       QUEUE_CONNECTION: redis
+    volumes:
+      - ./:/var/www/html
+      - app-storage:/var/www/html/storage/app
     depends_on:
       app:
         condition: service_healthy
@@ -131,6 +138,9 @@ services:
       REDIS_HOST: redis
       CACHE_STORE: redis
       QUEUE_CONNECTION: redis
+    volumes:
+      - ./:/var/www/html
+      - app-storage:/var/www/html/storage/app
     depends_on:
       app:
         condition: service_healthy
@@ -156,7 +166,6 @@ services:
 
 volumes:
   app-storage:
-  app-code:
   mysql-data:
   redis-data:
   certbot-certs:

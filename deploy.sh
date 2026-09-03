@@ -27,12 +27,8 @@ fi
 echo "==> Building images"
 $COMPOSE build
 
-echo "==> Refreshing shared code volume (fresh copy of the new image)"
-$COMPOSE rm -sf app nginx horizon scheduler 2>/dev/null || true
-docker volume rm --force prx-backend-prod_app-code 2>/dev/null || true
-
-echo "==> Starting mysql, redis, app, nginx, horizon, scheduler"
-$COMPOSE up -d
+echo "==> Restarting services with fresh code (bind-mounted from host)"
+$COMPOSE up -d --force-recreate app nginx horizon scheduler
 
 echo "==> Waiting for MySQL to become healthy"
 until $COMPOSE exec -T mysql mysqladmin ping -h localhost --silent 2>/dev/null; do

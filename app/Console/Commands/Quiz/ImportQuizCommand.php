@@ -140,7 +140,7 @@ class ImportQuizCommand extends Command
             ));
 
             if (isset($data['health_goals']) && is_array($data['health_goals'])) {
-                $this->line(sprintf('  Health Goals: %d to seed', count($data['health_goals']));
+                $this->line(sprintf('  Health Goals: %d to seed', count($data['health_goals'])));
             }
 
             $this->previewSteps($data['steps'], $stats);

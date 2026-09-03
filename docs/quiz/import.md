@@ -6,7 +6,7 @@ How to seed and manage the intake quiz via the database instead of hardcoding it
 
 The quiz is defined as a `QuizSchema` in the database (Quiz → Steps → Questions → Options). The backend serves it via `GET /api/v1/quiz` and the frontend renders it automatically.
 
-The default quiz ("IGNITE Intake Assessment") ships as a JSON file that can be imported with a single Artisan command.
+The default quiz ("IGNITE Intake Assessment") ships as a JSON file that can be imported with a single Artisan command. The JSON also includes health goals (the `health_goals` question reads from the `health_goals` table, not from authored options).
 
 ## Files
 
@@ -50,6 +50,17 @@ php artisan quiz:import --force
   "description": "Optional description",
   "is_active": true,
   "is_default": true,
+  "health_goals": [
+    {
+      "name": "Goal Name",
+      "slug": "goal-slug",
+      "prompt": "Outcome-framed line shown to visitor",
+      "description": "Optional description",
+      "icon": "tabler-icon-name",
+      "show_in_quiz": true,
+      "position": 0
+    }
+  ],
   "steps": [
     {
       "slug": "step-slug",
@@ -197,6 +208,8 @@ The command is **re-runnable**. It keys on quiz slug:
 - **Different slug** → creates a second quiz
 
 Only one quiz can be `is_default` at a time — setting a new default clears the flag on others.
+
+Health goals are keyed on slug. Existing goals are updated, new ones are created. Goals not in the JSON are left untouched (the command does not delete goals).
 
 ## Docker Production
 
