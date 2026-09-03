@@ -1,0 +1,39 @@
+{
+	{$CADDY_GLOBAL_OPTIONS}
+	frankenphp {
+		{$FRANKENPHP_CONFIG}
+	}
+}
+
+{$SERVER_NAME:http://:80} {
+	root * /var/www/html/public
+	encode zstd gzip
+
+	# Security headers
+	header {
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	# Cache headers for compiled and static assets
+	@static {
+		path /build/* /css/* /js/* /fonts/* /favicon.ico /robots.txt
+	}
+	header @static Cache-Control "public, max-age=31536000, immutable"
+
+	# Block access to hidden files/directories
+	@dotfiles {
+		path */.*
+		not path /.well-known/*
+	}
+	respond @dotfiles 404
+
+	# Request upload limit
+	request_body {
+		max_size 40MB
+	}
+
+	php_server
+}

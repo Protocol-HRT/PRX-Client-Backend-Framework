@@ -1,9 +1,7 @@
 # syntax=docker/dockerfile:1
 
-# ---- Base: PHP-FPM image with every extension the app needs.
-#      Both Composer and the final runtime inherit from this stage so the
-#      platform matches the lock file requirements (intl, pcntl, redis, …).
-FROM php:8.4-fpm-alpine AS php-base
+# ---- Base: FrankenPHP image with all required PHP extensions ----
+FROM dunglas/frankenphp:1-php8.4-alpine AS php-base
 
 RUN apk add --no-cache \
     bash \
@@ -21,54 +19,46 @@ RUN apk add --no-cache \
 
 RUN git config --global --add safe.directory /var/www/html
 
-ADD https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions /usr/local/bin/
+RUN install-php-extensions \
+    bcmath \
+    ctype \
+    curl \
+    dom \
+    exif \
+    fileinfo \
+    filter \
+    gd \
+    intl \
+    mbstring \
+    opcache \
+    openssl \
+    pcntl \
+    pdo \
+    pdo_mysql \
+    pdo_sqlite \
+    posix \
+    redis \
+    session \
+    tokenizer \
+    xml \
+    zip
 
-RUN chmod +x /usr/local/bin/install-php-extensions && \
-    install-php-extensions \
-        bcmath \
-        ctype \
-        curl \
-        dom \
-        exif \
-        fileinfo \
-        filter \
-        gd \
-        intl \
-        mbstring \
-        opcache \
-        openssl \
-        pcntl \
-        pdo \
-        pdo_mysql \
-        pdo_sqlite \
-        posix \
-        redis \
-        session \
-        tokenizer \
-        xml \
-        zip
-
-# Production-looking PHP defaults
+# Production PHP settings
 RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 
-COPY docker/php-fpm/zz-docker.conf /usr/local/etc/php-fpm.d/zz-docker.conf
+# Custom Caddyfile
+COPY docker/Caddyfile /etc/caddy/Caddyfile
 
 # ---- 1. PHP dependencies + published assets ----
 FROM php-base AS deps
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 WORKDIR /app
 COPY . .
-# Build-time only: the post-autoload-dump scripts (package:discover,
-# filament:upgrade) compile views, so the framework dirs they need must
-# already exist and be writable here. Runtime dirs are recreated by
-# docker/entrypoint.sh.
 RUN mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache
 RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
 RUN php artisan livewire:publish --assets
 
 # ---- 2. Frontend assets ----
-# Vite build imports Filament's CSS from vendor/filament/… so the deps
-# stage's vendor is copied in (build-time only; not part of the runtime).
 FROM node:20-alpine AS frontend
 WORKDIR /app
 COPY package.json package-lock.json ./
@@ -77,7 +67,7 @@ COPY . .
 COPY --from=deps /app/vendor /app/vendor
 RUN npm run build
 
-# ---- 3. PHP-FPM runtime ----
+# ---- 3. FrankenPHP runtime ----
 FROM php-base AS runtime
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
@@ -87,7 +77,14 @@ WORKDIR /var/www/html
 COPY --from=deps /app /var/www/html
 COPY --from=frontend /app/public/build /var/www/html/public/build
 
-EXPOSE 9000
+# Set permissions for web server and workers
+RUN chown -R root:root /var/www/html && \
+    chmod -R 755 /var/www/html && \
+    mkdir -p storage/app/public storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache && \
+    chown -R www-data:www-data storage bootstrap/cache && \
+    chmod -R 775 storage bootstrap/cache
 
-ENTRYPOINT ["entrypoint.sh"]
-CMD ["php-fpm", "-F"]
+EXPOSE 80 443 443/udp
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["frankenphp", "run", "--config", "/etc/caddy/Caddyfile"]

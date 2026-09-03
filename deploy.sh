@@ -24,36 +24,29 @@ if [ -z "$(sed -n 's/^APP_KEY=//p' .env.prod | tail -1)" ]; then
   exit 1
 fi
 
-echo "==> Building images (includes composer + npm build)"
+echo "==> Building production app image (FrankenPHP + Composer + Vite)"
 $COMPOSE build --no-cache app
 
-echo "==> Starting app container (needed for asset publishing)"
-$COMPOSE up -d app
-
-echo "==> Waiting for app to be ready"
-until $COMPOSE exec -T app php -r "exit(0);" 2>/dev/null; do
-  sleep 2
-done
-
-echo "==> Copying built frontend assets to host"
-mkdir -p ./public/build
-$COMPOSE cp app:/var/www/html/public/build ./public/build
-
-echo "==> Publishing vendor assets (Livewire, Filament, etc.)"
-$COMPOSE exec -T --user www-data app php artisan livewire:publish --assets 2>/dev/null || true
-$COMPOSE exec -T --user www-data app php artisan filament:assets 2>/dev/null || true
-$COMPOSE exec -T --user www-data app php artisan vendor:publish --all 2>/dev/null || true
-
-echo "==> Restarting all services"
-$COMPOSE up -d --force-recreate app nginx horizon scheduler
+echo "==> Starting database & cache services"
+$COMPOSE up -d mysql redis
 
 echo "==> Waiting for MySQL to become healthy"
-until $COMPOSE exec -T mysql mysqladmin ping -h localhost --silent 2>/dev/null; do
+until $COMPOSE exec -T mysql mysqladmin ping -h localhost --silent 2>/dev/null || \
+      $COMPOSE exec -T mysql mysqladmin ping -h localhost -p"$(grep '^DB_ROOT_PASSWORD=' .env.prod 2>/dev/null | cut -d '=' -f2- | tr -d '\"'\' || true)" --silent 2>/dev/null || \
+      [ "$($COMPOSE ps --format '{{.Health}}' mysql 2>/dev/null)" = "healthy" ]; do
   sleep 2
 done
 echo "    MySQL is up"
 
-echo "==> Migrations"
+echo "==> Starting app, horizon, and scheduler"
+$COMPOSE up -d --force-recreate app horizon scheduler
+
+echo "==> Waiting for app container to be ready"
+until $COMPOSE exec -T app php -r "exit(0);" 2>/dev/null; do
+  sleep 2
+done
+
+echo "==> Running database migrations"
 $COMPOSE exec -T --user www-data app php artisan migrate --force
 
 echo "==> Seed base data only on a fresh database (no users yet)"
@@ -63,21 +56,21 @@ if (\Illuminate\Support\Facades\DB::table('users')->count() === 0) {
 }
 " || true
 
-echo "==> Clearing stale caches"
-rm -f bootstrap/cache/*.php 2>/dev/null || true
+echo "==> Clearing and rebuilding Laravel caches"
 $COMPOSE exec -T --user www-data app php artisan optimize:clear >/dev/null 2>&1 || true
-
-echo "==> Rebuilding caches"
 $COMPOSE exec -T --user www-data app php artisan optimize
-$COMPOSE restart 2>/dev/null || true
 
+echo "==> Restarting background workers"
+$COMPOSE restart horizon scheduler >/dev/null 2>&1 || true
+
+echo
 $COMPOSE ps
 
-PORT="${APP_PORT:-8080}"
+PORT="${HTTP_PORT:-80}"
 echo
-echo "Backend is up. Browse:   http://localhost:${PORT}"
-echo "Admin panel:  http://localhost:${PORT}/admin"
-echo "API docs:     http://localhost:${PORT}/api/docs"
+echo "Backend is up via FrankenPHP. Port: ${PORT}"
+echo "Admin panel:  /admin"
+echo "API docs:     /api/docs"
 echo "Logs:         $COMPOSE logs -f app"
 echo "Scale/reboot: $COMPOSE restart"
 echo "Teardown:     $COMPOSE down"
