@@ -27,13 +27,24 @@ fi
 echo "==> Building images (includes composer + npm build)"
 $COMPOSE build --no-cache app
 
-echo "==> Copying built frontend assets to host"
-# Create temp container from image (not running), copy build, then remove
-TEMP_ID=$($COMPOSE create app)
-docker cp "${TEMP_ID}":/var/www/html/public/build ./public/build
-docker rm "${TEMP_ID}" >/dev/null
+echo "==> Starting app container (needed for asset publishing)"
+$COMPOSE up -d app
 
-echo "==> Restarting services"
+echo "==> Waiting for app to be ready"
+until $COMPOSE exec -T app php -r "exit(0);" 2>/dev/null; do
+  sleep 2
+done
+
+echo "==> Copying built frontend assets to host"
+mkdir -p ./public/build
+$COMPOSE cp app:/var/www/html/public/build ./public/build
+
+echo "==> Publishing vendor assets (Livewire, Filament, etc.)"
+$COMPOSE exec -T --user www-data app php artisan livewire:publish --assets 2>/dev/null || true
+$COMPOSE exec -T --user www-data app php artisan filament:assets 2>/dev/null || true
+$COMPOSE exec -T --user www-data app php artisan vendor:publish --all 2>/dev/null || true
+
+echo "==> Restarting all services"
 $COMPOSE up -d --force-recreate app nginx horizon scheduler
 
 echo "==> Waiting for MySQL to become healthy"
@@ -52,10 +63,13 @@ if (\Illuminate\Support\Facades\DB::table('users')->count() === 0) {
 }
 " || true
 
-echo "==> Refresh caches with the real APP_KEY, then restart workers"
-$COMPOSE exec -T --user www-data app php artisan optimize:clear >/dev/null 2>&1 || true                            
-$COMPOSE exec -T --user www-data app php artisan optimize                                                          
-$COMPOSE restart 2>/dev/null || true 
+echo "==> Clearing stale caches"
+rm -f bootstrap/cache/*.php 2>/dev/null || true
+$COMPOSE exec -T --user www-data app php artisan optimize:clear >/dev/null 2>&1 || true
+
+echo "==> Rebuilding caches"
+$COMPOSE exec -T --user www-data app php artisan optimize
+$COMPOSE restart 2>/dev/null || true
 
 $COMPOSE ps
 
