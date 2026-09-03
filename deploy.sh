@@ -36,6 +36,12 @@ until $COMPOSE exec -T mysql mysqladmin ping -h localhost --silent 2>/dev/null; 
 done
 echo "    MySQL is up"
 
+echo "==> Installing composer dependencies (host code is bind-mounted, vendor is not)"
+$COMPOSE exec -T app composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+
+echo "==> Building frontend assets (on host, bind-mounted into container)"
+npm ci --ignore-scripts && npm run build
+
 echo "==> Migrations"
 $COMPOSE exec -T --user www-data app php artisan migrate --force
 
