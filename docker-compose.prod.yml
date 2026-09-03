@@ -18,8 +18,8 @@ services:
       CACHE_STORE: redis
       QUEUE_CONNECTION: redis
     volumes:
-      - ./:/var/www/html
-      - app-storage:/var/www/html/storage/app
+      - ./storage:/var/www/html/storage
+      - ./bootstrap/cache:/var/www/html/bootstrap/cache
     depends_on:
       mysql:
         condition: service_healthy
@@ -114,8 +114,8 @@ services:
       CACHE_STORE: redis
       QUEUE_CONNECTION: redis
     volumes:
-      - ./:/var/www/html
-      - app-storage:/var/www/html/storage/app
+      - ./storage:/var/www/html/storage
+      - ./bootstrap/cache:/var/www/html/bootstrap/cache
     depends_on:
       app:
         condition: service_healthy
@@ -139,8 +139,8 @@ services:
       CACHE_STORE: redis
       QUEUE_CONNECTION: redis
     volumes:
-      - ./:/var/www/html
-      - app-storage:/var/www/html/storage/app
+      - ./storage:/var/www/html/storage
+      - ./bootstrap/cache:/var/www/html/bootstrap/cache
     depends_on:
       app:
         condition: service_healthy
@@ -165,7 +165,6 @@ services:
   #     - prx
 
 volumes:
-  app-storage:
   mysql-data:
   redis-data:
   certbot-certs:

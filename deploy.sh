@@ -24,10 +24,10 @@ if [ -z "$(sed -n 's/^APP_KEY=//p' .env.prod | tail -1)" ]; then
   exit 1
 fi
 
-echo "==> Building images"
-$COMPOSE build
+echo "==> Building images (includes composer + npm build)"
+$COMPOSE build --no-cache app
 
-echo "==> Restarting services with fresh code (bind-mounted from host)"
+echo "==> Restarting services"
 $COMPOSE up -d --force-recreate app nginx horizon scheduler
 
 echo "==> Waiting for MySQL to become healthy"
@@ -35,12 +35,6 @@ until $COMPOSE exec -T mysql mysqladmin ping -h localhost --silent 2>/dev/null; 
   sleep 2
 done
 echo "    MySQL is up"
-
-echo "==> Installing composer dependencies (host code is bind-mounted, vendor is not)"
-$COMPOSE exec -T app composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
-
-echo "==> Building frontend assets (on host, bind-mounted into container)"
-npm ci --ignore-scripts && npm run build
 
 echo "==> Migrations"
 $COMPOSE exec -T --user www-data app php artisan migrate --force
