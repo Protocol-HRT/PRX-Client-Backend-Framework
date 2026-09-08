@@ -68,6 +68,47 @@ Four tiers: `0 Live` · `1 Blocking` · `2 Time-boxed` · `3 Routine`. Sort is t
 soonest deadline; no deadline sorts last. **At most one tier-0 task** — the rest are demoted,
 because a second live emergency steals the attention the treatment exists to command.
 
+## Upstream failures keep their status
+
+Every provider failure reaches us as one `PrescribeRxException`, and rendering it unhandled made
+every one of them a bare `500 {"message":"Server Error"}` — measured on the live sandbox for both
+a rejected weight and a provider crash, byte for byte identical. That single body is unusable by
+the screen that needs it most.
+
+`POST /patient/vitals` has two failure modes a client absolutely must tell apart:
+
+| Upstream | What happened | What the client must do |
+|---|---|---|
+| **422** | The patient mistyped a value. Nothing was written. | Name the field. Let them fix it and resubmit. |
+| **5xx** | P0-7 — the provider inserts the row and *then* crashes. | **Never invite a retry.** The reading is probably saved; a second one duplicates it. |
+
+So `bootstrap/app.php` renders the exception for `api/*` requests: a 422's field-keyed `errors`
+array is passed through, 403/404/409/429 keep their status with a message of ours, and everything
+else becomes a **502** (or 503 when the integration is unconfigured, which surfaces as
+`httpStatus: 0`).
+
+🔴 **An upstream 401 is deliberately NOT passed through.** By the time the exception escapes,
+`withPatientToken()` has already evicted the cached patient token and re-minted one with the
+**org** credential, so a second 401 means the provider rejected *our* token — and the visitor is
+already authenticated with us or the request never reached a controller. Answering 401 makes every
+portal screen say "your session expired"; the patient signs in, that succeeds, and they land on
+the same message. Rotating the provider token without updating `IntegrationSettings` would put the
+whole portal in that loop. It maps to 502 with the rest of the configuration faults, and
+`PortalUpstreamErrorTest` pins it.
+
+The same reasoning applies when **choosing** a status inside `Client`: it is now a status a
+patient's screen acts on, so it must describe what the CALLER should do, not where the failure was
+detected. `issuePatientToken`'s "response missing token field" was a 422 for that reason and is
+now a 502 — the request was fine and the provider answered 2xx with the one field missing.
+
+**What is never passed through is the upstream MESSAGE on a 5xx.** The provider returns its own
+stack in those — absolute filesystem paths, and on this endpoint the entire SQL statement with a
+`patient_chart_id` inside it. `PortalUpstreamErrorTest` asserts the two outcomes have different
+statuses and that none of that string survives.
+
+Filament panel actions are unaffected: they catch the exception themselves and the handler returns
+`null` for anything that is not an API request.
+
 ## Traps this module has already hit
 
 **`no-store` must be registered before the authenticator in the middleware PRIORITY list**

@@ -3,10 +3,12 @@
 use App\Http\Middleware\EnsurePatientToken;
 use App\Http\Middleware\NoStorePhiResponse;
 use App\Http\Middleware\VerifyApiClientOrigin;
+use App\Services\PrescribeRx\Exceptions\PrescribeRxException;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -48,5 +50,69 @@ return Application::configure(basePath: dirname(__DIR__))
         );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // Every upstream failure arrives here as one exception type, and until
+        // now every one of them rendered as a bare 500 "Server Error". That
+        // collapsed two outcomes a client MUST tell apart:
         //
+        //   * a 422 — the patient's own input was rejected, nothing was
+        //     written, and correcting the value and resubmitting is right;
+        //   * a 5xx — the provider crashed, and on at least one endpoint it
+        //     crashes AFTER committing the row (`POST /me/patient/vitals`,
+        //     P0-7), so resubmitting duplicates a clinical reading.
+        //
+        // Same status, same body. A vitals form built on that can only either
+        // invite a duplicate or dead-end a typo. So: preserve the upstream
+        // status, and pass the validation ERRORS through.
+        //
+        // What is never passed through is the upstream MESSAGE on a 5xx. The
+        // provider returns its own stack in those — absolute paths, and the
+        // full SQL statement with a patient_chart_id in it.
+        $exceptions->render(function (PrescribeRxException $e, Request $request) {
+            if (! $request->is('api/*')) {
+                // The Filament panels catch this themselves and render a toast
+                // that operators are used to. Only the API contract changes.
+                return null;
+            }
+
+            $status = $e->httpStatus ?: 0;
+
+            if ($status === 422) {
+                return response()->json([
+                    'message' => 'Some of those values could not be accepted.',
+                    // Keyed by the REQUEST field names, which is what the
+                    // caller sent, so a form can point at the field. Validation
+                    // text names fields and rules and carries nothing else.
+                    'errors' => $e->errors ?? [],
+                ], 422);
+            }
+
+            // Deliberately NO 401 here. By the time this exception escapes,
+            // `PortalController::withPatientToken()` has already evicted the
+            // cached patient token and re-minted one with the ORG credential,
+            // so a second 401 means the provider rejected OUR token, not the
+            // visitor's — and the visitor is, by definition, already
+            // authenticated with us or the request never reached a controller.
+            // Answering 401 tells every portal screen to say "your session
+            // expired"; the patient signs in, that succeeds, and they land on
+            // the same message. Rotating the provider token without updating
+            // IntegrationSettings would put the whole portal in that loop.
+            // An upstream 401 is a configuration fault, so it belongs in 502.
+            $passthrough = [
+                403 => 'That is not available on this account.',
+                404 => 'We could not find that.',
+                409 => 'That conflicts with something already recorded.',
+                429 => 'Too many requests. Please wait a moment.',
+            ];
+
+            if (isset($passthrough[$status])) {
+                return response()->json(['message' => $passthrough[$status]], $status);
+            }
+
+            // Anything else — including a status of 0, which is our own
+            // "integration not configured" — is an upstream fault, not the
+            // caller's. 502 says so without describing it.
+            return response()->json([
+                'message' => 'The clinical provider did not complete that request.',
+            ], $status === 0 ? 503 : 502);
+        });
     })->create();

@@ -170,7 +170,11 @@ class Client
         $data = $this->extractData($response);
 
         if (empty($data['token'])) {
-            throw new PrescribeRxException('issue-token response missing token field.', 422);
+            // 502, not 422: the request was fine and the provider answered 2xx
+            // with a body missing the one field the call exists to return.
+            // A 422 renders to the caller as "check your values", which sends
+            // someone to correct input that was never the problem.
+            throw new PrescribeRxException('issue-token response missing token field.', 502);
         }
 
         return $data;

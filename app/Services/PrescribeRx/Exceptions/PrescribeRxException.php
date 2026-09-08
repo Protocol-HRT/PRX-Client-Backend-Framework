@@ -8,7 +8,14 @@ use Throwable;
 
 /**
  * Wraps every failure mode of the prescribe-rx HTTP client into one
- * exception type so the Action layer can render a single toast pattern.
+ * exception type.
+ *
+ * Two consumers, and they want different things from it. The Action layer
+ * catches it and renders a single toast pattern in the Filament panels. The
+ * API renders it centrally in `bootstrap/app.php`, where `httpStatus` decides
+ * the status a portal client sees and `errors` is forwarded on a 422 — so a
+ * status set here is a status a patient's screen will act on. Pick it for what
+ * the CALLER should do, not for where the failure happened to be detected.
  */
 class PrescribeRxException extends RuntimeException
 {
