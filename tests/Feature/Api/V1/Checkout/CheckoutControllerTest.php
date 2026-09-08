@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api\V1\Checkout;
 
 use App\Actions\Checkout\SubmitPrescribeRxCheckoutAction;
+use App\Actions\Exceptions\ActionException;
 use App\Data\Checkout\CheckoutResultData;
 use App\Models\Catalog\Product;
 use App\Models\Commerce\Cart;
@@ -133,19 +134,40 @@ class CheckoutControllerTest extends TestCase
             ->assertJsonValidationErrors(['cart_ulid', 'lead_uuid']);
     }
 
-    public function test_returns_422_when_action_throws_runtime_exception(): void
+    public function test_a_message_written_for_the_shopper_is_relayed(): void
     {
         [$cart, $lead] = $this->makeLinkedCartAndLead();
 
         $this->mock(SubmitPrescribeRxCheckoutAction::class, function (MockInterface $mock): void {
-            $mock->shouldReceive('execute')->once()->andThrow(new \RuntimeException('Cart is empty.'));
+            $mock->shouldReceive('execute')->once()->andThrow(ActionException::failed('Your cart is empty.'));
         });
 
         $this->postJson('/api/v1/checkout', [
             'cart_ulid' => $cart->ulid,
             'lead_uuid' => $lead->uuid,
         ])->assertUnprocessable()
-            ->assertJson(['message' => 'Cart is empty.']);
+            ->assertJson(['message' => 'Your cart is empty.']);
+    }
+
+    public function test_a_bare_runtime_exception_message_is_not_relayed(): void
+    {
+        // This used to be a 422 carrying the message, which made the RELAY RULE
+        // "it is a RuntimeException" rather than "someone wrote this sentence
+        // for a customer". PrescribeRxException is a RuntimeException too, and
+        // its message is the clinical provider's own error text — see
+        // CheckoutErrorLeakTest. Only ActionException is relayed now.
+        [$cart, $lead] = $this->makeLinkedCartAndLead();
+
+        $this->mock(SubmitPrescribeRxCheckoutAction::class, function (MockInterface $mock): void {
+            $mock->shouldReceive('execute')->once()->andThrow(new \RuntimeException('internal detail nobody wrote for a shopper'));
+        });
+
+        $response = $this->postJson('/api/v1/checkout', [
+            'cart_ulid' => $cart->ulid,
+            'lead_uuid' => $lead->uuid,
+        ])->assertStatus(503);
+
+        $this->assertStringNotContainsString('internal detail', $response->getContent());
     }
 
     public function test_returns_503_when_action_throws_unexpected_exception(): void

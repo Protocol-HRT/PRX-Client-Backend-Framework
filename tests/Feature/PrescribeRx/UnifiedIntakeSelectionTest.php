@@ -9,6 +9,7 @@ use App\Models\Catalog\Plan;
 use App\Models\Catalog\Product;
 use App\Models\Catalog\ProductType;
 use App\Models\Commerce\Cart;
+use App\Actions\Exceptions\ActionException;
 use App\Models\Lead;
 use App\Settings\IntegrationSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -518,7 +519,7 @@ class UnifiedIntakeSelectionTest extends TestCase
             'unit_price_snapshot' => 149.00,
         ]);
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(ActionException::class);
 
         app(SubmitPrescribeRxCheckoutAction::class)
             ->execute($cart->fresh(), $this->lead());
@@ -628,7 +629,7 @@ class UnifiedIntakeSelectionTest extends TestCase
             'unit_price_snapshot' => 399.00,
         ]);
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(ActionException::class);
 
         app(SubmitPrescribeRxCheckoutAction::class)
             ->execute($cart->fresh(), $this->lead());

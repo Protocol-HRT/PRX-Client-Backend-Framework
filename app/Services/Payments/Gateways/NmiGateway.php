@@ -156,7 +156,17 @@ final class NmiGateway implements PaymentGatewayInterface
         } catch (\Throwable $e) {
             Log::error('NMI HTTP request failed', ['message' => $e->getMessage()]);
 
-            return PaymentResult::failure($e->getMessage(), GatewayProvider::Nmi);
+            // A TRANSPORT failure is not a decline, and this message is relayed
+            // verbatim to the shopper by SubmitLocalCheckoutAction — which is
+            // correct for "card declined" and wrong for
+            // "cURL error 28: Operation timed out ... for
+            // https://secure.networkmerchants.com/api/transact.php", which
+            // names our gateway and tells the customer nothing they can act on.
+            // The detail is already in the line above.
+            return PaymentResult::failure(
+                'We could not reach the payment processor. Your card has not been charged.',
+                GatewayProvider::Nmi,
+            );
         }
 
         $success = ($response['response'] ?? null) === '1';

@@ -2,6 +2,7 @@
 
 namespace App\Actions\Checkout;
 
+use App\Actions\Exceptions\ActionException;
 use App\Data\Checkout\CheckoutResultData;
 use App\Data\PrescribeRx\AddressData;
 use App\Data\PrescribeRx\IntakePackageSelectionData;
@@ -27,7 +28,6 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use RuntimeException;
 
 class SubmitPrescribeRxCheckoutAction
 {
@@ -42,7 +42,8 @@ class SubmitPrescribeRxCheckoutAction
      *
      * @param  array<string, mixed>  $intakeAnswers
      *
-     * @throws RuntimeException|PrescribeRxException
+     * @throws ActionException  with a message written to be shown to the customer
+     * @throws PrescribeRxException  never shown verbatim — the provider's text carries its stack
      */
     public function execute(Cart $cart, Lead $lead, array $intakeAnswers = []): CheckoutResultData
     {
@@ -62,7 +63,7 @@ class SubmitPrescribeRxCheckoutAction
         ])->get();
 
         if ($items->isEmpty()) {
-            throw new RuntimeException('Cart is empty.');
+            throw ActionException::failed('Your cart is empty.');
         }
 
         $selections = $this->resolveSelections($items);
@@ -71,7 +72,17 @@ class SubmitPrescribeRxCheckoutAction
         // [mapped product, unmapped package] still submits, naming only the
         // product — each skipped line is logged by the resolver above.
         if ($selections['products'] === [] && $selections['packages'] === []) {
-            throw new RuntimeException('No Prescribe-Rx selections found on cart items. Map the catalog first: packages need provider_package_id / provider_package_sku, products need provider_product_id / provider_product_sku.');
+            // This sentence was written for an operator and used to be shown to
+            // the customer, who was told to "map the catalog first" and given
+            // the names of our provider id columns. It is a deployment fault,
+            // not something a shopper did or can fix, so it goes to the log and
+            // they get told plainly that we cannot take the order.
+            Log::error('Checkout blocked: no Prescribe-Rx selections on any cart item.', [
+                'cart_id' => $cart->id,
+                'hint' => 'Map the catalog: packages need provider_package_id / provider_package_sku, products need provider_product_id / provider_product_sku.',
+            ]);
+
+            throw ActionException::failed('We cannot take this order right now. Please contact support.', 503);
         }
 
         $isSandbox = $this->settings->prescribe_rx_environment === 'sandbox';

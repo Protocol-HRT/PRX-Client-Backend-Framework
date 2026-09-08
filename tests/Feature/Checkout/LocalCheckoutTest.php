@@ -4,6 +4,7 @@ namespace Tests\Feature\Checkout;
 
 use App\Actions\Checkout\SubmitLocalCheckoutAction;
 use App\Actions\Checkout\SubmitPrescribeRxCheckoutAction;
+use App\Actions\Exceptions\ActionException;
 use App\Contracts\Payments\PaymentGatewayInterface;
 use App\Data\Checkout\CheckoutResultData;
 use App\Data\Payments\PaymentResult;
@@ -19,7 +20,6 @@ use App\Services\Payments\PaymentGatewayManager;
 use App\Settings\BillingSettings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery\MockInterface;
-use RuntimeException;
 use Tests\TestCase;
 
 class LocalCheckoutTest extends TestCase
@@ -126,8 +126,11 @@ class LocalCheckoutTest extends TestCase
         $cart = Cart::factory()->create();
         $lead = Lead::factory()->create(['cart_ulid' => $cart->ulid]);
 
-        $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Cart is empty.');
+        // ActionException, specifically — the type is the contract that says
+        // this message may be shown to a customer. A plain RuntimeException
+        // here would be relayed by nothing.
+        $this->expectException(ActionException::class);
+        $this->expectExceptionMessage('Your cart is empty.');
 
         app(SubmitLocalCheckoutAction::class)->execute($cart, $lead, ['payment_token' => 'tok_test']);
     }
@@ -158,7 +161,10 @@ class LocalCheckoutTest extends TestCase
             );
         });
 
-        $this->expectException(RuntimeException::class);
+        // Also ActionException: a decline reason is the one third-party string
+        // this app relays verbatim, because it is the only thing that tells the
+        // shopper what to change.
+        $this->expectException(ActionException::class);
         $this->expectExceptionMessage('Card declined.');
 
         app(SubmitLocalCheckoutAction::class)->execute($cart, $lead, ['payment_token' => 'tok_bad']);
