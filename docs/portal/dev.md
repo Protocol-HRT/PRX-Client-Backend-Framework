@@ -32,10 +32,94 @@ body straight through there is not a leak — it is a cross-patient **write**.
 provider takes the chart from the token and discards unknown keys). Anything that grows an id
 there must be validated here first.
 
+## Linking a patient to their chart
+
+An account with no `prx_patient_chart_id` sees nothing: `IssuePortalTokenAction`
+refuses to mint without one. Until 2026-09-08 the **only runtime writer of that
+column was a text input on the Filament patient form**, so every real patient
+needed an operator to paste a chart id by hand. Nothing in checkout, the embed
+intake path or the webhooks wrote it, and `leads.patient_id` had an FK and no
+writer at all.
+
+`POST /patient/link-chart` (session + `lead_uuid`) closes that, and
+`LinkPatientToPrxChartAction` is the single choke point.
+
+### The evidence is the ENCOUNTER. A lead proves nothing.
+
+**The obvious implementation is the vulnerable one, and it was written and
+caught in review before it shipped.** That version resolved the chart from the
+lead's *email* against the provider. It is a complete account takeover, because
+**`POST /leads` is anonymous and returns the uuid** (`routes/api.php:193`,
+`LeadResource:20`) — it has to be, it is the checkout form itself:
+
+1. register with the victim's address — nothing verifies it;
+2. `POST /leads` with that address, read the uuid out of the 201;
+3. claim it — emails match, lead unclaimed, provider resolves the address to the
+   victim's chart. Full portal on their clinical record.
+
+So anyone can mint a lead for any address. What cannot be minted is an
+**`Encounter`**, whose only two writers take no identifier from an untrusted
+caller:
+
+| Writer | Why it is trustworthy |
+|---|---|
+| `SubmitPrescribeRxCheckoutAction` | our server called the provider and read `patient_chart_id` out of its response |
+| `UpsertEncounterAction`, only from `PrescribeRxWebhookController` | HMAC-verified, `hash_equals` on `X-PRX-Signature` |
+
+The chart id comes from there and nowhere else. **`leads.prescribe_rx_patient_id`
+is deliberately ignored** — it has four writers, and two of them
+(`LeadIntakeController::complete`, `EmbedCompleteController`) take it from the
+request body with no credential. A disagreement between it and the encounter is
+logged, and the encounter wins.
+
+This design also removed the provider round-trip: the action makes no outbound
+call at all.
+
+### Guards
+
+- the lead's email must equal the account's — not the resolution key any more,
+  but it keeps a stray uuid from being enough on its own;
+- the lead must have an encounter carrying a chart id, or it is refused rather
+  than guessed at;
+- an account that already has a chart is refused — re-linking would silently
+  move a patient's clinical history;
+- the lead must be unclaimed. **This is checked twice on purpose**: once up
+  front for a clear refusal, once inside the transaction under
+  `lockForUpdate()` to close the race. A single-threaded suite cannot tell the
+  two apart, so do not read the tests as pinning each separately;
+- a chart already held by another account surfaces as a caught
+  `UniqueConstraintViolationException`, not a pre-check. The unique index is the
+  real arbiter, and **holding a lock to pre-empt it is what must not be done**:
+  under `REPEATABLE-READ` a locking read on a unique index for a value that does
+  not exist yet takes a **gap lock**, and two unrelated first-time claims then
+  deadlock each other on the insert-intention. That regression existed for about
+  an hour and is why the check is a `catch`;
+- an unknown uuid gives the byte-identical refusal to one belonging to someone
+  else, so uuids cannot be enumerated;
+- re-claiming the lead you already hold is a no-op, not a 422;
+- `prx_chart_verified_at` is stamped **only** here. It means a server-side check
+  agreed, which the Filament text input cannot say.
+
+**A patient who checked out under a different address than they registered with
+is refused**, and that is the guard working rather than a gap. The Filament
+field remains, so an operator can link that case by hand after checking who they
+are.
+
+🔴 **Residual, and it must close before real patients use this.**
+`patients.email_verified_at` is never set — there is no verification flow — so
+the address is asserted, not proven. Someone who both knows a customer's address
+**and** holds the uuid of a real, completed, unclaimed order can still claim it.
+Requiring the encounter removes an attacker's ability to *manufacture* that
+order; it does not remove the value of a leaked one. Patient email verification
+is the fix and is not built. Registration deliberately does not link
+(`PatientAuthTest` pins that a chart id in the body is ignored), so this endpoint
+is the whole surface.
+
 ## Endpoints
 
 | Route | Token | Notes |
 |---|---|---|
+| `POST /patient/link-chart` | **none** | Account, not clinical. Makes no provider call at all — the chart comes from an encounter row. See above. |
 | `GET /patient/home` | patient | **Screen-shaped and server-ranked.** One call, not six. |
 | `GET /patient/dashboard` | patient | Raw dashboard, filtered. |
 | `GET /patient/encounters` | patient | Raw model upstream — heavily filtered. |

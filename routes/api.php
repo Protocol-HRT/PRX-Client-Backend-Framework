@@ -27,6 +27,7 @@ use App\Http\Controllers\Api\V1\Leads\LeadController;
 use App\Http\Controllers\Api\V1\Leads\LeadIntakeController;
 use App\Http\Controllers\Api\V1\Leads\LeadPlanController;
 use App\Http\Controllers\Api\V1\Orders\OrderController;
+use App\Http\Controllers\Api\V1\Patient\AccountController as PatientAccountController;
 use App\Http\Controllers\Api\V1\Patient\AuthController as PatientAuthController;
 use App\Http\Controllers\Api\V1\Patient\PortalController;
 use App\Http\Controllers\Api\V1\Quiz\QuizController;
@@ -316,6 +317,11 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
     Route::prefix('patient')->name('patient.portal.')->middleware(['no-store', 'auth:sanctum', 'patient', 'throttle:api'])->group(function (): void {
         // One composed, ranked call for the portal's first screen. See
         // PortalController::home() for why it is screen-shaped.
+        // Account, not clinical data: the step between having a login and
+        // having something to look at. Lives in this group for `no-store` and
+        // the patient guard.
+        Route::post('link-chart', [PatientAccountController::class, 'linkChart'])->name('link-chart');
+
         Route::get('home', [PortalController::class, 'home'])->name('home');
         Route::get('dashboard', [PortalController::class, 'dashboard'])->name('dashboard');
         Route::get('encounters', [PortalController::class, 'encounters'])->name('encounters.index');
