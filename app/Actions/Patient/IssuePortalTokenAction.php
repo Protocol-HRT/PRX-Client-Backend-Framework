@@ -10,12 +10,22 @@ use Illuminate\Support\Facades\Cache;
 class IssuePortalTokenAction
 {
     /**
-     * Least-privilege patient ability set, per TokenAbility::forUserType(PATIENT).
-     * Explicit list so future PRX additions don't silently widen our tokens.
+     * Least-privilege patient ability set, per TokenAbility::forUserType(PATIENT)
+     * (prx-demo@07969f8, app/Enums/Api/TokenAbility.php:159-172). Explicit list so
+     * future PRX additions don't silently widen our tokens.
+     *
+     * PRX caps a requested ability to that set and REJECTS anything outside it
+     * (IssuePatientTokenAction::resolveAbilities, 422) — so an over-broad entry
+     * here breaks every mint rather than escalating. The under-broad direction is
+     * the one that fails quietly: an omitted ability 403s at the endpoint that
+     * needs it, days later, in one screen. Four were omitted and each cost a
+     * feature — approve-charge (provider-added charge approvals), scheduling:read
+     * and :write (slot lookup and booking), lab:read (results and biomarkers).
      */
     private const PATIENT_ABILITIES = [
         'patient:read',
         'patient:update',
+        'patient:approve-charge',
         'patient:vitals',
         'order:read',
         'encounter:read',
@@ -23,6 +33,9 @@ class IssuePortalTokenAction
         'telehealth:read',
         'telehealth:submit',
         'product:read',
+        'scheduling:read',
+        'scheduling:write',
+        'lab:read',
     ];
 
     /** Evict from cache this many seconds before PRX expires the token (clock-skew guard). */

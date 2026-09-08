@@ -15,11 +15,11 @@ use App\Http\Controllers\Api\V1\Catalog\TagController;
 use App\Http\Controllers\Api\V1\Checkout\CheckoutController;
 use App\Http\Controllers\Api\V1\Cms\LayoutController;
 use App\Http\Controllers\Api\V1\Cms\MenuController;
-use App\Http\Controllers\Api\V1\Content\SlugRedirectController;
 use App\Http\Controllers\Api\V1\Cms\PageController;
 use App\Http\Controllers\Api\V1\ConfigController;
 use App\Http\Controllers\Api\V1\Content\FaqController;
 use App\Http\Controllers\Api\V1\Content\ProfileController;
+use App\Http\Controllers\Api\V1\Content\SlugRedirectController;
 use App\Http\Controllers\Api\V1\Intake\IntakeSchemaController;
 use App\Http\Controllers\Api\V1\Kb\CompoundController;
 use App\Http\Controllers\Api\V1\Kb\HealthGoalController;
@@ -31,6 +31,7 @@ use App\Http\Controllers\Api\V1\Patient\AuthController as PatientAuthController;
 use App\Http\Controllers\Api\V1\Patient\PortalController;
 use App\Http\Controllers\Api\V1\Quiz\QuizController;
 use App\Http\Controllers\Api\V1\Recommendations\ProtocolPreviewController;
+use App\Http\Controllers\Api\V1\Referral\ReferralClickController;
 use App\Http\Controllers\Api\V1\Webhooks\PrescribeRxWebhookController;
 use Illuminate\Support\Facades\Route;
 
@@ -171,6 +172,23 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
     // Lead creation is public (called before login). Retrieval by UUID is
     // also public — the UUID is opaque and only known from the creation response.
 
+    /*
+     * Referral arrivals. Write-only and anonymous by design — the storefront's
+     * edge middleware posts one row per visitor per code on first landing.
+     *
+     * Its own throttle bucket, tighter than `api`: this is the one endpoint an
+     * anonymous caller can use to write rows that money is calculated from, so a
+     * flood here is commission fraud rather than load. The action is idempotent
+     * per visitor+code, which caps the damage a single visitor id can do anyway.
+     *
+     * There is deliberately no GET here. Reading referral performance belongs to
+     * the partner panel behind a session, never to a public endpoint that would
+     * let anyone enumerate live affiliate codes.
+     */
+    Route::prefix('referrals')->name('referrals.')->middleware('throttle:30,1')->group(function (): void {
+        Route::post('clicks', [ReferralClickController::class, 'store'])->name('clicks.store');
+    });
+
     Route::prefix('leads')->name('leads.')->middleware('throttle:api')->group(function (): void {
         Route::post('/', [LeadController::class, 'store'])->name('store');
         Route::get('{lead:uuid}', [LeadController::class, 'show'])->name('show');
@@ -287,7 +305,18 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
     // Proxies PRX /me/patient/* endpoints using a patient-scoped PRX token.
     // All routes require a valid patient Sanctum token.
 
-    Route::prefix('patient')->name('patient.portal.')->middleware(['auth:sanctum', 'patient', 'throttle:api'])->group(function (): void {
+    // `no-store` is not optional here: every response below is one patient's
+    // PHI, including the 401 and 403 responses that echo an id back.
+    //
+    // Its position in THIS array is not what puts it outside `auth:sanctum` —
+    // Laravel re-sorts route middleware by its priority list and would hoist the
+    // authenticator regardless. The registration in bootstrap/app.php is what
+    // places it. Listing it first here only keeps the two from reading as though
+    // they disagree. See App\Http\Middleware\NoStorePhiResponse.
+    Route::prefix('patient')->name('patient.portal.')->middleware(['no-store', 'auth:sanctum', 'patient', 'throttle:api'])->group(function (): void {
+        // One composed, ranked call for the portal's first screen. See
+        // PortalController::home() for why it is screen-shaped.
+        Route::get('home', [PortalController::class, 'home'])->name('home');
         Route::get('dashboard', [PortalController::class, 'dashboard'])->name('dashboard');
         Route::get('encounters', [PortalController::class, 'encounters'])->name('encounters.index');
         Route::get('encounters/{encounterId}/video-token', [PortalController::class, 'videoToken'])->name('encounters.video-token');

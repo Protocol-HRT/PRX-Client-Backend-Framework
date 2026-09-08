@@ -2,9 +2,13 @@
 
 namespace App\Observers;
 
+use App\Actions\Referral\CalculateReferralCommissionAction;
+use App\Enums\Payments\LeadPaymentStatus;
 use App\Events\Leads\LeadDispositionChanged;
 use App\Models\Lead;
 use App\Support\ModelChangeSnapshot;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Turns a change of `leads.status` into a domain event.
@@ -51,6 +55,8 @@ class LeadObserver
 
     public function updated(Lead $lead): void
     {
+        $this->calculateCommissionOnCapture($lead);
+
         if (! $lead->wasChanged('status')) {
             return;
         }
@@ -73,5 +79,40 @@ class LeadObserver
             $from === null ? null : (string) $from,
             (string) $to,
         );
+    }
+
+    /**
+     * Money changing hands is what earns a commission, so the ledger is written
+     * the moment `payment_status` becomes captured — not when the lead is
+     * created, and not on a nightly job that could miss a day.
+     *
+     * Guarded on the TRANSITION rather than the value: a later edit to a lead
+     * that is already captured must not re-enter this, or a corrected address
+     * would recompute settled bands. The action is idempotent anyway and refuses
+     * to touch paid rows, but not calling it is cheaper than relying on that.
+     *
+     * Swallows its own failure. A commission that failed to compute is
+     * recoverable — the conversion is on the lead and the action can be re-run —
+     * whereas throwing here would roll back the payment capture that just
+     * succeeded.
+     */
+    private function calculateCommissionOnCapture(Lead $lead): void
+    {
+        if (! $lead->wasChanged('payment_status')) {
+            return;
+        }
+
+        if ($lead->payment_status !== LeadPaymentStatus::Captured) {
+            return;
+        }
+
+        try {
+            app(CalculateReferralCommissionAction::class)->execute($lead);
+        } catch (Throwable $e) {
+            Log::error('referral commission calculation failed', [
+                'lead_id' => $lead->id,
+                'exception' => $e->getMessage(),
+            ]);
+        }
     }
 }

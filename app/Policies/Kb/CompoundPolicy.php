@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Policies\Kb;
 
-use Illuminate\Foundation\Auth\User as AuthUser;
 use App\Models\Kb\Compound;
 use Illuminate\Auth\Access\HandlesAuthorization;
+use Illuminate\Foundation\Auth\User as AuthUser;
 
 class CompoundPolicy
 {
     use HandlesAuthorization;
-    
+
     public function viewAny(AuthUser $authUser): bool
     {
         return $authUser->can('ViewAny:Compound');
@@ -71,5 +71,4 @@ class CompoundPolicy
     {
         return $authUser->can('Reorder:Compound');
     }
-
 }

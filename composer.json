@@ -24,6 +24,7 @@
         "spatie/laravel-permission": "^7.4",
         "spatie/laravel-settings": "^3.8",
         "spatie/laravel-sluggable": "^4.0",
+        "staudenmeir/laravel-adjacency-list": "^1.25",
         "symfony/http-client": "^8.1",
         "symfony/mailgun-mailer": "^8.1"
     },

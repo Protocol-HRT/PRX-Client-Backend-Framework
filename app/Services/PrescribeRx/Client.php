@@ -161,7 +161,10 @@ class Client
             ];
         }
 
-        $body = array_filter(['abilities' => $abilities ?: null, 'token_name' => 'portal-session']);
+        // `device_name` — NOT `token_name`. PRX validates it as required|max:120
+        // (IssuePatientTokenData, prx-demo@07969f8), and the published OpenAPI
+        // documents the wrong name. Sending `token_name` 422s every mint.
+        $body = array_filter(['abilities' => $abilities ?: null, 'device_name' => 'portal-session']);
 
         $response = $this->request()->post("/patients/{$patientChartId}/issue-token", $body);
         $data = $this->extractData($response);
@@ -333,17 +336,58 @@ class Client
         );
     }
 
-    public function sendConversationMessage(string $patientToken, string $conversationId, string $body): array
+    /**
+     * The field is `content`, NOT `body`. PRX validates
+     * `content => required|string|max:5000` (prx-demo@07969f8,
+     * Me/PatientSelfServiceController.php:1057-1060). The only other field it
+     * reads is `reply_to_message_id`; `sender_id` and `message_type` are fixed
+     * server-side, which is why a patient cannot post as their provider on
+     * THIS endpoint.
+     * (`POST /encounters/{id}/messages` is the one that takes a caller-supplied
+     * `sender_type`. Do not add it to this client.)
+     */
+    public function sendConversationMessage(string $patientToken, string $conversationId, string $content): array
     {
         if (config('prescribe-rx.stub')) {
-            return ['id' => 'stub-msg-id', 'body' => $body];
+            return ['id' => 'stub-msg-id', 'content' => $content];
         }
 
         return $this->extractData(
             $this->patientRequest($patientToken)->post("/me/patient/conversations/{$conversationId}/messages", [
-                'body' => $body,
+                'content' => $content,
             ])
         );
+    }
+
+    /**
+     * `GET /encounters/{id}` with the PATIENT token.
+     *
+     * Used as an OWNERSHIP PROBE, not for its payload. PRX's
+     * `tenant_encounter_scope` global scope resolves a PATIENT token to
+     * `where('patient_chart_id', $chartId)` (prx-demo@07969f8,
+     * Support/Tenancy/TenantVisibility.php:363-374), so an encounter belonging to
+     * anybody else is a 404 before any handler runs. That makes this the cheapest
+     * trustworthy answer to "is this encounter the caller's?".
+     *
+     * Returns null on 404/403 rather than throwing, so a caller can branch.
+     * Note this writes an `encounter_viewed` PHI-audit row on PRX per call, so
+     * it belongs on a deliberate action (booking) and not on a render path.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function findPatientEncounter(string $patientToken, string $encounterId): ?array
+    {
+        if (config('prescribe-rx.stub')) {
+            return ['id' => $encounterId];
+        }
+
+        $response = $this->patientRequest($patientToken)->get("/encounters/{$encounterId}");
+
+        if ($response->status() === 404 || $response->status() === 403) {
+            return null;
+        }
+
+        return $this->extractData($response);
     }
 
     // ─── Encounter Status (sales-org token) ──────────────────────────────────

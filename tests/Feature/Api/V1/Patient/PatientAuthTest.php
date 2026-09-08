@@ -6,6 +6,7 @@ use App\Models\Patient;
 use App\Models\User;
 use App\Services\PrescribeRx\Client;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class PatientAuthTest extends TestCase
@@ -16,9 +17,11 @@ class PatientAuthTest extends TestCase
     {
         parent::setUp();
 
-        // PRX chart lookup always returns null unless overridden per test.
+        Http::preventStrayRequests();
+
+        // Anonymous registration must never resolve a clinical identity by email.
         $this->mock(Client::class, function ($mock) {
-            $mock->shouldReceive('findPatientByEmail')->andReturn(null)->byDefault();
+            $mock->shouldNotReceive('findPatientByEmail');
         });
     }
 
@@ -41,28 +44,31 @@ class PatientAuthTest extends TestCase
         $this->assertDatabaseHas('patients', ['email' => 'jane@example.com']);
     }
 
-    public function test_register_links_prx_chart_when_found(): void
+    public function test_register_does_not_link_or_verify_a_prx_chart_from_unproven_identity(): void
     {
-        $this->mock(Client::class, function ($mock) {
-            $mock->shouldReceive('findPatientByEmail')
-                ->once()
-                ->andReturn(['id' => 'chart-uuid', 'patient_id' => 'user-uuid']);
-        });
-
         $response = $this->postJson('/api/v1/patient/auth/register', [
             'email' => 'linked@example.com',
             'password' => 'password123',
             'first_name' => 'Linked',
             'last_name' => 'Patient',
+            'prx_patient_chart_id' => 'chart-uuid',
+            'prx_patient_id' => 'user-uuid',
+            'prx_chart_verified_at' => now()->toIso8601String(),
+            'email_verified_at' => now()->toIso8601String(),
         ]);
 
         $response->assertCreated()
-            ->assertJsonPath('data.patient.has_prx_chart', true);
+            ->assertJsonPath('data.patient.has_prx_chart', false);
 
         $this->assertDatabaseHas('patients', [
             'email' => 'linked@example.com',
-            'prx_patient_chart_id' => 'chart-uuid',
+            'prx_patient_chart_id' => null,
+            'prx_patient_id' => null,
+            'prx_chart_verified_at' => null,
+            'email_verified_at' => null,
         ]);
+
+        Http::assertNothingSent();
     }
 
     public function test_register_rejects_duplicate_email(): void

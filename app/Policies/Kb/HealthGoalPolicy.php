@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Policies\Kb;
 
-use Illuminate\Foundation\Auth\User as AuthUser;
 use App\Models\Kb\HealthGoal;
 use Illuminate\Auth\Access\HandlesAuthorization;
+use Illuminate\Foundation\Auth\User as AuthUser;
 
 class HealthGoalPolicy
 {
     use HandlesAuthorization;
-    
+
     public function viewAny(AuthUser $authUser): bool
     {
         return $authUser->can('ViewAny:HealthGoal');
@@ -71,5 +71,4 @@ class HealthGoalPolicy
     {
         return $authUser->can('Reorder:HealthGoal');
     }
-
 }

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Users\Schemas;
 
+use App\Models\User;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -70,7 +71,20 @@ class UserForm
                             ->schema([
                                 Select::make('roles')
                                     ->label('Roles')
-                                    ->relationship('roles', 'name')
+                                    // Partners are excluded from staff roles here
+                                    // because Shield's `Gate::before` grants
+                                    // `super_admin` every ability, bypassing both
+                                    // the panel gate and Horizon's. The audience
+                                    // boundary is only real if the combination
+                                    // cannot be created — see
+                                    // User::STAFF_ONLY_ROLES.
+                                    ->relationship(
+                                        'roles',
+                                        'name',
+                                        fn ($query, ?User $record) => $record?->isPartner()
+                                            ? $query->whereNotIn('name', User::STAFF_ONLY_ROLES)
+                                            : $query,
+                                    )
                                     ->multiple()
                                     ->options(fn () => Role::query()->orderBy('name')->pluck('name', 'id'))
                                     ->preload()

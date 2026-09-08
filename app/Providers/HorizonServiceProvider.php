@@ -30,7 +30,15 @@ class HorizonServiceProvider extends HorizonApplicationServiceProvider
         // Role-based, not an email allow-list — this codebase deploys
         // per client, so no operator identity may live in code.
         Gate::define('viewHorizon', function ($user = null) {
-            return (bool) $user?->hasRole(config('filament-shield.super_admin.name', 'super_admin'));
+            // A partner must never reach Horizon, whatever role they hold —
+            // queued payloads carry lead PII. The two panels enforce audience as
+            // a type boundary; this has to match, or a mis-granted staff role
+            // opens the side door they deliberately closed.
+            if ($user === null || $user->isPartner()) {
+                return false;
+            }
+
+            return (bool) $user->hasRole(config('filament-shield.super_admin.name', 'super_admin'));
         });
     }
 }

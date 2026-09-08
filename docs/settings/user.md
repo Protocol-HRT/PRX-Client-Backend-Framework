@@ -116,3 +116,8 @@ Clear the relevant ID field (GA / GTM / Pixel) and Save. The layout stops emitti
 - **Saved but the public site didn't change** — full-page-refresh. If still stale, check whether view caching is on (`php artisan view:cache` was run); run `php artisan view:clear` to invalidate.
 - **Validation error toasts** — the form schema validates first, then the DTO validates again. The error message names the field. If a field appears valid but the toast persists, check that no leading/trailing whitespace snuck in.
 - **403 on `/admin`** — your account doesn't have the `super_admin` role. Ask another `super_admin` to assign it via Shield's user-roles UI.
+
+
+## LLM API keys
+
+Claude and OpenAI API keys saved through the LLM settings page are encrypted in the database. Existing Claude credentials on installs predating the 2026-09-06 encryption migration may remain in older plaintext database backups. Revoke/rotate the old key at its provider and save the replacement in the settings page. The migration protects storage going forward; it does not rotate a key or alter old backups.

@@ -27,3 +27,4 @@ Per-module documentation: `user.md` = admin operator guide, `dev.md` = architect
 | API spec | Exported OpenAPI document (live version at `/api/docs`) | [`api/openapi.json`](api/openapi.json) |
 
 Convention: every shipped module has both `user.md` and `dev.md`; a module isn't "done" without them. Document as you build.
+- [`portal/dev.md`](portal/dev.md) — the patient-portal proxy: the allowlist, the server-side ranking, and the traps it has already hit

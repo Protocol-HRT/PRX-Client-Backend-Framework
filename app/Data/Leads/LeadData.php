@@ -74,6 +74,13 @@ class LeadData extends Data
         // answers to questions that were genuinely askable.
         public ?array $quiz_answers = null,
         public ?int $quiz_id = null,
+
+        // Referral attribution, carried from the storefront's first-party
+        // cookies. Deliberately untyped beyond "string" — the shape is enforced
+        // in ReferralLink::normalizeCode(), which drops anything unusable rather
+        // than failing the lead.
+        public ?string $referral_code = null,
+        public ?string $referral_visitor_id = null,
         #[WithCast(EnumCast::class)]
         public CheckoutPath $checkout_path = CheckoutPath::PrescribeRx,
         public ?string $utm_source = null,

@@ -5,8 +5,8 @@ namespace App\Models\Commerce;
 use Database\Factories\Commerce\CartFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Prunable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Prunable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
@@ -84,12 +84,13 @@ class Cart extends Model
      * one of those and that checkout 404s — and the reference is held remotely
      * too, since prescribe-rx stores the lead uuid and returns it on its webhook.
      *
-     * ATTRIBUTION IS NOT AT RISK TODAY, AND THIS IS THE LINE TO REVISIT WHEN IT
-     * IS. utm/referrer/landing_url live on `leads`, which nothing prunes, so a
-     * reaped cart destroys no marketing data. When internal affiliate tracking
-     * lands and a cart carries a referral of its own, add the same style of
-     * "not referenced" guard for it here: an unconverted click reaped at 90 days
-     * is a commission nobody can reconcile.
+     * ATTRIBUTION IS NOT AT RISK, AND THE PREDICTED GUARD TURNED OUT TO BE
+     * UNNECESSARY. This comment used to say "revisit when affiliate tracking
+     * lands". It landed (2026-09-03), and it deliberately keeps nothing on the
+     * cart: a referral lives in a first-party cookie, in the append-only
+     * `referral_clicks` ledger, and on `leads`. None of those is pruned, so
+     * reaping a cart destroys no attribution and no commission evidence.
+     * Do not add referral columns here — that is what would create the problem.
      */
     public function prunable(): Builder
     {

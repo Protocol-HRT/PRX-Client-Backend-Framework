@@ -512,7 +512,7 @@ The active checkout path comes from `GET /config` → `checkout.path` (`prx` | `
 
 1. **Cart** — send `X-Cart-Token` (ULID) on every cart call; the backend mints one if absent (read it back from the response and persist client-side). `GET /cart`, `POST /cart/items` (`{type: product|package, id, plan_id?, quantity}`), `PATCH|DELETE /cart/items/{id}`.
 2. **Upsells** — `GET /cart/suggestions` returns admin-curated Pairs With / Related light cards for the current cart (empty when the admin disabled upsells — just hide the placement). `config.checkout.upsells` carries the knobs. Products can be added directly (buy-once); link packages through to their page for plan selection.
-3. **Lead** — `POST /leads` with customer identity + consents + UTM attribution; include `X-Cart-Token` to bind the cart. Returns a lead `uuid` **and `handoff_url`**.
+3. **Lead** — `POST /leads` with customer identity + consents + UTM attribution + referral (§9); include `X-Cart-Token` to bind the cart. Returns a lead `uuid` **and `handoff_url`**.
 4. **`prx` path (embed handoff — the default)** — after lead creation, redirect the browser to `lead.handoff_url`. That backend page hosts the provider embed with prefill + product selection already applied; clinical intake and payment happen there. Do **not** call `POST /checkout` on this path.
 5. **`local` path** — `GET /checkout/gateway-config` for the tokenization SDK, then `POST /checkout` with `cart_ulid`, `lead_uuid`, and the tokenized `payment_method`. Order status afterwards: `GET /orders/{uuid}`.
 
@@ -622,3 +622,53 @@ for exactly this reason. Getting this wrong is not merely stale: measured on a
 Next.js consumer, the old URL re-validated on every request, the API answered
 404 each time, and `notFound()` during regeneration never replaced the cached
 200 — the page served its old address indefinitely until the tag was purged.
+
+## 9. Referral attribution
+
+Two additions, both optional and both best-effort.
+
+### `POST /referrals/clicks` — record a referral arrival
+
+**Called from the frontend's SERVER (edge middleware), never from the browser.**
+This endpoint writes rows that commissions are argued from; a browser-side caller
+would be the beneficiary writing its own evidence. It is not in the storefront's
+`/api/backend` proxy allowlist and must not be added to it.
+
+```
+POST /api/v1/referrals/clicks          throttle:30,1, anonymous
+{ "code": "LT-4F2A", "visitor_id": "<uuid>",
+  "landing_url": "...", "referrer": "...", "utm_source": "...", ... }
+
+→ 200 { "data": { "recorded": true } }
+```
+
+- **Always 200**, including for a code matching nothing — the arrival is recorded
+  either way, with null source/link, so a partner's "you never credited my
+  mailshot" is answerable.
+- The response reports **only** `recorded` — deliberately not whether the code is
+  live, which would let an anonymous prober enumerate the affiliate roster.
+- Forward the visitor's address as `X-Forwarded-For` (**rightmost entry only** —
+  a visitor may prepend anything). It is trusted because `TRUSTED_PROXIES` names
+  the storefront host.
+- Idempotent per `(code, visitor_id)`, enforced by a unique index.
+- `visitor_id` must be a uuid the frontend minted and stores in a first-party
+  cookie. It identifies no person and joins to nothing.
+
+### `POST /leads` — two new optional fields
+
+| Field | Notes |
+|---|---|
+| `referral_code` | The code from the visitor's cookie. |
+| `referral_visitor_id` | The same uuid sent with the click, so the lead binds to the exact arrival. |
+
+**Both are validated leniently on purpose** (`string`, generous lengths). A
+referral must never fail lead capture: a malformed code is dropped by
+`ReferralLink::normalizeCode()` and the lead still saves. Send them and forget
+them — there is no error to handle.
+
+**The backend overwrites `utm_*`, `referrer` and `landing_url` from the click**
+when one is bound. Those fields read at submit time record where the visitor
+*was*, not where they *arrived*; the click holds the real landing. Keep sending
+them for unreferred traffic.
+
+Full module guide: `docs/referrals/dev.md`.

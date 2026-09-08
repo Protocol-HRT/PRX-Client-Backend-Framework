@@ -94,6 +94,22 @@ class LeadController extends ApiController
             'referrer' => ['nullable', 'url', 'max:2048'],
             'landing_url' => ['nullable', 'url', 'max:2048'],
 
+            // Referral attribution, carried by the storefront from the visitor's
+            // first-party cookie. `referral_code` is accepted even when it matches
+            // no live link — an unresolvable code is recorded as evidence that
+            // someone arrived claiming it, exactly as an unmatched click is.
+            //
+            // DELIBERATELY LENIENT, and it is not sloppiness. A strict rule here
+            // rejects the whole LEAD over a malformed marketing code — and since
+            // the code arrives from a 30-day cookie, one crafted `?ref=` link
+            // would lock a visitor out of checkout until they cleared it. The
+            // shape is enforced where it can fail safely instead:
+            // ReferralLink::normalizeCode() drops anything unusable and the lead
+            // is still captured. A lost commission is recoverable from
+            // referral_clicks; a lost lead is not.
+            'referral_code' => ['nullable', 'string', 'max:255'],
+            'referral_visitor_id' => ['nullable', 'string', 'max:64'],
+
             // The intake quiz. `quiz_slug` rather than an id: the frontend is
             // handed slugs everywhere else and an id would be the only place
             // it had to know a database key.
@@ -166,6 +182,8 @@ class LeadController extends ApiController
             cart_ulid: $request->header('X-Cart-Token') ?: null,
             quiz_answers: $quizAnswers,
             quiz_id: $quiz?->id,
+            referral_code: $validated['referral_code'] ?? null,
+            referral_visitor_id: $validated['referral_visitor_id'] ?? null,
         );
 
         $lead = $action->execute($data);
