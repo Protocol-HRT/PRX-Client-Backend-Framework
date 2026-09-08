@@ -31,8 +31,21 @@ abstract class ApiController extends Controller
         return response()->json($payload, $status);
     }
 
-    protected function error(string $message, int $status = 400): JsonResponse
+    /**
+     * The `errors` half of the documented envelope above, which this helper
+     * could not actually emit until now — so every endpoint that wanted to
+     * name a field either built the response by hand or silently dropped it.
+     *
+     * @param  array<string, mixed>  $errors  field → messages, Laravel's shape
+     */
+    protected function error(string $message, int $status = 400, array $errors = []): JsonResponse
     {
-        return response()->json(['message' => $message], $status);
+        $payload = ['message' => $message];
+
+        if ($errors !== []) {
+            $payload['errors'] = $errors;
+        }
+
+        return response()->json($payload, $status);
     }
 }

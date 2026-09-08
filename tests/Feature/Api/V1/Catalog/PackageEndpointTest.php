@@ -157,19 +157,24 @@ class PackageEndpointTest extends TestCase
 
     // ── price_from: the single figure a listing card leads with ──────────
 
-    public function test_price_from_is_the_cheapest_monthly_price_not_the_low_end_of_the_range(): void
+    public function test_price_from_is_the_cheapest_way_in_across_plans_and_the_own_price(): void
     {
-        // THE CASE THIS FIELD EXISTS FOR. The range's two ends are in different
-        // units — $279.99 a month against a $1,259.96 six-month TOTAL — so a
-        // card rendering "$279.99 - $1,259.96" tells a visitor a stack might
-        // cost $1,259.96 a month. Both fields are asserted here on purpose: the
-        // range is still correct for what it measures, and price_from is the
-        // one a card can show on its own.
+        // THE RULE THIS FIELD EXISTS FOR. A card says "as low as $X", so X is
+        // the lowest price at which this bundle can be entered by ANY route —
+        // the $279.99 monthly plan here, not the $399 one-time price. The card
+        // does not commit anyone to that plan; it advertises the floor and the
+        // detail page is where the terms are chosen.
+        //
+        // The range is asserted alongside on purpose: it is still correct for
+        // what it measures, and a card still cannot show it, because its two
+        // ends are in different units — $279.99 a month against a $1,259.96
+        // six-month TOTAL, which on a card reads as a stack costing $1,259.96
+        // a month.
         $package = Package::factory()->create([
             'status' => CatalogStatus::Published,
             'retail_price' => 399.00,
             'sale_price' => null,
-            'price_suffix' => '/mo',
+            'price_suffix' => null,
         ]);
         $monthly = Plan::factory()->create([
             'package_id' => $package->id,
@@ -192,24 +197,61 @@ class PackageEndpointTest extends TestCase
             ->assertJsonPath('data.price_from.amount', 279.99)
             ->assertJsonPath('data.price_from.suffix', '/mo')
             ->assertJsonPath('data.price_from.currency', 'USD')
-            // The figure must NAME the plan it came from — the report adds that
-            // plan to the cart, so an id pointing at the 6-month plan would put
-            // $1,259.96 in the bag under a card reading $279.99/mo.
+            // THE FIGURE MUST NAME ITS SOURCE. A surface that quotes it and
+            // then adds a different thing to the cart has lied at the last
+            // possible moment; the id is how a plan picker knows what was
+            // advertised. Asserting the amount alone cannot tell the monthly
+            // plan from the six-month one once a cart adds by id.
             ->assertJsonPath('data.price_from.plan_id', $monthly->id)
+            ->assertJsonPath('data.price_range.from', 279.99)
             ->assertJsonPath('data.price_range.to', 1259.96);
+    }
+
+    public function test_price_from_uses_the_own_price_when_it_undercuts_every_plan(): void
+    {
+        // A package on sale can undercut every plan, and that is what putting
+        // it on sale is for. The suffix then comes from the PACKAGE, not from a
+        // cadence this method invented — asserting an operator string no
+        // BillingPeriod could produce is what proves the source.
+        $package = Package::factory()->create([
+            'status' => CatalogStatus::Published,
+            'retail_price' => 399.00,
+            // Cents on purpose: every other own-price fixture is a whole
+            // dollar, so rounding to 0dp survived the suite until this changed.
+            'sale_price' => 79.49,
+            'price_suffix' => '/ea',
+        ]);
+        Plan::factory()->create([
+            'package_id' => $package->id,
+            'status' => CatalogStatus::Published,
+            'billing_period' => BillingPeriod::Monthly,
+            'retail_price' => 279.99,
+        ]);
+
+        $this->getJson("/api/v1/catalog/packages/{$package->slug}")
+            ->assertOk()
+            ->assertJsonPath('data.price_from.amount', 79.49)
+            ->assertJsonPath('data.price_from.suffix', '/ea')
+            // NULL IS MEANINGFUL: it says "buy the package itself", which the
+            // cart supports. Naming the $279.99 plan would charge more than the
+            // card quoted.
+            ->assertJsonPath('data.price_from.plan_id', null);
     }
 
     public function test_price_from_ignores_a_cheaper_price_charged_in_another_unit(): void
     {
-        // THE TEST THAT ACTUALLY PINS THE RULE. In the case above the monthly
-        // plan is also the numerically cheapest, so deleting the cadence filter
-        // entirely still produced 279.99 and every assertion passed — a
-        // mutation run proved it. Here a quarterly plan is the smallest NUMBER
-        // ($199 for three months) while the monthly rate is $279.99, so
-        // "cheapest monthly" and "cheapest number" give different answers and
-        // only the correct rule returns 279.99. Comparing raw amounts across
-        // billing units is meaningless, which is the whole reason this field
-        // exists.
+        // THE TEST THAT PINS THE FALLBACK RULE, and it needs a package with no
+        // own price to reach it at all — with one set, the own price pre-empts
+        // every plan and this file's headline test applies instead.
+        //
+        // A mutation proved the first version of this was theatre: the monthly
+        // plan was also the numerically cheapest, so deleting the cadence
+        // filter outright still produced 279.99 and every assertion passed.
+        // Here a quarterly plan is the smallest NUMBER ($199 for three months)
+        // while the monthly rate is $279.99, so "cheapest monthly" and
+        // "cheapest number" give different answers and only the correct rule
+        // returns 279.99. Comparing raw amounts across billing units is
+        // meaningless, which is the whole reason this field exists.
         $package = Package::factory()->create([
             'status' => CatalogStatus::Published,
             'retail_price' => null,
@@ -237,7 +279,8 @@ class PackageEndpointTest extends TestCase
             ->assertJsonPath('data.price_from.suffix', '/mo')
             // And the id follows the same rule as the figure: the MONTHLY plan,
             // not the numerically cheaper quarterly one. Asserting the amount
-            // alone cannot tell those apart once a cart adds by id.
+            // alone cannot tell those apart once a cart adds by id. Non-null
+            // also means a card renders "From $279.99/mo" — this IS a floor.
             ->assertJsonPath('data.price_from.plan_id', $monthly->id)
             // The range still reports the raw span, unit-blind and correct for
             // what it measures — the two fields must not collapse into one.
@@ -249,9 +292,13 @@ class PackageEndpointTest extends TestCase
         // intro_price buys ONE billing cycle. Leading a card with it advertises
         // a number the visitor pays once and then stops paying; the plan picker
         // on the detail page is where that offer belongs.
+        //
+        // No own price on the package, deliberately: with one at $399 the own
+        // price would win on cheapness and the intro rule would never be
+        // exercised at all.
         $package = Package::factory()->create([
             'status' => CatalogStatus::Published,
-            'retail_price' => 399.00,
+            'retail_price' => null,
             'sale_price' => null,
         ]);
         Plan::factory()->create([
@@ -267,50 +314,22 @@ class PackageEndpointTest extends TestCase
             ->assertJsonPath('data.price_from.amount', 279.99);
     }
 
-    public function test_price_from_uses_the_packages_own_price_when_it_is_the_cheapest(): void
-    {
-        // Same reasoning as the range: a package on sale can undercut every
-        // plan, and that is what putting it on sale is for. The suffix comes
-        // from the package, not from a cadence this method invented.
-        $package = Package::factory()->create([
-            'status' => CatalogStatus::Published,
-            'retail_price' => 399.00,
-            'sale_price' => 79.00,
-            'price_suffix' => '/mo',
-        ]);
-        Plan::factory()->create([
-            'package_id' => $package->id,
-            'status' => CatalogStatus::Published,
-            'billing_period' => BillingPeriod::Monthly,
-            'retail_price' => 279.99,
-        ]);
-
-        $this->getJson("/api/v1/catalog/packages/{$package->slug}")
-            ->assertOk()
-            ->assertJsonPath('data.price_from.amount', 79)
-            ->assertJsonPath('data.price_from.suffix', '/mo')
-            // NULL IS MEANINGFUL: it says "buy the package itself". Naming the
-            // $279.99 plan here would charge more than the card quoted.
-            ->assertJsonPath('data.price_from.plan_id', null);
-    }
-
     /**
      * A TIE MUST NOT SIGN SOMEONE UP TO A REBILL.
      *
-     * A package is a set group of products bought once; a plan lays a monthly or
-     * prepaid rebill over the same bundle. Downstream that distinction is real:
-     * prescribe-rx reads a package with no plan id as a single transaction, and
-     * on a local checkout the same choice decides whether the merchant account
-     * starts auto-billing. So when a recurring plan and the package's own price
-     * are the SAME number, the figure must resolve to the package — otherwise a
-     * card quotes a price the visitor could pay once and the cart enrols them in
-     * a subscription instead.
-     *
-     * This is the live Metabolic Reset shape: own 399, monthly plan retail 499
-     * with sale 399.
+     * Only reachable between two PLANS now that a package's own price pre-empts
+     * every plan — but the reasoning is the same one the headline rule rests on.
+     * Downstream the distinction is real: prescribe-rx reads a recurring plan as
+     * a subscription, and on a local checkout the same choice decides whether
+     * the merchant account starts auto-billing. So when two plans cost the same,
+     * the figure must resolve to the one that does not rebill, rather than to
+     * whichever the collection happened to hold first.
      */
-    public function test_a_tie_between_a_recurring_plan_and_the_packages_own_price_resolves_to_the_package(): void
+    public function test_a_tie_between_a_recurring_plan_and_the_own_price_resolves_to_the_package(): void
     {
+        // This is the live Metabolic Reset shape: own 399, monthly plan retail
+        // 499 with sale 399 — an exact tie. Quoting the plan would name a
+        // rebill where an identical one-off purchase exists.
         $package = Package::factory()->create([
             'status' => CatalogStatus::Published,
             'retail_price' => 399.00,
@@ -329,7 +348,44 @@ class PackageEndpointTest extends TestCase
         $this->getJson("/api/v1/catalog/packages/{$package->slug}")
             ->assertOk()
             ->assertJsonPath('data.price_from.amount', 399)
-            // NULL = buy the package itself, no rebill.
+            // NULL = the package itself, no rebill.
+            ->assertJsonPath('data.price_from.plan_id', null);
+    }
+
+    /**
+     * THE TIE-BREAK'S LAST STEP IS INSERTION ORDER, AND IT NEEDS A TEST.
+     *
+     * A non-recurring monthly plan and the item's own price tie on BOTH sort
+     * keys — same amount, both non-recurring — so the stable sort falls through
+     * to insertion order and nothing else decides it. The rule says equals
+     * resolve to the ITEM, and that only holds because the own price is pushed
+     * into the pool first. Map the plans first instead and this is the one test
+     * that notices; the amount is identical either way.
+     *
+     * The consequence is small but real: `plan_id` decides whether a card adds
+     * in one tap or links out to pick a term (`cardQuotesAPlan`), so resolving
+     * to the plan sends a visitor to choose between two identically priced
+     * things for no reason.
+     */
+    public function test_a_tie_with_a_non_recurring_plan_still_resolves_to_the_item(): void
+    {
+        $package = Package::factory()->create([
+            'status' => CatalogStatus::Published,
+            'retail_price' => 279.99,
+            'sale_price' => null,
+            'price_suffix' => null,
+        ]);
+        Plan::factory()->create([
+            'package_id' => $package->id,
+            'status' => CatalogStatus::Published,
+            'billing_period' => BillingPeriod::Monthly,
+            'retail_price' => 279.99,
+            'is_recurring' => false,
+        ]);
+
+        $this->getJson("/api/v1/catalog/packages/{$package->slug}")
+            ->assertOk()
+            ->assertJsonPath('data.price_from.amount', 279.99)
             ->assertJsonPath('data.price_from.plan_id', null);
     }
 
@@ -495,12 +551,29 @@ class PackageEndpointTest extends TestCase
 
     // ── Gap 7: price_min / price_max ─────────────────────────────────────
 
-    public function test_packages_filter_price_min_uses_plan_effective_price(): void
+    /**
+     * THESE TWO PIN THEIR OWN PRICES, AND THE REASON IS A REAL FLAKE.
+     *
+     * They were written when the filter read PLAN prices alone, so the
+     * package's own price was irrelevant and the factory's random
+     * `retail_price` (99-999) never mattered. Since the filter began measuring
+     * the card figure — the cheapest of the own price and the monthly plans —
+     * that random draw decides the answer: any roll below 100 makes
+     * "Expensive" quote under $100 and drop out of a `price_min=100` filter.
+     * Correct behaviour, and a test that passes 999 runs in 1000. Measured at
+     * 0.107%, which is roughly one full-suite run in 900, and it duly failed
+     * one.
+     *
+     * **An unpinned factory value is a hidden input.** It is harmless until a
+     * rule starts reading the column, and then it produces a failure that does
+     * not reproduce.
+     */
+    public function test_packages_filter_price_min_uses_the_card_figure(): void
     {
-        $cheap = Package::factory()->create(['status' => CatalogStatus::Published, 'name' => 'Cheap']);
+        $cheap = Package::factory()->create(['status' => CatalogStatus::Published, 'name' => 'Cheap', 'retail_price' => 900, 'sale_price' => null]);
         Plan::factory()->create(['package_id' => $cheap->id, 'status' => CatalogStatus::Published, 'retail_price' => 50, 'sale_price' => null]);
 
-        $expensive = Package::factory()->create(['status' => CatalogStatus::Published, 'name' => 'Expensive']);
+        $expensive = Package::factory()->create(['status' => CatalogStatus::Published, 'name' => 'Expensive', 'retail_price' => 900, 'sale_price' => null]);
         Plan::factory()->create(['package_id' => $expensive->id, 'status' => CatalogStatus::Published, 'retail_price' => 200, 'sale_price' => null]);
 
         $this->getJson('/api/v1/catalog/packages?price_min=100')
@@ -509,18 +582,36 @@ class PackageEndpointTest extends TestCase
             ->assertJsonPath('data.0.name', 'Expensive');
     }
 
-    public function test_packages_filter_price_max_uses_plan_effective_price(): void
+    public function test_packages_filter_price_max_uses_the_card_figure(): void
     {
-        $cheap = Package::factory()->create(['status' => CatalogStatus::Published, 'name' => 'Cheap']);
+        $cheap = Package::factory()->create(['status' => CatalogStatus::Published, 'name' => 'Cheap', 'retail_price' => 900, 'sale_price' => null]);
         Plan::factory()->create(['package_id' => $cheap->id, 'status' => CatalogStatus::Published, 'retail_price' => 50, 'sale_price' => null]);
 
-        $expensive = Package::factory()->create(['status' => CatalogStatus::Published, 'name' => 'Expensive']);
+        $expensive = Package::factory()->create(['status' => CatalogStatus::Published, 'name' => 'Expensive', 'retail_price' => 900, 'sale_price' => null]);
         Plan::factory()->create(['package_id' => $expensive->id, 'status' => CatalogStatus::Published, 'retail_price' => 200, 'sale_price' => null]);
 
         $this->getJson('/api/v1/catalog/packages?price_max=100')
             ->assertOk()
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.name', 'Cheap');
+    }
+
+    /**
+     * And the own price DOES decide it — the half the two above cannot show,
+     * because in both of them the plan is the cheaper candidate either way.
+     *
+     * Here the package's own price undercuts its plan, so the figure is 80 and
+     * a `price_min=100` filter must drop it. A filter still reading plan prices
+     * alone would keep it on the strength of the $200 plan, quoting a card that
+     * reads "As low as $80.00".
+     */
+    public function test_packages_price_filter_follows_an_own_price_that_undercuts_the_plans(): void
+    {
+        $package = Package::factory()->create(['status' => CatalogStatus::Published, 'name' => 'Own price wins', 'retail_price' => 80, 'sale_price' => null]);
+        Plan::factory()->create(['package_id' => $package->id, 'status' => CatalogStatus::Published, 'retail_price' => 200, 'sale_price' => null]);
+
+        $this->getJson('/api/v1/catalog/packages?price_min=100')->assertOk()->assertJsonCount(0, 'data');
+        $this->getJson('/api/v1/catalog/packages?price_max=100')->assertOk()->assertJsonCount(1, 'data');
     }
 
     public function test_packages_price_filter_uses_sale_price_when_set(): void

@@ -52,7 +52,7 @@ class PackageForm
                                     ->required()
                                     ->maxLength(255)
                                     ->alphaDash()
-                                    ->hintIcon(Heroicon::InformationCircle, 'URL-friendly identifier. Auto-generated; change with caution — breaks existing links.'),
+                                    ->hintIcon(Heroicon::InformationCircle, 'URL-friendly identifier. Safe to change: the old address keeps working and sends visitors here automatically.'),
                                 TextInput::make('subtitle')
                                     ->maxLength(255)
                                     ->hintIcon(Heroicon::InformationCircle, 'Short sub-headline shown below the package name on listing cards.')
@@ -120,10 +120,21 @@ class PackageForm
                                             ->prefix('$')
                                             ->step(0.01)
                                             ->hintIcon(Heroicon::InformationCircle, 'Active sale price. If set, this is the price displayed to customers.'),
+                                        // NORMALLY BLANK, AND THE HINT HAS TO SAY SO. This
+                                        // price is the one-time cost of the bundle, and a card
+                                        // shows it whenever it is the cheapest way in — so a
+                                        // per-period suffix here makes a card read
+                                        // "As low as $399.00/mo" for a purchase the cart books
+                                        // once. Nothing validates the value
+                                        // (it is free text with no cadence column behind it),
+                                        // so the form's own example is the only guard, and it
+                                        // used to suggest "/mo". Four packages carried that
+                                        // mistake. Cadence suffixes belong on plans, where
+                                        // BillingPeriod fills them in.
                                         TextInput::make('price_suffix')
                                             ->maxLength(32)
-                                            ->placeholder('e.g. /mo, starting at')
-                                            ->hintIcon(Heroicon::InformationCircle, 'Optional copy appended after the price, e.g. "/mo" or "starting at".'),
+                                            ->placeholder('usually blank — e.g. /ea')
+                                            ->hintIcon(Heroicon::InformationCircle, 'Usually leave this BLANK. The package price is a one-time price for the bundle, and a card shows it whenever it is the cheapest way in, so a per-period suffix like "/mo" makes a card advertise a subscription for a purchase billed once. Use it only for a genuine per-unit price such as "/ea". Monthly and prepaid wording belongs on the package\'s Plans.'),
                                         TextInput::make('cost')
                                             ->numeric()
                                             ->prefix('$')

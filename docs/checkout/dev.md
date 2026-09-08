@@ -140,8 +140,12 @@ Upsell placements (cart drawer + checkout page) are fed by
 | Status | Cause |
 |---|---|
 | 403 | Cart/lead session mismatch |
-| 422 | Missing `payment_method` on local path; payment declined; empty cart; PRX rejection |
-| 503 | Unhandled exception |
+| 422 | Missing `payment_method`; payment declined; empty cart — i.e. an `ActionException`. Also a provider 422, whose `errors` are forwarded but whose message is not |
+| 502 | The clinical provider failed. Its message is never relayed |
+| 503 | An unhandled exception, or a deployment fault the shopper cannot fix (unmapped catalog, no gateway) |
+
+See *Error messages: the TYPE decides what a shopper may be told* below — the status is chosen for
+what the CALLER should do, not for where the failure was detected.
 
 ---
 
@@ -164,7 +168,9 @@ Both actions return `CheckoutResultData`.
 1. Verify cart is not empty
 2. Resolve default active `MerchantAccount` via `PaymentGatewayManager`
 3. **Charge the gateway outside the DB transaction** — a rollback cannot reverse a captured payment
-4. Throw `RuntimeException` if `PaymentResult::success === false` (controller returns 422)
+4. Throw `ActionException` if `PaymentResult::success === false` (controller returns 422 and relays
+   the gateway's decline reason — see the error-message section below; a bare `RuntimeException`
+   here would be swallowed into a generic 503, which is the point)
 5. Inside `DB::transaction`:
    - `Order::create` — subtotal/total from `cart->subtotal()`, no `encounter_id`
    - `OrderItem::create × N` — snapshotted from cart items
@@ -177,15 +183,66 @@ Both actions return `CheckoutResultData`.
 
 ## Action: `SubmitPrescribeRxCheckoutAction`
 
-### Product ID resolution
+### Selection resolution
 
-Priority per cart item:
-1. **Package + Plan** → `Plan.provider_product_ids` (JSON array)
-2. **Bare Plan itemable** → `Plan.provider_product_ids`
-3. **Product itemable** → `Product.provider_product_id`
-4. **Package (no plan)** → each `Package.products[*].provider_product_id`
+The payload uses prescribe-rx's **modern selection arrays**, `products[]` and
+`packages[]`. The legacy flat `product_ids` is deprecated on their side and is
+no longer sent.
 
-Duplicates stripped; empty/null filtered. Throws if none resolved (422).
+**A package is named, never flattened.** prescribe-rx already knows which
+products a package contains, and keys real behaviour off the package row — a
+labs hold before dispensing, a $0 shipping quote, consult-included pricing.
+Sending member product ids discarded the package, so none of that fired.
+
+Per cart item:
+
+| Cart line | Emits |
+|---|---|
+| Package (no plan) | `packages[] = {package_id}` |
+| Package + plan | `packages[] = {package_id, plan_id}` |
+| Product | `products[] = {product_id, quantity, snapshot_price}` |
+| Product + plan | `products[] = {product_id, …}` — their `products[]` has no `plan_id`, so the term is expressed by the local order, not the encounter |
+
+A **plan is never itself a cart line**: `CartController::addItem` accepts
+`type` in `product|package` only, and a chosen term arrives as `plan_id` on the
+line. The resolver has no plan branch for that reason.
+
+Each line carries **exactly one** identifier, per their contract: the UUID
+(`package_id` / `product_id`) is preferred because it survives a rename on
+their side, and the human-readable number (`package_number` /
+`product_number`) is the fallback for an item mapped by SKU alone. Unset
+identifiers are stripped before transport — a line carrying two is rejected.
+
+An unmapped item is skipped and **logged**; the action throws only when the
+whole cart resolves to nothing. A partially-mapped cart therefore submits,
+naming only what it could resolve.
+
+### Idempotency
+
+The submission sends `Idempotency-Key: {app-name-slug}-{cart.ulid}-{lead.uuid}`,
+namespaced per install so deployments sharing a prescribe-rx tenant cannot
+collide. Their
+side replays a stored response for 24h, so a retry of the same submission
+cannot mint a second encounter for one patient. The key must stay stable
+across retries — do not add a timestamp.
+
+### Other payload notes
+
+- `is_sandbox` is only ever **asserted**, never denied. Their server auto-flags
+  test-looking names as sandbox; an explicit `false` could override that, so a
+  production submission omits the key entirely.
+- `metadata` carries the lead uuid, cart ulid and UTM attribution, so an
+  encounter can be traced back to the visit that produced it.
+- The patient carries an explicit `shipping_address` / `billing_address` pair
+  rather than the legacy single `address`, and exactly one shape is sent.
+  `billing_same_as_shipping` tells their side to mirror. The SHIPPING address
+  is the load-bearing one — its state decides which licensed clinician can be
+  assigned — and a partial address resolves to null rather than being sent, as
+  an incomplete one 422s the whole intake.
+- `gender` is translated, not passed through. Our lead form offers
+  `prefer_not_to_say`; they accept only `male` / `female` / `other`. An
+  unmappable value is **dropped** — declining to answer is not "other", and
+  guessing would put a wrong answer on a clinical chart.
 
 ### Transaction boundary
 
@@ -201,6 +258,58 @@ DB::transaction:
 ```
 
 ---
+
+## Error messages: the TYPE decides what a shopper may be told
+
+`CheckoutController` used to relay `$e->getMessage()` from any `RuntimeException`
+as a 422. `lib/checkoutClient.js` puts a failure's `message` straight on the page,
+so that is where these would have surfaced the moment anything called this
+endpoint. That made the relay rule *"it is a RuntimeException"* rather than
+*"someone wrote this sentence for a customer"*, and three different things went
+out through it:
+
+| Went out | Should have |
+|---|---|
+| `'Cart is empty.'` | ✅ correct — written for a shopper |
+| `'No Prescribe-Rx selections found on cart items. Map the catalog first: packages need provider_package_id / …'` | ❌ an **operator** diagnostic, naming our provider id columns, shown to a customer who neither caused it nor can fix it |
+| `PrescribeRxException` — also a `RuntimeException` | ❌ the clinical provider's own error text: absolute filesystem paths, and on one endpoint the full SQL statement with a `patient_chart_id` in it |
+
+**`App\Actions\Exceptions\ActionException` is now the contract.** Throw it only
+with a sentence you would be happy to show a customer; the controller relays its
+message and nothing else's. A bare `RuntimeException` falls through to the
+`Throwable` branch — logged, generic 503 — which is the right default for a
+message nobody wrote for a shopper.
+
+`PrescribeRxException` gets its own branch, following the patient portal's rule
+(`bootstrap/app.php`, and `docs/portal/dev.md`): a 422's field-keyed `errors`
+array is forwarded, because the storefront points at inputs with it, and the
+provider's own prose never is.
+
+The two are **not identical**, deliberately: the portal passes 403/404/409/429
+through with its own copy, while checkout maps every non-422 to 502. A shopper
+mid-purchase has one thing to know — we could not take the order — and a menu of
+upstream statuses does not help them. One consequence to keep in mind:
+`PrescribeRxException::notConfigured()` (status 0) reaches a shopper here as
+"try again in a moment" for a fault that will not fix itself.
+
+Two relays are deliberate and stay:
+
+- **The gateway's decline reason** (`SubmitLocalCheckoutAction`) — "card
+  declined", "address does not match". It is the one thing that tells the shopper
+  what to change, and it is the only third-party string this app relays verbatim.
+- **A provider 422's `errors` array** — field names and rule text, no prose.
+
+`ApiController::error()` gained an `$errors` parameter to carry that. The base
+class had documented the `{ message, errors }` envelope since it was written but
+could only emit the first half.
+
+🔴 **Reachability, so the fix is not oversold.** `POST /api/v1/checkout` is a
+public route, but it is **not** in the storefront's proxy allowlist
+(`atlas-protocol-web/lib/backendProxy.js`) — this deployment is on
+`checkout_path = prx`, which never calls it. So the leak was reachable by anyone
+addressing the API directly, and would have been reachable from the storefront's
+own browser code the moment the deployment moved to `local` and allowlisted the
+path. `CheckoutErrorLeakTest` pins all three cases, mutation-checked.
 
 ## BillingSettings
 

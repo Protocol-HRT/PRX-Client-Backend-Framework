@@ -29,9 +29,9 @@ class PackageController extends ApiController
      * @unauthenticated
      */
     #[QueryParameter('search', 'Filter by package name or subtitle.', type: 'string', example: 'hormone')]
-    #[QueryParameter('price_min', 'Filter packages with at least one plan priced at or above this amount (USD).', type: 'float', infer: false, example: 50)]
-    #[QueryParameter('price_max', 'Filter packages with at least one plan priced at or below this amount (USD).', type: 'float', infer: false, example: 300)]
-    #[QueryParameter('sort', 'Sort order: position (default), name, -name, price, -price, newest, oldest.', type: 'string', example: '-price')]
+    #[QueryParameter('price_min', 'Filter by the figure a card shows (`price_from.amount`, the "as low as" price) at or above this amount (USD).', type: 'float', infer: false, example: 50)]
+    #[QueryParameter('price_max', 'Filter by the figure a card shows (`price_from.amount`, the "as low as" price) at or below this amount (USD).', type: 'float', infer: false, example: 300)]
+    #[QueryParameter('sort', 'Sort order: position (default), name, -name, price, -price, newest, oldest. Price sorts by the same figure the price filter uses.', type: 'string', example: '-price')]
     #[QueryParameter('per_page', 'Results per page (1–50, default 15).', type: 'integer', example: 15)]
     public function index(Request $request): AnonymousResourceCollection
     {
@@ -50,6 +50,30 @@ class PackageController extends ApiController
                 'healthGoals',
                 'healthGoalSourceProducts.healthGoals',
             ])
+            // MATCHES THE EFFECTIVE GOAL SET, NOT THE OVERRIDE TABLE.
+            // `healthGoals` on a package is a badge OVERRIDE and is empty in
+            // the normal case; the badges a card actually shows are the union
+            // of its published products' goals (BuildsHealthGoalBadges). Query
+            // the override alone and the filter contradicts the badge: with no
+            // override rows anywhere, every stack displays goals and none is
+            // filterable by them.
+            //
+            // So: an override, when present, REPLACES the derived set — exactly
+            // as the badge builder treats it — and otherwise the contained
+            // products decide.
+            ->when($request->filled('goal'), function ($q) use ($request) {
+                $goal = $request->string('goal');
+
+                $q->where(function ($q) use ($goal) {
+                    $q->whereHas('healthGoals', fn ($q) => $q->where('slug', $goal))
+                        ->orWhere(fn ($q) => $q
+                            ->whereDoesntHave('healthGoals')
+                            ->whereHas(
+                                'healthGoalSourceProducts.healthGoals',
+                                fn ($q) => $q->where('slug', $goal)
+                            ));
+                });
+            })
             ->when($request->filled('category'), fn ($q) => $q->whereHas(
                 'categories',
                 fn ($q) => $q->where('slug', $request->string('category'))
@@ -66,25 +90,29 @@ class PackageController extends ApiController
             }))
             ->when(
                 $request->filled('price_min') || $request->filled('price_max'),
+                // FILTERS ON THE FIGURE THE CARD SHOWS, which is the whole point
+                // of this block. It used to be `whereHas('plans', ...)` on plan
+                // prices alone, so a package's own price was invisible to the
+                // filter and a package with NO plans could never match any price
+                // range at all. Live symptom: cards read "As low as $399.00"
+                // under a slider that dropped them at a $350 minimum, because
+                // their plans were $279.99 and $671.98 with nothing between.
                 function ($q) use ($request): void {
-                    $min = $request->filled('price_min') ? (float) $request->input('price_min') : null;
-                    $max = $request->filled('price_max') ? (float) $request->input('price_max') : null;
+                    $figure = Package::priceFromAmountSql();
 
-                    $q->whereHas('plans', function ($q) use ($min, $max): void {
-                        $q->where('status', CatalogStatus::Published)
-                            ->where(function ($q) use ($min, $max): void {
-                                if ($min !== null) {
-                                    // `? + 0` coerces the TEXT-bound float to REAL for correct SQLite comparison
-                                    $q->whereRaw('COALESCE(sale_price, retail_price) >= ? + 0', [$min]);
-                                }
-                                if ($max !== null) {
-                                    $q->whereRaw('COALESCE(sale_price, retail_price) <= ? + 0', [$max]);
-                                }
-                            });
-                    });
+                    // `? + 0` coerces the TEXT-bound float to REAL for correct
+                    // SQLite comparison.
+                    if ($request->filled('price_min')) {
+                        $q->whereRaw("{$figure} >= ? + 0", [(float) $request->input('price_min')]);
+                    }
+                    if ($request->filled('price_max')) {
+                        $q->whereRaw("{$figure} <= ? + 0", [(float) $request->input('price_max')]);
+                    }
                 }
             )
-            ->tap(fn ($q) => $this->applyCatalogSort($q, $request->input('sort')))
+            // Ordered by the same figure, so "price ascending" matches what the
+            // cards read rather than the packages' own columns.
+            ->tap(fn ($q) => $this->applyCatalogSort($q, $request->input('sort'), Package::priceFromAmountSql()))
             ->paginate($perPage);
 
         return PackageResource::collection($packages);

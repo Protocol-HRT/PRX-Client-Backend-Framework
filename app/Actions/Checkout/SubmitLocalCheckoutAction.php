@@ -2,6 +2,7 @@
 
 namespace App\Actions\Checkout;
 
+use App\Actions\Exceptions\ActionException;
 use App\Actions\Concerns\Transacts;
 use App\Data\Checkout\CheckoutResultData;
 use App\Enums\LeadStatus;
@@ -11,7 +12,6 @@ use App\Models\Commerce\Order;
 use App\Models\Lead;
 use App\Services\Payments\PaymentGatewayManager;
 use Illuminate\Support\Facades\DB;
-use RuntimeException;
 
 class SubmitLocalCheckoutAction
 {
@@ -28,14 +28,18 @@ class SubmitLocalCheckoutAction
      *
      * @param  array<string, mixed>  $paymentMethod  Tokenized payment data from the frontend SDK.
      *
-     * @throws RuntimeException when the cart is empty, no gateway is configured, or payment fails.
+     * @throws ActionException when the cart is empty or payment is declined — both carry a
+     *                          message written to be shown to the customer.
+     * @throws \Throwable        anything else (no merchant account, a gateway SDK fault) reaches
+     *                          the controller's Throwable branch: logged, generic 503. That is
+     *                          correct — nobody wrote those messages for a shopper.
      */
     public function execute(Cart $cart, Lead $lead, array $paymentMethod): CheckoutResultData
     {
         $items = $cart->items()->with('itemable')->get();
 
         if ($items->isEmpty()) {
-            throw new RuntimeException('Cart is empty.');
+            throw ActionException::failed('Your cart is empty.');
         }
 
         $account = $this->gatewayManager->defaultAccount();
@@ -52,7 +56,11 @@ class SubmitLocalCheckoutAction
         );
 
         if (! $paymentResult->success) {
-            throw new RuntimeException($paymentResult->message ?? 'Payment could not be processed.');
+            // The gateway's decline reason IS for the shopper — "card declined",
+            // "address does not match" — and it is the one thing that tells them
+            // what to change. It is deliberately the only third-party string
+            // this app relays verbatim.
+            throw ActionException::failed($paymentResult->message ?? 'Payment could not be processed.');
         }
 
         $order = $this->tx(function () use ($cart, $lead, $items, $paymentResult, $account, $amount): Order {

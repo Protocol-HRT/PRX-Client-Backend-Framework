@@ -4,17 +4,19 @@ namespace App\Http\Controllers\Api\V1\Checkout;
 
 use App\Actions\Checkout\SubmitLocalCheckoutAction;
 use App\Actions\Checkout\SubmitPrescribeRxCheckoutAction;
+use App\Actions\Exceptions\ActionException;
 use App\Data\Checkout\CheckoutData;
+use App\Data\Checkout\GatewayContextData;
 use App\Http\Controllers\Api\V1\ApiController;
 use App\Http\Resources\Api\V1\Checkout\CheckoutResource;
 use App\Models\Commerce\Cart;
 use App\Models\Lead;
 use App\Services\Payments\PaymentGatewayManager;
+use App\Services\PrescribeRx\Exceptions\PrescribeRxException;
 use App\Settings\BillingSettings;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use RuntimeException;
 use Throwable;
 
 /**
@@ -51,23 +53,26 @@ class CheckoutController extends ApiController
     public function gatewayConfig(): JsonResponse
     {
         try {
+            // No amount yet — the card form renders before a total is
+            // committed, so this only excludes accounts already at their
+            // limit. The amount is checked again at charge time.
             $account = $this->gatewayManager->defaultAccount();
         } catch (Throwable) {
             return $this->error('No active payment gateway is configured.', 503);
         }
 
-        $data = [
-            'gateway_provider' => $account->gateway_provider->value,
-            'environment' => $account->environment->value,
-            'public_key' => $account->getPublicKey(),
-        ];
+        $context = GatewayContextData::forAccount($account);
 
-        // Square Web Payments SDK also requires the location ID for payment forms.
-        if ($account->square_location_id) {
-            $data['location_id'] = $account->square_location_id;
+        // A gateway that cannot tokenise is worse than none: the storefront
+        // would render a card form that fails at submit, after the visitor has
+        // typed their number. Authorize.Net needs its api_login_id beside the
+        // client key, Square its location id — a missing half is a 503, not a
+        // partial payload.
+        if (! $context->isUsable()) {
+            return $this->error('The configured payment gateway is missing credentials required to accept a card.', 503);
         }
 
-        return $this->success($data);
+        return $this->success($context->toArray());
     }
 
     /**
@@ -105,8 +110,32 @@ class CheckoutController extends ApiController
             } else {
                 $result = $this->prescribeRx->execute($cart, $lead, $data->intake_answers);
             }
-        } catch (RuntimeException $e) {
-            return $this->error($e->getMessage(), 422);
+        } catch (ActionException $e) {
+            // The ONLY branch that relays a message. `ActionException` means the
+            // sentence was written to be shown to a customer — an empty cart, a
+            // declined card. Catching `RuntimeException` here instead, as this
+            // did, is a rule about a PHP class rather than about who a sentence
+            // was written for, and three different things went out through it:
+            // shopper copy, an operator diagnostic naming our provider id
+            // columns, and PrescribeRxException — whose message is the clinical
+            // provider's own error text, absolute paths and, on one endpoint,
+            // the full SQL statement with a patient_chart_id in it.
+            return $this->error($e->getMessage(), $e->getCode() ?: 422);
+        } catch (PrescribeRxException $e) {
+            // Same rule as the portal (bootstrap/app.php): forward a 422's
+            // field-keyed errors, because the storefront points at inputs with
+            // them, and never the provider's own prose.
+            Log::error('Checkout failed upstream', [
+                'cart_ulid' => $data->cart_ulid,
+                'status' => $e->httpStatus,
+                'error' => $e->getMessage(),
+            ]);
+
+            if ($e->httpStatus === 422) {
+                return $this->error('Some of those details could not be accepted.', 422, $e->errors ?? []);
+            }
+
+            return $this->error('We could not complete this order. Please try again in a moment.', 502);
         } catch (Throwable $e) {
             Log::error('Checkout failed', [
                 'cart_ulid' => $data->cart_ulid,

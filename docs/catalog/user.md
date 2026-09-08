@@ -76,7 +76,13 @@ leave them blank for vocabulary you add for other fulfillment sources.
 
 ## Packages
 
-A **Package** bundles one or more products together and is sold via **Plans** (pricing tiers with terms).
+A **Package** bundles one or more products and can be bought **two different ways**. The
+difference is not cosmetic — it decides whether the customer is billed again:
+
+| Shape | What the customer gets | Billed again? |
+|---|---|---|
+| The package at its **own price** | The bundle once — 1 of each product in it | **No** |
+| The package **with a Plan** | The same bundle, rebilled monthly or prepaid over a term | **Yes** |
 
 **Key fields** (same as Product, plus):
 
@@ -84,7 +90,35 @@ A **Package** bundles one or more products together and is sold via **Plans** (p
 |---|---|
 | Banner image | Wide hero banner for the package landing section. |
 | Products | Assign which products are included in this package. Set sort order in admin. |
-| Plans | Add subscription tiers (see Plans section below). |
+| Plans | Optional subscription tiers (see Plans section below). A package with no plans is still fully sellable at its own price. |
+
+Both are real, sellable shapes, and the customer chooses between them on the package page.
+
+### What a listing card shows: "As low as $X"
+
+**Cards advertise the cheapest way in.** For each package the storefront compares its own
+one-time price against its **monthly** plans and shows the lowest, labelled "as low as" — so
+$399 one-time against a $279.99/mo plan gives a card reading **"As low as $279.99/mo"**. The
+same rule runs on product cards.
+
+**"As low as" is a floor, not a quote, which is why a card never adds a stack to the cart.** The
+cheapest figure is usually a plan, and a plan is a recurring commitment — so the customer picks
+the term on the package's own page, where the terms are visible. Anything that showed the low
+figure and then added something on the customer's behalf would either sign them up to a rebill
+they did not choose or charge more than the card said.
+
+**Prepaid multi-month plans never become the card figure.** A $1,259.96 six-month plan is a
+TOTAL, not a rate; only monthly plans are compared, so a card cannot advertise a prepay total as
+though it were a monthly price. They still appear on the package page.
+
+**Leave the package's price Suffix BLANK unless the price genuinely is per-unit.** The suffix is
+free text and is printed exactly as typed — nothing validates it. A one-time bundle price is not
+charged per period, so "/mo" there makes a card read "As low as $399.00/mo" for a purchase
+billed once. Cadence wording belongs on plans, where the billing period fills it in
+automatically.
+
+**A package with no retail or sale price** is sold through its plans alone, and its cards read
+"As low as $X/mo" from the cheapest of them.
 
 ---
 
@@ -97,6 +131,17 @@ product on subscription; a plan with "Recurring / subscription" enabled IS
 the subscription, no separate toggle needed. The product's own retail/sale
 price remains the one-time "buy once" option shown alongside the plan grid.
 
+**Plans are an addition, never a replacement.** For packages the same holds: the
+package's own price is the one-time buy and stays what cards quote, and a plan
+adds a recurring alternative on the package page. Deleting every plan leaves a
+package perfectly sellable; clearing its own price does not.
+
+**A suffix you type OVERRIDES the billing period, and nothing checks the two agree.** Left
+blank, a quarterly plan gets "/qtr" and a six-month plan "/6mo" automatically. Type "/mo" on a
+quarterly plan and its $3,050 term TOTAL reads "$3050/mo" — on the package page, and in the
+term picker on the plan page — which tells a visitor they will be charged that every month.
+Only type a suffix when the price genuinely is per that period.
+
 **Example:** A "Testosterone" package might have three plans:
 - Monthly — $299/mo, auto-renews
 - 3-Month Supply — $799 (save 11%), recurring every 3 months
@@ -107,7 +152,7 @@ price remains the one-time "buy once" option shown alongside the plan grid.
 | Billing period | Monthly / Quarterly / 9-Month / Annual / One-time |
 | Term (months) | Explicit month count sent to the provider at checkout (1, 3, 6, 9, 12). |
 | Retail / Sale price | Display prices. Sale price shows as discounted if set. |
-| Price suffix | Appended to price in the UI ("/mo", "every 3 months"). Auto-filled from billing period if blank. |
+| Price suffix | Appended to price in the UI ("/mo", "every 3 months"). Auto-filled from billing period if blank — **leave it blank and it is always right.** |
 | Badge | "Most Popular", "Best Value", etc. |
 | Pre-selected | Mark one plan per package as the default selection on the package page. |
 | Recurring | Toggle ON for subscription plans. OFF = one-time purchase. |
@@ -265,3 +310,51 @@ can change the question without touching any ingredient.
 An answer the system does not recognise as male or female filters **nothing** rather than being
 guessed into a bucket. Someone who self-describes sees the full range rather than a narrowed
 set that a string comparison picked for them.
+
+## Renaming a product, package or page — what happens to the old link
+
+**You can rename freely. The old address keeps working.**
+
+When you change a slug, the site remembers the previous one and sends anyone
+arriving at the old address straight to the new one. Links you have already
+shared, printed, bought ads for, or that Google has indexed all keep working —
+visitors land on the right page and search engines learn the new address.
+
+Menus, buttons and product cards always use the current slug. You never need to
+go and update them.
+
+**Rename as often as you like.** Rename `a` to `b`, then later to `c`, and
+*both* older addresses go straight to `c` — never through a chain of hops.
+
+**If you give a record back an old name, it simply takes it back.** The
+redirect for that name disappears, because the name is in use again.
+
+**One thing to know:** if you *delete* a record, its old addresses stop
+redirecting and go back to showing "not found". Sending someone to a page that
+has itself been deleted would just move the dead end.
+
+## Filtering by health goal
+
+Shoppers can now filter products and stacks by **health goal** — the same goals
+the quiz uses. Nothing to set up: any goal already assigned to a product shows
+up as a filter option automatically, with a count beside it.
+
+A goal only appears as a filter when it has at least one **published** product
+behind it. A filter that leads to an empty page is worse than no filter, so
+empty goals are hidden rather than shown as a dead end.
+
+**Goals and categories are different things, and it is worth keeping them
+different.** A goal says what a product is *for* (weight management, sleep and
+recovery). A category says how you *merchandise* it (GLP-1, peptides, HRT). If
+you create categories that repeat the goals, you will be maintaining the same
+information twice, and the two will disagree the first time someone edits one.
+
+**Renaming a goal is safe** — links using the old name keep working.
+
+## What happens when you delete a product or stack
+
+Deleting moves it to the bin. Everything about it is kept — its goals,
+ingredients, categories, tags, FAQs and reviews — so **restoring it brings it
+back complete**.
+
+Permanently deleting it removes all of that with it, and cannot be undone.

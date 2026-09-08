@@ -48,6 +48,17 @@ class LeadController extends ApiController
             'state' => ['nullable', 'string', 'max:8'],
             'postal_code' => ['nullable', 'string', 'max:16'],
             'country' => ['nullable', 'string', 'size:2'],
+
+            // The address above is the SHIPPING address — its state decides
+            // which licensed clinician can take the encounter. Billing is
+            // optional and only required when it differs.
+            'billing_same_as_shipping' => ['boolean'],
+            'billing_address_line1' => ['nullable', 'required_if:billing_same_as_shipping,false', 'string', 'max:255'],
+            'billing_address_line2' => ['nullable', 'string', 'max:255'],
+            'billing_city' => ['nullable', 'required_if:billing_same_as_shipping,false', 'string', 'max:100'],
+            'billing_state' => ['nullable', 'required_if:billing_same_as_shipping,false', 'string', 'size:2'],
+            'billing_postal_code' => ['nullable', 'required_if:billing_same_as_shipping,false', 'string', 'max:16'],
+            'billing_country' => ['nullable', 'string', 'size:2'],
             'sms_consent' => ['boolean'],
             'email_consent' => ['boolean'],
 
@@ -59,7 +70,21 @@ class LeadController extends ApiController
             'consent_disclosures.*.text' => ['nullable', 'string', 'max:2000'],
             'consent_disclosures.*.version' => ['nullable', 'string', 'max:64'],
             'checkout_path' => ['nullable', 'string', 'in:local,prx'],
+            // VALIDATED PER ENTRY, not just as "an array". It was the loose
+            // rule that let a mis-shaped cart through: the frontend sent
+            // `{type: "Product", name: …}` while everything downstream reads
+            // `resource_type` / `resource_id`, so leads stored a cart the
+            // embed could never resolve and NOTHING failed. A shape mismatch
+            // must now 422 at the edge instead of surfacing as an empty
+            // clinical intake days later.
             'cart_items' => ['nullable', 'array'],
+            'cart_items.*.resource_type' => ['required', 'string', 'in:product,package,plan'],
+            'cart_items.*.resource_id' => ['required', 'integer', 'min:1'],
+            'cart_items.*.quantity' => ['nullable', 'integer', 'min:1'],
+            'cart_items.*.name' => ['nullable', 'string', 'max:255'],
+            'cart_items.*.unit_price' => ['nullable', 'numeric', 'min:0'],
+            'cart_items.*.price_suffix' => ['nullable', 'string', 'max:32'],
+            'cart_items.*.billing_period' => ['nullable', 'string', 'max:32'],
             'cart_subtotal' => ['nullable', 'numeric', 'min:0'],
             'utm_source' => ['nullable', 'string', 'max:255'],
             'utm_medium' => ['nullable', 'string', 'max:255'],
@@ -68,6 +93,22 @@ class LeadController extends ApiController
             'utm_content' => ['nullable', 'string', 'max:255'],
             'referrer' => ['nullable', 'url', 'max:2048'],
             'landing_url' => ['nullable', 'url', 'max:2048'],
+
+            // Referral attribution, carried by the storefront from the visitor's
+            // first-party cookie. `referral_code` is accepted even when it matches
+            // no live link — an unresolvable code is recorded as evidence that
+            // someone arrived claiming it, exactly as an unmatched click is.
+            //
+            // DELIBERATELY LENIENT, and it is not sloppiness. A strict rule here
+            // rejects the whole LEAD over a malformed marketing code — and since
+            // the code arrives from a 30-day cookie, one crafted `?ref=` link
+            // would lock a visitor out of checkout until they cleared it. The
+            // shape is enforced where it can fail safely instead:
+            // ReferralLink::normalizeCode() drops anything unusable and the lead
+            // is still captured. A lost commission is recoverable from
+            // referral_clicks; a lost lead is not.
+            'referral_code' => ['nullable', 'string', 'max:255'],
+            'referral_visitor_id' => ['nullable', 'string', 'max:64'],
 
             // The intake quiz. `quiz_slug` rather than an id: the frontend is
             // handed slugs everywhere else and an id would be the only place
@@ -116,6 +157,13 @@ class LeadController extends ApiController
             state: $validated['state'] ?? null,
             postal_code: $validated['postal_code'] ?? null,
             country: $validated['country'] ?? 'US',
+            billing_same_as_shipping: (bool) ($validated['billing_same_as_shipping'] ?? true),
+            billing_address_line1: $validated['billing_address_line1'] ?? null,
+            billing_address_line2: $validated['billing_address_line2'] ?? null,
+            billing_city: $validated['billing_city'] ?? null,
+            billing_state: $validated['billing_state'] ?? null,
+            billing_postal_code: $validated['billing_postal_code'] ?? null,
+            billing_country: $validated['billing_country'] ?? null,
             sms_consent: (bool) ($validated['sms_consent'] ?? false),
             email_consent: (bool) ($validated['email_consent'] ?? false),
             cart_items: $validated['cart_items'] ?? [],
@@ -134,6 +182,8 @@ class LeadController extends ApiController
             cart_ulid: $request->header('X-Cart-Token') ?: null,
             quiz_answers: $quizAnswers,
             quiz_id: $quiz?->id,
+            referral_code: $validated['referral_code'] ?? null,
+            referral_visitor_id: $validated['referral_visitor_id'] ?? null,
         );
 
         $lead = $action->execute($data);

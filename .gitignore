@@ -32,3 +32,83 @@ Thumbs.db
 # Windows WSL alternate data stream metadata
 *:Zone.Identifier
 .playwright-mcp/
+
+# Local-only analysis and operator-direction working notes.
+# These are working notes, not shipped module documentation: they carry commercial
+# strategy and a map of this integration's weak points, and the admin repo is PUBLIC.
+# Shipped per-module docs (docs/{module}/{dev,user}.md) stay tracked — do not add those.
+/docs/platform-direction.md
+/docs/reviews/roadmap.md
+/docs/prescribe-rx/gap-register.md
+/docs/_analysis/
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SECRETS — this repository is PUBLIC and is deployed for multiple groups.
+# Credentials are DATABASE-DRIVEN (encrypted settings + per-instance integration
+# records). Nothing secret belongs in git, including in documentation.
+#
+# If a value would let someone act as this install, it is not documentation.
+# Use a placeholder such as <PRESCRIBE_RX_API_TOKEN>.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Environment — every variant. .env.example is the ONLY tracked env file and
+# must contain placeholders only.
+.env
+.env.*
+!.env.example
+*.env
+env.local
+.envrc
+
+# Keys, certificates and credential files
+*.pem
+!**/certifi/cacert.pem
+*.key
+*.p8
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa*
+id_ed25519*
+*.ppk
+credentials.json
+service-account*.json
+gcp-*.json
+aws-credentials*
+.aws/
+secrets.*
+*secret*.json
+*credentials*.yml
+
+# Database dumps and backups — carry live tokens and PII
+*.sql
+!database/**/*.sql
+*.sql.gz
+*.dump
+backup*.tar*
+storage/backups/
+
+# Local analysis and agent working notes
+/docs/_analysis/
+/agent-docs/
+
+# Agent configuration and instruction files (all common variants + casings)
+.claude/
+.codex/
+.gemini/
+.cursor/
+.aider*
+CLAUDE.md
+claude.md
+Claude.md
+CLAUDE.local.md
+AGENT.md
+agent.md
+AGENTS.md
+agents.md
+GEMINI.md
+gemini.md
+CODEX.md
+codex.md
+.mcp.json

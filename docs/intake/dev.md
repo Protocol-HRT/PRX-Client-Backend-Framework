@@ -288,3 +288,8 @@ Per-tenant secrets are in `IntegrationSettings` (encrypted at rest via spatie/la
 **Webhook secret storage.** The `prescribe_rx_webhook_secret` is encrypted at rest. When rotating it: update the secret in the PRX admin first, then update the value in Settings → Integrations immediately after — there is a narrow window between rotation and update where webhooks will fail verification. PRX retries failed webhooks, so no events will be permanently lost.
 
 **`TelehealthManager` is lazily resolved per-request.** The resolved provider instance is cached in `$this->resolved` for the lifetime of the request. If you need to force a specific provider in tests, resolve `TelehealthManager` from the container and call `->provider('prescribe-rx')` directly, or mock the interface.
+
+
+## Anonymous patient registration identity boundary (2026-09-06)
+
+`RegisterPatientAction` creates only a local, unverified patient. It never calls `findPatientByEmail` and never sets `prx_patient_chart_id`, `prx_patient_id`, `prx_chart_verified_at`, or `email_verified_at`. Client-supplied values for those fields are ignored. The returned local Sanctum token is not proof of PRX chart ownership. Linking requires a separately designed and verified identity/intake flow; an exact email match is insufficient. `PatientAuthTest` asserts no lookup/outbound request and no chart linkage or verification at registration.

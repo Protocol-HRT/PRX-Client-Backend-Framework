@@ -129,9 +129,9 @@ Paginated. 15 per page, max 50.
 | `ingredient` | string | Filter by ingredient (compound) slug |
 | `featured` | bool | Featured products only |
 | `in_stock` | bool | In-stock products only |
-| `price_min` / `price_max` | float | Effective-price bounds |
+| `price_min` / `price_max` | float | Bounds on `price_from.amount` — the figure the card shows |
 | `search` | string | Name / subtitle LIKE search |
-| `sort` | string | `position` (default) \| `name` \| `-name` \| `price` \| `-price` \| `newest` \| `oldest` — whitelisted in `SortsCatalogQueries`; price sorts on `COALESCE(sale_price, retail_price)` |
+| `sort` | string | `position` (default) \| `name` \| `-name` \| `price` \| `-price` \| `newest` \| `oldest` — whitelisted in `SortsCatalogQueries`. Price sorts on `price_from.amount` for both kinds, so the order matches the cards |
 | `per_page` | int | Page size (max 50) |
 
 Response includes `links` + `meta` pagination keys. Cards carry a
@@ -165,7 +165,29 @@ Also includes `faqs` — see [Polymorphic FAQs](#polymorphic-faqs).
 
 ### `GET /api/v1/catalog/packages`
 
-Same filter params as products (minus class/type/form/ingredient) plus `sort`. Each package includes its Published plans and a `price_range` computed from plan prices.
+Same filter params as products (minus class/type/form/ingredient) plus `sort`. Each package
+includes its Published plans, a `price_range` spanning the plans and its own price, and
+`price_from` — the figure a card leads with.
+
+**`price_min` / `price_max` and `sort=price` operate on `price_from.amount`, not on plan
+prices and not on the package's own columns.** A package's card shows the cheapest way in
+(its own one-time price against its monthly-cadence plans), and a filter measuring anything
+else contradicts the numbers on screen. It previously ran `whereHas('plans')` on plan prices,
+which made the package's own price invisible to the filter and left a package with **no**
+plans unable to match any price range at all — cards read "As low as $399.00" and vanished at
+a $350 minimum because their plans were $279.99 and $671.98 with nothing in between.
+
+The figure is not a stored column, so filtering, sorting and aggregating it need it as SQL:
+`HasCardPriceExpression` is the single definition, exposed as `Package::priceFromAmountSql()`
+and `Product::priceFromAmountSql()` and used by both listings' filters, both price sorts, both
+facet bounds, and the quiz's option figures. **Products run the same rule for the same reason**
+— a product's own price is its card figure only while no product carries a monthly plan, and
+that is a coincidence rather than a rule. It mirrors the **amount** half of
+`BuildsCatalogPricing::catalogPriceFrom()` — the suffix, the `plan_id` and the non-recurring
+tie-break decide which candidate is reported, never what the lowest number is.
+`CatalogPriceParityTest` asserts the two agree on every branch, for both kinds, including the ones raw SQL
+gets wrong for free: soft-deleted plans (the relation hides them, SQL does not), unpublished
+plans, unpriced plans, and intro prices.
 
 ### `GET /api/v1/catalog/packages/{slug}`
 
@@ -269,8 +291,30 @@ All visible tags ordered by position.
 
 Filter-sidebar payload: `categories` / `classes` / `types` / `forms` /
 `ingredients` / `tags` (each `[{name, slug, count}]`, published-product counts,
-zero-count rows omitted), `price {min, max, currency}` bounds across published
-products, `availability {in_stock, out_of_stock}` counts.
+zero-count rows omitted), `availability {in_stock, out_of_stock}` counts, and
+**two** price blocks:
+
+| Key | Spans |
+|---|---|
+| `price {min, max, currency}` | `price_from.amount` across published **products** |
+| `package_price {min, max, currency}` | `price_from.amount` across published **packages** |
+
+Both measure the figure the cards show, through the one shared expression
+(`HasCardPriceExpression`), so a slider's ends, the rows it keeps and the order they appear in
+cannot disagree with each other or with the cards.
+
+**Two blocks because one endpoint serves both listings, and the two catalogs do not span the
+same prices.** Both measure the same thing — the card figure — but over different rows, so a
+slider fed the wrong block labels one catalog's range while filtering the other's. That is what
+`/stacks` did until `package_price` existed. `package_price` is
+additive: `price` has always meant products and other frontends read it.
+
+**Known and not fixed: every other facet group is still product-scoped.** The counts are
+published-PRODUCT counts, and `products_count > 0` drops a category or tag attached only to
+packages from the payload entirely — so it cannot be selected on the package listing even though
+`PackageController` honours those same slugs. `availability` is likewise a product count. Fixing
+it needs a scoping parameter and a decision about what the counts mean per kind; it is recorded
+rather than half-done.
 
 ---
 
@@ -540,3 +584,65 @@ Products: a **Health goals** multi-select on the product form's Merchandising
 tab, or the "Pinned products" relation manager on the goal itself. Packages:
 the **Badge override** relation manager on the package, empty by default.
 Colour: the **Badge colour** select on the health goal.
+
+## Listing filters: health goals are the populated axis
+
+`GET /catalog/products` and `/catalog/packages` accept `goal={slug}` alongside
+`category`, `tag`, `class`, `type`, `form` and `ingredient`. `GET /catalog/facets`
+returns a `goals` block first, before `categories`.
+
+**Goals lead because they are the classification that actually has data.** On a
+typical install every published product carries health goals — they are the
+same vocabulary the quiz matches on — while categories are a merchandising axis
+an operator fills in per deployment. Measured on one deployment: 38 goal links
+across 13 of 14 live products, against **zero** category links on any live
+product, which left the Category filter group rendering nothing at all.
+
+The two axes are independent and should stay that way:
+
+| | Means | Populated by |
+|---|---|---|
+| `goal` | what the product is *for* | shared with the quiz |
+| `category` | how it is *merchandised* (`glp-1`, `peptides`, `hrt`) | the operator |
+
+Modelling categories as goal synonyms (`weight-loss` beside `weight-management`)
+produces two vocabularies for one idea that drift the first time either is
+edited. Keep categories to axes the goals cannot express.
+
+**`show_in_quiz` is not consulted by the facet.** It decides whether a goal is
+*offered* in the quiz, not whether it classifies the catalog. `is_active` is the
+gate here, and goals with no published products are omitted — a facet option
+that leads to an empty page is worse than no option.
+
+**A renamed goal redirects.** `HealthGoal` carries `HasSlugHistory`, and
+`health_goal` is registered in `SlugRedirectController`, so `?goal=old-slug`
+resolves to the current one. See `docs/frontend/dev.md`.
+
+## Deleting a catalog record: what goes with it
+
+**Foreign-keyed relations already cascade, and deliberately do not fire on a
+soft delete.** `health_goal_product`, `ingredient_product`, `package_product`
+and `product_coas` are all `ON DELETE CASCADE`; `plans` is `SET NULL`. A soft
+delete is an UPDATE setting `deleted_at`, so the database removes nothing — which
+is correct, because a restored record must come back with its classifications
+intact. The cascades fire on `forceDelete()`, where the record cannot return.
+
+**Polymorphic relations have no foreign key and need code.** A FK cannot span a
+`*_type` column, so `categorizables`, `taggables`, `faqables`, `reviews`,
+`catalog_item_sections`, `fulfillment_center_skus` and **both ends of
+`catalog_relations`** would survive their record with nothing to remove them.
+`catalog_relations` is double-polymorphic and is the largest of them — it drives
+the Related / Pairs-well-with rails — so a record must be cleared as `source`
+AND as `related`, or a deleted product keeps appearing in other products' rails.
+
+`PurgesMorphRelationsOnForceDelete` clears them, on **force delete only**, from
+a `protected array $morphPivots` declared on the model. It is applied to
+`Product` and `Package`.
+
+**The hazard it closes is not untidiness.** An orphan row keyed on `product #8`
+belongs to whatever record next occupies id 8 — note that a normal insert will
+not reissue it, since InnoDB persists the auto-increment counter from MySQL 8;
+the exposure is explicit-id writes, which this project uses in its fill scripts,
+the compound import and any database restore — the categories, tags and FAQs of a deleted product reappearing on an
+unrelated one, with nothing in the admin to explain it. There is a test for
+exactly that.

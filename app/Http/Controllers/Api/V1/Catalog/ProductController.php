@@ -33,8 +33,8 @@ class ProductController extends ApiController
     #[QueryParameter('type', 'Filter by product type slug.', type: 'string', example: 'blends')]
     #[QueryParameter('form', 'Filter by product form slug.', type: 'string', example: 'vial-lyophilized')]
     #[QueryParameter('ingredient', 'Filter by ingredient (compound) slug.', type: 'string', example: 'bpc-157')]
-    #[QueryParameter('price_min', 'Filter products with an effective price at or above this amount (USD).', type: 'float', infer: false, example: 50)]
-    #[QueryParameter('price_max', 'Filter products with an effective price at or below this amount (USD).', type: 'float', infer: false, example: 300)]
+    #[QueryParameter('price_min', 'Filter by the figure a card shows (`price_from.amount`, the "as low as" price) at or above this amount (USD).', type: 'float', infer: false, example: 50)]
+    #[QueryParameter('price_max', 'Filter by the figure a card shows (`price_from.amount`, the "as low as" price) at or below this amount (USD).', type: 'float', infer: false, example: 300)]
     #[QueryParameter('sort', 'Sort order: position (default), name, -name, price, -price, newest, oldest.', type: 'string', example: '-price')]
     #[QueryParameter('per_page', 'Results per page (1–50, default 15).', type: 'integer', example: 15)]
     public function index(Request $request): AnonymousResourceCollection
@@ -43,7 +43,24 @@ class ProductController extends ApiController
 
         $products = Product::query()
             ->where('status', CatalogStatus::Published)
-            ->with(['categories', 'tags', 'healthGoals', 'productClass', 'productType', 'productForm', 'administrationMethod', 'volumeUnit'])
+            ->with([
+                'categories', 'tags', 'healthGoals', 'productClass', 'productType',
+                'productForm', 'administrationMethod', 'volumeUnit',
+                // REQUIRED FOR `price_from` — ProductResource omits it silently
+                // when this is missing, and a listing card would then disagree
+                // with the detail page about the same product. Same constraint
+                // as the show route and as PackageController.
+                'plans' => fn ($q) => $q->where('status', CatalogStatus::Published)->orderBy('position'),
+            ])
+            // Health goals are the catalog's populated classification — every
+            // published product carries them, and they are the same vocabulary
+            // the quiz matches on, so a filtered listing and a quiz result
+            // agree about what a product is for. Categories are the
+            // merchandising axis and stay independent of this.
+            ->when($request->filled('goal'), fn ($q) => $q->whereHas(
+                'healthGoals',
+                fn ($q) => $q->where('slug', $request->string('goal'))
+            ))
             ->when($request->filled('category'), fn ($q) => $q->whereHas(
                 'categories',
                 fn ($q) => $q->where('slug', $request->string('category'))
@@ -76,21 +93,27 @@ class ProductController extends ApiController
             }))
             ->when(
                 $request->filled('price_min') || $request->filled('price_max'),
+                // FILTERS ON THE FIGURE THE CARD SHOWS, the same rule packages
+                // use. A product's own effective price is that figure today,
+                // because no product carries a monthly plan to undercut it — so
+                // this is not a behaviour change, it is the removal of a
+                // coincidence. The day a product gets one, its filter, sort and
+                // slider follow the cards instead of quietly disagreeing, which
+                // is the defect /stacks had.
                 function ($q) use ($request): void {
-                    $min = $request->filled('price_min') ? (float) $request->input('price_min') : null;
-                    $max = $request->filled('price_max') ? (float) $request->input('price_max') : null;
+                    $figure = Product::priceFromAmountSql();
 
-                    $q->where(function ($q) use ($min, $max): void {
-                        if ($min !== null) {
-                            $q->whereRaw('COALESCE(sale_price, retail_price) >= ? + 0', [$min]);
-                        }
-                        if ($max !== null) {
-                            $q->whereRaw('COALESCE(sale_price, retail_price) <= ? + 0', [$max]);
-                        }
-                    });
+                    // `? + 0` coerces the TEXT-bound float to REAL for correct
+                    // SQLite comparison.
+                    if ($request->filled('price_min')) {
+                        $q->whereRaw("{$figure} >= ? + 0", [(float) $request->input('price_min')]);
+                    }
+                    if ($request->filled('price_max')) {
+                        $q->whereRaw("{$figure} <= ? + 0", [(float) $request->input('price_max')]);
+                    }
                 }
             )
-            ->tap(fn ($q) => $this->applyCatalogSort($q, $request->input('sort')))
+            ->tap(fn ($q) => $this->applyCatalogSort($q, $request->input('sort'), Product::priceFromAmountSql()))
             ->paginate($perPage);
 
         return ProductResource::collection($products);

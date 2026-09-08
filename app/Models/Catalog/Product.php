@@ -2,8 +2,12 @@
 
 namespace App\Models\Catalog;
 
+use App\Enums\Catalog\IntakeSelectionMode;
 use App\Enums\CatalogStatus;
 use App\Enums\InventoryStatus;
+use App\Models\Concerns\PurgesMorphRelationsOnForceDelete;
+use App\Models\Concerns\HasSlugHistory;
+use App\Models\Concerns\HasCardPriceExpression;
 use App\Models\Concerns\HasCatalogRelations;
 use App\Models\Concerns\HasCategories;
 use App\Models\Concerns\HasFaqs;
@@ -28,7 +32,33 @@ use Spatie\Sluggable\SlugOptions;
 
 class Product extends Model implements Sortable
 {
-    use HasCatalogRelations, HasCategories, HasFactory, HasFaqs, HasFulfillmentCenter, HasItemSections, HasReviews, HasSlug, HasTags, SoftDeletes, SortableTrait;
+    use HasCardPriceExpression, HasCatalogRelations, HasCategories, HasFactory, HasFaqs, HasFulfillmentCenter, HasItemSections, HasReviews, HasSlug, HasSlugHistory, HasTags, PurgesMorphRelationsOnForceDelete, SoftDeletes, SortableTrait;
+
+    /**
+     * Polymorphic pivots with no foreign key to cascade through, cleared on a
+     * PERMANENT delete only. See PurgesMorphRelationsOnForceDelete.
+     *
+     * `reviews` and `catalog_item_sections` are morphMany (owned rows) rather
+     * than pivots, but the orphan hazard is identical — nothing removes them
+     * and a future record on the same id inherits them.
+     */
+    protected array $morphPivots = [
+        ['table' => 'categorizables', 'morph' => 'categorizable'],
+        ['table' => 'taggables', 'morph' => 'taggable'],
+        ['table' => 'faqables', 'morph' => 'faqable'],
+        ['table' => 'reviews', 'morph' => 'reviewable'],
+        ['table' => 'catalog_item_sections', 'morph' => 'sectionable'],
+        ['table' => 'fulfillment_center_skus', 'morph' => 'fulfillmentable'],
+
+        // catalog_relations is DOUBLE polymorphic and is the largest morph
+        // table keyed on these models — it drives the "Related" / "Pairs well
+        // with" rails. Both ends need clearing: the outgoing rail this record
+        // owns, AND every other record's rail that points AT it. Miss the
+        // second and a deleted product keeps appearing in other products' rails.
+        ['table' => 'catalog_relations', 'morph' => 'source'],
+        ['table' => 'catalog_relations', 'morph' => 'related'],
+    ];
+
 
     public function getSlugOptions(): SlugOptions
     {
@@ -64,6 +94,7 @@ class Product extends Model implements Sortable
         'provider_product_id',
         'provider_product_sku',
         'provider_encounter_type_id',
+        'intake_selection_mode',
         'badge_text',
         'highlights',
         'detail_sections',
@@ -87,11 +118,38 @@ class Product extends Model implements Sortable
         'sort_when_creating' => true,
     ];
 
+    /**
+     * The card figure as SQL — see `HasCardPriceExpression`.
+     *
+     * A product's own price is its figure today, because no product carries a
+     * monthly plan to undercut it — so this changes nothing visible. It exists
+     * so that when one does, the filter, the sort and the facet bounds follow
+     * the cards instead of quietly disagreeing with them, which is exactly the
+     * defect packages had on /stacks.
+     */
+    public static function priceFromAmountSql(): string
+    {
+        return static::cardPriceExpression('products', 'product_id');
+    }
+
+    /**
+     * Mirrors the column default so a NEW model instance reports the same
+     * selection mode as a saved one. Without it the attribute reads null
+     * until the row is refreshed, and any `=== IntakeSelectionMode::…`
+     * comparison silently takes the wrong branch on an unrefreshed object.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'intake_selection_mode' => 'product',
+    ];
+
     protected function casts(): array
     {
         return [
             'status' => CatalogStatus::class,
             'inventory_status' => InventoryStatus::class,
+            'intake_selection_mode' => IntakeSelectionMode::class,
             'gallery' => 'array',
             'retail_price' => 'decimal:2',
             'sale_price' => 'decimal:2',

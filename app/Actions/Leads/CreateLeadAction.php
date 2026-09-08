@@ -3,11 +3,14 @@
 namespace App\Actions\Leads;
 
 use App\Actions\Concerns\Transacts;
+use App\Actions\Referral\AttributeLeadAction;
 use App\Data\Leads\LeadData;
 use App\Events\Leads\LeadCreated;
 use App\Models\Lead;
 use App\Models\LeadDisposition;
+use Illuminate\Support\Facades\Log;
 use Spatie\LaravelData\DataCollection;
+use Throwable;
 
 class CreateLeadAction
 {
@@ -36,6 +39,13 @@ class CreateLeadAction
                 'state' => $data->state,
                 'postal_code' => $data->postal_code,
                 'country' => $data->country,
+                'billing_same_as_shipping' => $data->billing_same_as_shipping,
+                'billing_address_line1' => $data->billing_address_line1,
+                'billing_address_line2' => $data->billing_address_line2,
+                'billing_city' => $data->billing_city,
+                'billing_state' => $data->billing_state,
+                'billing_postal_code' => $data->billing_postal_code,
+                'billing_country' => $data->billing_country,
                 'sms_consent' => $data->sms_consent,
                 'email_consent' => $data->email_consent,
                 'consent_given_at' => ($data->sms_consent || $data->email_consent) ? now() : null,
@@ -65,6 +75,36 @@ class CreateLeadAction
 
             return $lead;
         });
+
+        // ATTRIBUTION RUNS HERE — after the commit, before the event — and the
+        // ordering is load-bearing in both directions.
+        //
+        // After the commit, because a referral may never roll back a lead: a lost
+        // commission is recoverable from `referral_clicks`, a lost lead is not.
+        // Before the event, because `AttributeLeadAction` replaces `utm_*`,
+        // `referrer` and `landing_url` from the click — and `utm_source`,
+        // `utm_medium` and `utm_campaign` are in WorkflowServiceProvider's
+        // condition allow-list. Dispatching first would let a queued
+        // `lead.created` chain route a referred visitor on pre-backfill values.
+        // (`referral_*` itself is deliberately NOT in that allow-list.)
+        //
+        // Wrapped because nothing about attribution is worth failing a request
+        // that has already banked a lead.
+        if (filled($data->referral_code)) {
+            try {
+                app(AttributeLeadAction::class)->execute(
+                    $lead,
+                    $data->referral_code,
+                    $data->referral_visitor_id,
+                );
+            } catch (Throwable $e) {
+                Log::error('lead attribution failed', [
+                    'lead_id' => $lead->id,
+                    'code' => $data->referral_code,
+                    'exception' => $e->getMessage(),
+                ]);
+            }
+        }
 
         // OUTSIDE the transaction, so a listener can never see — or act on — a
         // lead whose insert then rolled back. Fires for EVERY lead, quiz or

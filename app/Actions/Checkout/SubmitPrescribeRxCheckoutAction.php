@@ -2,10 +2,14 @@
 
 namespace App\Actions\Checkout;
 
+use App\Actions\Exceptions\ActionException;
 use App\Data\Checkout\CheckoutResultData;
 use App\Data\PrescribeRx\AddressData;
+use App\Data\PrescribeRx\IntakePackageSelectionData;
+use App\Data\PrescribeRx\IntakeProductSelectionData;
 use App\Data\PrescribeRx\PatientData;
 use App\Data\PrescribeRx\UnifiedIntakeRequestData;
+use App\Enums\Catalog\IntakeSelectionMode;
 use App\Enums\EncounterStatus;
 use App\Enums\LeadStatus;
 use App\Enums\OrderStatus;
@@ -22,7 +26,8 @@ use App\Services\PrescribeRx\Exceptions\PrescribeRxException;
 use App\Settings\IntegrationSettings;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
-use RuntimeException;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class SubmitPrescribeRxCheckoutAction
 {
@@ -37,35 +42,92 @@ class SubmitPrescribeRxCheckoutAction
      *
      * @param  array<string, mixed>  $intakeAnswers
      *
-     * @throws RuntimeException|PrescribeRxException
+     * @throws ActionException  with a message written to be shown to the customer
+     * @throws PrescribeRxException  never shown verbatim — the provider's text carries its stack
      */
     public function execute(Cart $cart, Lead $lead, array $intakeAnswers = []): CheckoutResultData
     {
-        $items = $cart->items()->with(['itemable', 'itemable.products', 'plan'])->get();
+        // `itemable.products` is deliberately gone: we no longer flatten a
+        // package into its members, so loading them was work whose result was
+        // thrown away. A plan line reaches its parent package/product lazily —
+        // a checkout carries a handful of lines, and morphWith constraints for
+        // two relations on one of three morph types costs more than it saves.
+        // `productType` is loaded through morphWith rather than a plain
+        // `itemable.productType`: a nested load on a morphTo is applied to
+        // EVERY morph type, and Package has no such relation, so the plain
+        // form throws "Call to undefined relationship". The old
+        // `itemable.products` had the mirror-image bug for product lines.
+        $items = $cart->items()->with([
+            'itemable' => fn ($morphTo) => $morphTo->morphWith([Product::class => ['productType.productClass']]),
+            'plan',
+        ])->get();
 
         if ($items->isEmpty()) {
-            throw new RuntimeException('Cart is empty.');
+            throw ActionException::failed('Your cart is empty.');
         }
 
-        $productIds = $this->resolveProductIds($items);
+        $selections = $this->resolveSelections($items);
 
-        if (empty($productIds)) {
-            throw new RuntimeException('No Prescribe-Rx product IDs found on cart items. Ensure catalog items have provider_product_id / provider_product_ids configured.');
+        // NOTE: this fires only when the WHOLE cart is unmapped. A cart of
+        // [mapped product, unmapped package] still submits, naming only the
+        // product — each skipped line is logged by the resolver above.
+        if ($selections['products'] === [] && $selections['packages'] === []) {
+            // This sentence was written for an operator and used to be shown to
+            // the customer, who was told to "map the catalog first" and given
+            // the names of our provider id columns. It is a deployment fault,
+            // not something a shopper did or can fix, so it goes to the log and
+            // they get told plainly that we cannot take the order.
+            Log::error('Checkout blocked: no Prescribe-Rx selections on any cart item.', [
+                'cart_id' => $cart->id,
+                'hint' => 'Map the catalog: packages need provider_package_id / provider_package_sku, products need provider_product_id / provider_product_sku.',
+            ]);
+
+            throw ActionException::failed('We cannot take this order right now. Please contact support.', 503);
         }
+
+        $isSandbox = $this->settings->prescribe_rx_environment === 'sandbox';
 
         $request = UnifiedIntakeRequestData::from([
             'patient' => $this->buildPatient($lead),
             'encounter_type_id' => $this->settings->prescribe_rx_encounter_type_id,
             'sales_org_id' => $this->settings->prescribe_rx_sales_org_id,
             'client_id' => $this->settings->prescribe_rx_client_id,
-            'product_ids' => $productIds,
+            'products' => $selections['products'],
+            'packages' => $selections['packages'],
             'answers' => $intakeAnswers,
+            // Only ever ASSERTED, never denied. Their server auto-flags
+            // test-looking names as sandbox; sending an explicit `false` in
+            // production could override that heuristic and let a test-named
+            // submission reach real fulfilment and billing. Absent is what
+            // production sent before this change, so absent is what it sends
+            // now — this is deliberately not `(bool) $isSandbox`.
+            'is_sandbox' => $isSandbox ?: null,
+            'metadata' => array_filter([
+                'lead_uuid' => $lead->uuid,
+                'cart_ulid' => $cart->ulid,
+                'utm_source' => $lead->utm_source,
+                'utm_medium' => $lead->utm_medium,
+                'utm_campaign' => $lead->utm_campaign,
+            ], fn ($v) => $v !== null && $v !== ''),
         ]);
 
         // PRX API call is intentionally outside the DB transaction.
-        $prxResponse = $this->prx->submitUnifiedIntake($request);
-
-        $isSandbox = $this->settings->prescribe_rx_environment === 'sandbox';
+        //
+        // The idempotency key is derived from the cart and lead rather than
+        // generated, so a retry of the SAME submission replays their stored
+        // response (24h window) instead of minting a second encounter for one
+        // patient. It must stay stable across retries — do not add a timestamp.
+        //
+        // KNOWN EDGE, accepted: if their call succeeds but the local
+        // transaction below fails, and the visitor then EDITS the cart and
+        // resubmits under the same lead inside 24h, their stored response for
+        // the old selection replays while we snapshot the new items. Hashing
+        // the selection into the key would close it at the cost of making a
+        // genuine retry of an unchanged cart look new.
+        $prxResponse = $this->prx->submitUnifiedIntake(
+            $request,
+            $this->idempotencyKey($cart, $lead),
+        );
 
         $order = DB::transaction(function () use ($cart, $lead, $items, $prxResponse, $isSandbox): Order {
             $encounter = Encounter::create([
@@ -132,60 +194,234 @@ class SubmitPrescribeRxCheckoutAction
     }
 
     /**
-     * Resolve PRX product IDs from the cart items.
-     * Priority: Plan.provider_product_ids > Product.provider_product_id > Package products.
+     * Namespaced per INSTALL, never per brand — this backend ships as a
+     * generic product and several deployments submit to the same
+     * prescribe-rx tenant, so an unprefixed key could collide across them.
+     * Uses the app name the same way the Redis/Horizon prefixes do; nothing
+     * client-specific may be hardcoded here.
+     */
+    private function idempotencyKey(Cart $cart, Lead $lead): string
+    {
+        return Str::slug((string) config('app.name', 'app')).'-'.$cart->ulid.'-'.$lead->uuid;
+    }
+
+    /**
+     * Build the modern `products[]` / `packages[]` selection arrays.
+     *
+     * WHY THIS IS NOT A FLATTEN. The legacy shape sent member product ids for
+     * a package, which discarded the package itself — and prescribe-rx keys
+     * real behaviour off the package row (a labs hold before dispensing, a $0
+     * shipping quote, consult-included pricing). Naming the package delegates
+     * every one of those facts back to the side that owns it, and their side
+     * already knows the contents, so nothing is lost by not enumerating them.
+     *
+     * Each line carries EXACTLY ONE identifier, per their contract. The UUID
+     * is preferred over the human-readable number because it is stable across
+     * a rename on their side; the number is the fallback for items mapped by
+     * SKU alone. An unmapped item contributes nothing and is skipped — the
+     * caller raises if that leaves the whole selection empty.
      *
      * @param  Collection<int, CartItem>  $items
-     * @return list<string>
+     * @return array{products: list<IntakeProductSelectionData>, packages: list<IntakePackageSelectionData>}
      */
-    private function resolveProductIds(Collection $items): array
+    private function resolveSelections(Collection $items): array
     {
-        $productIds = [];
+        $products = [];
+        $packages = [];
 
         foreach ($items as $item) {
             $itemable = $item->itemable;
+
             if (! $itemable) {
                 continue;
             }
 
-            if ($item->plan_id) {
-                $plan = $item->plan;
-                if ($plan?->provider_product_ids) {
-                    array_push($productIds, ...$plan->provider_product_ids);
-                }
-            } elseif ($itemable instanceof Plan) {
-                if ($itemable->provider_product_ids) {
-                    array_push($productIds, ...$itemable->provider_product_ids);
-                }
-            } elseif ($itemable instanceof Product) {
-                if ($itemable->provider_product_id) {
-                    $productIds[] = $itemable->provider_product_id;
-                }
-            } elseif ($itemable instanceof Package) {
-                foreach ($itemable->products as $product) {
-                    if ($product->provider_product_id) {
-                        $productIds[] = $product->provider_product_id;
-                    }
-                }
+            // There is deliberately no `$itemable instanceof Plan` branch.
+            // A plan cannot BE a cart line — `CartController::addItem` accepts
+            // `type` in product|package only, and production holds just those
+            // two itemable types. A chosen term arrives as `plan_id` ON the
+            // line, handled below. The old resolver carried such a branch and
+            // it was unreachable; it is absent rather than left as decoration
+            // a later reader would trust.
+            if ($itemable instanceof Package) {
+                $packages[] = $this->packageSelection($itemable, $item->plan);
+
+                continue;
+            }
+
+            if ($itemable instanceof Product) {
+                $products[] = $this->productSelection($itemable, $item);
             }
         }
 
-        return array_values(array_unique(array_filter($productIds)));
+        return [
+            'products' => array_values(array_filter($products)),
+            'packages' => array_values(array_filter($packages)),
+        ];
     }
 
+    /**
+     * Their `packages[]` carries no quantity, so a package bought more than
+     * once is nominated once on the encounter; the local order rows keep the
+     * real quantity and the money.
+     */
+    private function packageSelection(Package $package, ?Plan $plan): ?IntakePackageSelectionData
+    {
+        $id = $package->provider_package_id;
+        $number = $package->provider_package_sku;
+
+        if ($id === null && $number === null) {
+            Log::warning('Prescribe-Rx: package omitted from intake — no provider mapping.', [
+                'package_id' => $package->id,
+                'package_name' => $package->name,
+            ]);
+
+            return null;
+        }
+
+        return new IntakePackageSelectionData(
+            package_id: $id,
+            package_number: $id === null ? $number : null,
+            plan_id: $plan?->provider_plan_id,
+        );
+    }
+
+    /**
+     * Translate our lead vocabulary into theirs.
+     *
+     * Our lead form offers `prefer_not_to_say` (LeadController) and older rows
+     * may carry `unspecified`; prescribe-rx accepts only male / female / other
+     * and 422s on anything else. Gender is optional there, so an unmappable
+     * value is DROPPED rather than guessed — declining to answer is not the
+     * same as being "other", and inventing a value would put a wrong answer on
+     * a clinical chart.
+     */
+    private static function mapGender(?string $gender): ?string
+    {
+        return in_array($gender, ['male', 'female', 'other'], true) ? $gender : null;
+    }
+
+    /**
+     * A product nominates itself by EXACT product or by product TYPE, per its
+     * own `intake_selection_mode`. Type mode sends a placeholder line so the
+     * prescribing clinician chooses the variant and dose — required wherever
+     * strength is provider-determined.
+     *
+     * Type mode deliberately does NOT fall back to the exact product when the
+     * type is unmapped: falling back would silently dispense a specific dose
+     * on an item whose whole point is that a clinician picks it. The line is
+     * dropped and logged instead.
+     */
+    private function productSelection(Product $product, CartItem $item): ?IntakeProductSelectionData
+    {
+        $quantity = $item->quantity;
+        $snapshot = $item->unit_price_snapshot !== null ? (float) $item->unit_price_snapshot : null;
+
+        // Exactly one identifier per line throughout, so each slug is a
+        // FALLBACK rather than a companion. The id wins when present because it
+        // is unambiguous; the slug matters because it is far likelier to survive
+        // a sandbox → production switch, which is how two of this install's
+        // mappings came to point at nothing.
+        if ($product->intake_selection_mode === IntakeSelectionMode::ProductType) {
+            $type = $product->productType;
+            $typeId = $type?->provider_product_type_id;
+            $typeSlug = $type?->provider_product_type_slug;
+
+            if ($typeId === null && $typeSlug === null) {
+                Log::warning('Prescribe-Rx: product omitted from intake — set to product-type mode but its type has no provider mapping.', [
+                    'product_id' => $product->id,
+                    'product_name' => $product->name,
+                    'product_type_id' => $product->product_type_id,
+                ]);
+
+                return null;
+            }
+
+            return new IntakeProductSelectionData(
+                product_type_id: $typeId,
+                product_type_slug: $typeId === null ? $typeSlug : null,
+                quantity: $quantity,
+                snapshot_price: $snapshot,
+            );
+        }
+
+        if ($product->intake_selection_mode === IntakeSelectionMode::ProductClass) {
+            $class = $product->productType?->productClass;
+            $classId = $class?->provider_product_class_id;
+            $classSlug = $class?->provider_product_class_slug;
+
+            if ($classId === null && $classSlug === null) {
+                Log::warning('Prescribe-Rx: product omitted from intake — set to product-class mode but its class has no provider mapping.', [
+                    'product_id' => $product->id,
+                    'product_name' => $product->name,
+                    'product_type_id' => $product->product_type_id,
+                ]);
+
+                return null;
+            }
+
+            return new IntakeProductSelectionData(
+                product_class_id: $classId,
+                product_class_slug: $classId === null ? $classSlug : null,
+                quantity: $quantity,
+                snapshot_price: $snapshot,
+            );
+        }
+
+        $id = $product->provider_product_id;
+        $number = $product->provider_product_sku;
+
+        if ($id === null && $number === null) {
+            Log::warning('Prescribe-Rx: product omitted from intake — no provider mapping.', [
+                'product_id' => $product->id,
+                'product_name' => $product->name,
+            ]);
+
+            return null;
+        }
+
+        return new IntakeProductSelectionData(
+            product_id: $id,
+            product_number: $id === null ? $number : null,
+            quantity: $quantity,
+            snapshot_price: $snapshot,
+        );
+    }
+
+    /**
+     * THE SHIPPING ADDRESS IS THE CLINICALLY LOAD-BEARING ONE. Its state
+     * decides which licensed clinician can be assigned to the encounter, so it
+     * is sent as its own structured field rather than folded into the legacy
+     * single-address shape. The lead's unprefixed address columns ARE that
+     * shipping address (see the billing-address migration for why they are not
+     * renamed).
+     *
+     * One address SHAPE is sent, never both: the explicit shipping/billing
+     * pair whenever a shipping address exists, and the legacy `address` only
+     * for a lead captured before shipping was collected, so their controller
+     * still has something to normalise.
+     */
     private function buildPatient(Lead $lead): PatientData
     {
-        $address = null;
+        $shipping = $this->addressFrom(
+            $lead->address_line1,
+            $lead->address_line2,
+            $lead->city,
+            $lead->state,
+            $lead->postal_code,
+            $lead->country,
+        );
 
-        if ($lead->address_line1 && $lead->city && $lead->state && $lead->postal_code) {
-            $address = AddressData::from([
-                'street' => trim($lead->address_line1.' '.($lead->address_line2 ?? '')),
-                'city' => $lead->city,
-                'state' => $lead->state,
-                'zip' => $lead->postal_code,
-                'country' => $lead->country ?? 'US',
-            ]);
-        }
+        $billing = ($lead->billing_same_as_shipping ?? true)
+            ? null
+            : $this->addressFrom(
+                $lead->billing_address_line1,
+                $lead->billing_address_line2,
+                $lead->billing_city,
+                $lead->billing_state,
+                $lead->billing_postal_code,
+                $lead->billing_country,
+            );
 
         return PatientData::from([
             'first_name' => $lead->first_name,
@@ -193,8 +429,39 @@ class SubmitPrescribeRxCheckoutAction
             'email' => $lead->email,
             'date_of_birth' => $lead->date_of_birth?->toDateString(),
             'phone' => $lead->phone,
-            'gender' => $lead->gender,
-            'address' => $address,
+            'gender' => self::mapGender($lead->gender),
+            'shipping_address' => $shipping,
+            'billing_address' => $billing,
+            'billing_same_as_shipping' => $shipping === null ? null : ($billing === null),
+        ]);
+    }
+
+    /**
+     * A PARTIAL address is worse than none: their validator rejects an
+     * incomplete one and the failure surfaces as a 422 on the whole intake,
+     * so anything missing a required part resolves to null here.
+     */
+    private function addressFrom(
+        ?string $line1,
+        ?string $line2,
+        ?string $city,
+        ?string $state,
+        ?string $postalCode,
+        ?string $country,
+    ): ?AddressData {
+        if (! $line1 || ! $city || ! $state || ! $postalCode) {
+            return null;
+        }
+
+        // street2 is its own field on their side; concatenating it into street
+        // produced a single unparseable line on the shipping label.
+        return AddressData::from([
+            'street' => $line1,
+            'street2' => $line2 ?: null,
+            'city' => $city,
+            'state' => $state,
+            'zip' => $postalCode,
+            'country' => $country ?: 'US',
         ]);
     }
 }

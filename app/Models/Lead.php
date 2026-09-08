@@ -3,8 +3,12 @@
 namespace App\Models;
 
 use App\Enums\CheckoutPath;
+use App\Enums\Payments\LeadPaymentStatus;
 use App\Models\Commerce\Encounter;
 use App\Models\Quiz\QuizQuestion;
+use App\Models\Referral\ReferralClick;
+use App\Models\Referral\ReferralLink;
+use App\Models\Referral\ReferralSource;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -36,6 +40,27 @@ class Lead extends Model
         'state',
         'postal_code',
         'country',
+        'billing_same_as_shipping',
+        'billing_address_line1',
+        'billing_address_line2',
+        'billing_city',
+        'billing_state',
+        'billing_postal_code',
+        'billing_country',
+        'payment_status',
+        'payment_gateway_provider',
+        'merchant_account_uuid',
+        'payment_transaction_id',
+        'payment_authorization_code',
+        'payment_amount',
+        'provider_customer_profile_id',
+        'provider_payment_profile_id',
+        'card_brand',
+        'card_last_four',
+        'card_exp_month',
+        'card_exp_year',
+        'payment_processed_at',
+        'payment_failure_reason',
         'sms_consent',
         'email_consent',
         'consent_given_at',
@@ -76,9 +101,14 @@ class Lead extends Model
             'consent_given_at' => 'datetime',
             'handed_off_at' => 'datetime',
             'completed_at' => 'datetime',
+            'attributed_at' => 'datetime',
             'sms_consent' => 'boolean',
             'email_consent' => 'boolean',
             'cart_items' => 'array',
+            'billing_same_as_shipping' => 'boolean',
+            'payment_status' => LeadPaymentStatus::class,
+            'payment_amount' => 'decimal:2',
+            'payment_processed_at' => 'datetime',
             'prescribe_rx_response' => 'array',
             'cart_subtotal' => 'decimal:2',
         ];
@@ -109,6 +139,36 @@ class Lead extends Model
     public function encounters(): HasMany
     {
         return $this->hasMany(Encounter::class);
+    }
+
+    /**
+     * Who gets credited for this lead.
+     *
+     * All three are nullable and nullOnDelete — `referral_code` is the column that
+     * survives them and the one a commission is argued from. Read the code, not
+     * the join, when the question is "who was credited"; read the joins when the
+     * question is "and are they still active".
+     *
+     * THE REFERRAL COLUMNS ARE DELIBERATELY ABSENT FROM $fillable. Attribution is
+     * write-once, and leaving them mass-assignable would mean any future
+     * `update()` — a Filament form, dedup grouping, a webhook handler — could
+     * silently reassign a credit, with the write-once guard in
+     * AttributeLeadAction bypassed entirely. That action's forceFill is meant to
+     * be the only door. Do not "fix" this by adding them back.
+     */
+    public function referralSource(): BelongsTo
+    {
+        return $this->belongsTo(ReferralSource::class, 'referral_source_id');
+    }
+
+    public function referralLink(): BelongsTo
+    {
+        return $this->belongsTo(ReferralLink::class, 'referral_link_id');
+    }
+
+    public function referralClick(): BelongsTo
+    {
+        return $this->belongsTo(ReferralClick::class, 'referral_click_id');
     }
 
     /**

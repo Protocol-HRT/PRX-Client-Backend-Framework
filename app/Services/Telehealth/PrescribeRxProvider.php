@@ -138,7 +138,7 @@ class PrescribeRxProvider implements TelehealthProviderInterface
     {
         $request = UnifiedIntakeRequestData::from($payload);
 
-        $response = $this->client->submitUnifiedIntake($request);
+        $response = $this->client->submitUnifiedIntake($request, $idempotencyKey);
 
         return $response->toArray();
     }
@@ -313,7 +313,12 @@ class PrescribeRxProvider implements TelehealthProviderInterface
 
     public function issuePatientToken(string $providerPatientId): ?string
     {
-        // supportsPatientPortalAuth() is false; endpoint not yet available in PRX.
+        // The endpoint DOES exist (POST /patients/{chart}/issue-token, called by
+        // Client::issuePatientToken). This generic path stays null on purpose:
+        // supportsPatientPortalAuth() is false, and portal minting goes through
+        // IssuePortalTokenAction, which caches by chart id and holds the
+        // least-privilege ability set. Wiring it here would give a second,
+        // uncached, unscoped door to the same mint.
         return null;
     }
 

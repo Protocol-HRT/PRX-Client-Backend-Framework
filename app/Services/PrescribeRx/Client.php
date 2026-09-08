@@ -161,13 +161,20 @@ class Client
             ];
         }
 
-        $body = array_filter(['abilities' => $abilities ?: null, 'token_name' => 'portal-session']);
+        // `device_name` — NOT `token_name`. PRX validates it as required|max:120
+        // (IssuePatientTokenData, prx-demo@07969f8), and the published OpenAPI
+        // documents the wrong name. Sending `token_name` 422s every mint.
+        $body = array_filter(['abilities' => $abilities ?: null, 'device_name' => 'portal-session']);
 
         $response = $this->request()->post("/patients/{$patientChartId}/issue-token", $body);
         $data = $this->extractData($response);
 
         if (empty($data['token'])) {
-            throw new PrescribeRxException('issue-token response missing token field.', 422);
+            // 502, not 422: the request was fine and the provider answered 2xx
+            // with a body missing the one field the call exists to return.
+            // A 422 renders to the caller as "check your values", which sends
+            // someone to correct input that was never the problem.
+            throw new PrescribeRxException('issue-token response missing token field.', 502);
         }
 
         return $data;
@@ -333,17 +340,58 @@ class Client
         );
     }
 
-    public function sendConversationMessage(string $patientToken, string $conversationId, string $body): array
+    /**
+     * The field is `content`, NOT `body`. PRX validates
+     * `content => required|string|max:5000` (prx-demo@07969f8,
+     * Me/PatientSelfServiceController.php:1057-1060). The only other field it
+     * reads is `reply_to_message_id`; `sender_id` and `message_type` are fixed
+     * server-side, which is why a patient cannot post as their provider on
+     * THIS endpoint.
+     * (`POST /encounters/{id}/messages` is the one that takes a caller-supplied
+     * `sender_type`. Do not add it to this client.)
+     */
+    public function sendConversationMessage(string $patientToken, string $conversationId, string $content): array
     {
         if (config('prescribe-rx.stub')) {
-            return ['id' => 'stub-msg-id', 'body' => $body];
+            return ['id' => 'stub-msg-id', 'content' => $content];
         }
 
         return $this->extractData(
             $this->patientRequest($patientToken)->post("/me/patient/conversations/{$conversationId}/messages", [
-                'body' => $body,
+                'content' => $content,
             ])
         );
+    }
+
+    /**
+     * `GET /encounters/{id}` with the PATIENT token.
+     *
+     * Used as an OWNERSHIP PROBE, not for its payload. PRX's
+     * `tenant_encounter_scope` global scope resolves a PATIENT token to
+     * `where('patient_chart_id', $chartId)` (prx-demo@07969f8,
+     * Support/Tenancy/TenantVisibility.php:363-374), so an encounter belonging to
+     * anybody else is a 404 before any handler runs. That makes this the cheapest
+     * trustworthy answer to "is this encounter the caller's?".
+     *
+     * Returns null on 404/403 rather than throwing, so a caller can branch.
+     * Note this writes an `encounter_viewed` PHI-audit row on PRX per call, so
+     * it belongs on a deliberate action (booking) and not on a render path.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function findPatientEncounter(string $patientToken, string $encounterId): ?array
+    {
+        if (config('prescribe-rx.stub')) {
+            return ['id' => $encounterId];
+        }
+
+        $response = $this->patientRequest($patientToken)->get("/encounters/{$encounterId}");
+
+        if ($response->status() === 404 || $response->status() === 403) {
+            return null;
+        }
+
+        return $this->extractData($response);
     }
 
     // ─── Encounter Status (sales-org token) ──────────────────────────────────
@@ -648,9 +696,25 @@ class Client
      * `client_id` / `sales_org_id` from IntegrationSettings if the request
      * doesn't already specify them.
      */
-    public function submitUnifiedIntake(UnifiedIntakeRequestData $data): UnifiedIntakeResponseData
+    public function submitUnifiedIntake(UnifiedIntakeRequestData $data, ?string $idempotencyKey = null): UnifiedIntakeResponseData
     {
-        $payload = $this->withConfiguredOrg($data->toArray());
+        $raw = $this->withConfiguredOrg($data->toArray());
+        $payload = self::stripNulls($raw);
+
+        // `answers` was always present on the wire before the null-strip, and
+        // an encounter with no answers is a legitimate submission (the embed
+        // collects them instead). Restore the key rather than let an empty
+        // answer set change the payload's shape — dropping it is a question
+        // for their validator that we cannot answer from here.
+        //
+        // The empty encoding differs deliberately: this sends `{}` where the
+        // pre-strip payload sent `[]`. Both decode identically in PHP, and
+        // `{}` is the truer encoding of their `array<string, mixed>` contract
+        // — but a strict non-PHP validator could tell them apart, so this is
+        // worth confirming on the first real sandbox submission.
+        if (array_key_exists('answers', $raw) && ! array_key_exists('answers', $payload)) {
+            $payload['answers'] = (object) [];
+        }
 
         if (config('prescribe-rx.stub')) {
             return UnifiedIntakeResponseData::from([
@@ -671,10 +735,55 @@ class Client
             ]);
         }
 
-        $response = $this->request()->post('/telehealth/intake/unified', $payload);
+        $request = $this->request();
+
+        if ($idempotencyKey !== null) {
+            $request = $request->withHeaders(['Idempotency-Key' => $idempotencyKey]);
+        }
+
+        $response = $request->post('/telehealth/intake/unified', $payload);
         $body = $this->extractData($response);
 
         return UnifiedIntakeResponseData::from($body);
+    }
+
+    /**
+     * Recursively drop null values from a payload.
+     *
+     * Required by the selection arrays: `products[]` / `packages[]` accept
+     * EXACTLY ONE identifier per line, and a spatie DTO serialises its unset
+     * identifiers as explicit nulls. Empty arrays are dropped for the same
+     * reason — an empty `packages: []` alongside a populated `products` reads
+     * as a deliberate selection of nothing.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private static function stripNulls(array $payload): array
+    {
+        $isList = array_is_list($payload);
+        $clean = [];
+
+        foreach ($payload as $key => $value) {
+            if ($value === null) {
+                continue;
+            }
+
+            if (is_array($value)) {
+                $value = self::stripNulls($value);
+
+                if ($value === []) {
+                    continue;
+                }
+            }
+
+            $clean[$key] = $value;
+        }
+
+        // Dropping an element from a list leaves an index gap, and PHP encodes
+        // a gapped array as a JSON object rather than an array — which would
+        // turn `products: [...]` into `products: {"1": ...}` on the wire.
+        return $isList ? array_values($clean) : $clean;
     }
 
     // ─── Internals ────────────────────────────────────────────────────────

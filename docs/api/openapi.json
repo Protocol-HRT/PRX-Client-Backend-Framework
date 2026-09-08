@@ -1810,7 +1810,7 @@
                     {
                         "name": "price_min",
                         "in": "query",
-                        "description": "Filter products with an effective price at or above this amount (USD).",
+                        "description": "Filter by the figure a card shows (`price_from.amount`, the \"as low as\" price) at or above this amount (USD).",
                         "schema": {
                             "type": "number"
                         },
@@ -1819,7 +1819,7 @@
                     {
                         "name": "price_max",
                         "in": "query",
-                        "description": "Filter products with an effective price at or below this amount (USD).",
+                        "description": "Filter by the figure a card shows (`price_from.amount`, the \"as low as\" price) at or below this amount (USD).",
                         "schema": {
                             "type": "number"
                         },
@@ -2424,11 +2424,75 @@
                                                         "currency"
                                                     ]
                                                 },
+                                                "price_from": {
+                                                    "description": "The \"As low as $X\" figure a card leads with \u2014 the same rule and\nthe same shared trait packages use, because one item must not\nquote two numbers on two screens. Emitted only when `plans` is\nloaded, and SILENTLY OMITTED otherwise: a card then falls back to\n`price.effective`, which is right today (no product has a monthly\nplan, so the own price always wins) and would quietly stop being\nright the day one does. Every route that serializes a product for\na card loads the relation; the tests assert the key is POPULATED\nrather than merely present, because that is the difference a\nmissing load actually makes.",
+                                                    "anyOf": [
+                                                        {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "amount": {
+                                                                    "type": "number"
+                                                                },
+                                                                "suffix": {
+                                                                    "type": "string"
+                                                                },
+                                                                "plan_id": {
+                                                                    "type": "string"
+                                                                },
+                                                                "currency": {
+                                                                    "type": "string",
+                                                                    "const": "USD"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "amount",
+                                                                "suffix",
+                                                                "plan_id",
+                                                                "currency"
+                                                            ]
+                                                        },
+                                                        {
+                                                            "type": "object",
+                                                            "properties": {
+                                                                "amount": {
+                                                                    "type": "null"
+                                                                },
+                                                                "suffix": {
+                                                                    "type": "null"
+                                                                },
+                                                                "plan_id": {
+                                                                    "type": "null"
+                                                                },
+                                                                "currency": {
+                                                                    "type": "string",
+                                                                    "const": "USD"
+                                                                }
+                                                            },
+                                                            "required": [
+                                                                "amount",
+                                                                "suffix",
+                                                                "plan_id",
+                                                                "currency"
+                                                            ]
+                                                        },
+                                                        {
+                                                            "type": "object"
+                                                        }
+                                                    ]
+                                                },
                                                 "plans": {
-                                                    "type": "array",
-                                                    "items": {
-                                                        "$ref": "#/components/schemas/PlanResource"
-                                                    }
+                                                    "description": "THE LISTING LOADS PLANS BUT MUST NOT SHIP THEM. The relation is\neager-loaded on every product route so `price_from` above can be\ncomputed, but a listing card needs the FIGURE, not the plan\nobjects \u2014 `ProductPlansTest::test_product_index_does_not_expose_plans`\nis the contract, and gating on `whenLoaded` alone would have\nsilently broken it the moment the load was added for the figure.\nRoute-gated, like `related` and `pairs_with` above.",
+                                                    "anyOf": [
+                                                        {
+                                                            "type": "array",
+                                                            "items": {
+                                                                "$ref": "#/components/schemas/PlanResource"
+                                                            }
+                                                        },
+                                                        {
+                                                            "type": "object"
+                                                        }
+                                                    ]
                                                 },
                                                 "faqs": {
                                                     "anyOf": [
@@ -2565,6 +2629,7 @@
                                                 "related",
                                                 "pairs_with",
                                                 "price",
+                                                "price_from",
                                                 "plans",
                                                 "faqs",
                                                 "rating",
@@ -2645,7 +2710,7 @@
                     {
                         "name": "price_min",
                         "in": "query",
-                        "description": "Filter packages with at least one plan priced at or above this amount (USD).",
+                        "description": "Filter by the figure a card shows (`price_from.amount`, the \"as low as\" price) at or above this amount (USD).",
                         "schema": {
                             "type": "number"
                         },
@@ -2654,7 +2719,7 @@
                     {
                         "name": "price_max",
                         "in": "query",
-                        "description": "Filter packages with at least one plan priced at or below this amount (USD).",
+                        "description": "Filter by the figure a card shows (`price_from.amount`, the \"as low as\" price) at or below this amount (USD).",
                         "schema": {
                             "type": "number"
                         },
@@ -2663,7 +2728,7 @@
                     {
                         "name": "sort",
                         "in": "query",
-                        "description": "Sort order: position (default), name, -name, price, -price, newest, oldest.",
+                        "description": "Sort order: position (default), name, -name, price, -price, newest, oldest. Price sorts by the same figure the price filter uses.",
                         "schema": {
                             "type": "string"
                         },
@@ -3041,7 +3106,7 @@
                                                     ]
                                                 },
                                                 "price_from": {
-                                                    "description": "The one figure a listing card leads with, plus the cadence it is\ncharged at. Emitted alongside `price_range`, not instead of it \u2014\nthe two answer different questions, and the range's ends are in\ndifferent units. See BuildsPackagePricing::packagePriceFrom().",
+                                                    "description": "The \"As low as $X\" figure a listing card leads with: the\ncheapest of the package's own one-time price and its\nmonthly-cadence plans. `plan_id` names which it came from, and\nnull means the package itself \u2014 a surface that both quotes this\nand adds to the cart must not add on a non-null id, because the\nvisitor has agreed to no plan. Emitted alongside `price_range`,\nnot instead of it \u2014 the two answer different questions, and the\nrange's ends are in different units. See\nBuildsCatalogPricing::catalogPriceFrom().",
                                                     "anyOf": [
                                                         {
                                                             "type": "object",
@@ -3391,7 +3456,7 @@
         "/catalog/facets": {
             "get": {
                 "operationId": "v1.catalog.facets.index",
-                "description": "Returns the option lists a product-listing filter UI needs: categories,\nclasses, types, forms, and ingredients (each with published-product\ncounts), the price bounds across published products, and availability\ncounts. Facet values with zero published products are omitted.",
+                "description": "Returns the option lists a catalog filter UI needs: categories, classes,\ntypes, forms, and ingredients (each with published-product counts),\navailability counts, and TWO sets of price bounds \u2014 `price` across\npublished products, `package_price` across published packages.\n\nThe two price blocks exist because one endpoint serves both listings and\nthe two are not priced alike: a product's card shows its own effective\nprice, a package's shows the cheapest way in across its own price and its\nmonthly plans. A slider fed the wrong one filters on a range its own\nlabels contradict.\n\nKNOWN AND NOT FIXED HERE: every other facet group is still\nproduct-scoped. The counts are published-PRODUCT counts, and a category\nor tag attached only to packages is dropped from the payload entirely\n(`products_count > 0`), so it cannot be selected on the package listing\neven though PackageController honours those same slugs. Availability is\nlikewise a product count. That is a larger change than the price bounds \u2014\nit needs a scoping parameter and a decision about what the counts mean \u2014\nand is recorded rather than half-done.\n\nFacet values with zero published products are omitted.",
                 "summary": "Get catalog filter facets",
                 "tags": [
                     "Catalog"
@@ -3451,6 +3516,33 @@
                                                         "currency"
                                                     ]
                                                 },
+                                                "package_price": {
+                                                    "type": "object",
+                                                    "description": "Additive, never a reshaping of `price`: this payload ships to\nmore than one frontend and `price` has always meant products.",
+                                                    "properties": {
+                                                        "min": {
+                                                            "type": [
+                                                                "number",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "max": {
+                                                            "type": [
+                                                                "number",
+                                                                "null"
+                                                            ]
+                                                        },
+                                                        "currency": {
+                                                            "type": "string",
+                                                            "const": "USD"
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "min",
+                                                        "max",
+                                                        "currency"
+                                                    ]
+                                                },
                                                 "availability": {
                                                     "type": "object",
                                                     "properties": {
@@ -3477,6 +3569,7 @@
                                                 "ingredients",
                                                 "tags",
                                                 "price",
+                                                "package_price",
                                                 "availability"
                                             ]
                                         },
@@ -4524,7 +4617,7 @@
                                                                                             "is_exclusive": {
                                                                                                 "type": "boolean"
                                                                                             },
-                                                                                            "price_range": {
+                                                                                            "price_from": {
                                                                                                 "type": "null"
                                                                                             },
                                                                                             "image_url": {
@@ -4537,7 +4630,7 @@
                                                                                             "description",
                                                                                             "icon",
                                                                                             "is_exclusive",
-                                                                                            "price_range",
+                                                                                            "price_from",
                                                                                             "image_url"
                                                                                         ]
                                                                                     }
@@ -4568,16 +4661,13 @@
                                                                                             "is_exclusive": {
                                                                                                 "type": "boolean"
                                                                                             },
-                                                                                            "price_range": {
+                                                                                            "price_from": {
                                                                                                 "type": [
                                                                                                     "object",
                                                                                                     "null"
                                                                                                 ],
                                                                                                 "properties": {
-                                                                                                    "from": {
-                                                                                                        "type": "number"
-                                                                                                    },
-                                                                                                    "to": {
+                                                                                                    "amount": {
                                                                                                         "type": "number"
                                                                                                     },
                                                                                                     "currency": {
@@ -4586,8 +4676,7 @@
                                                                                                     }
                                                                                                 },
                                                                                                 "required": [
-                                                                                                    "from",
-                                                                                                    "to",
+                                                                                                    "amount",
                                                                                                     "currency"
                                                                                                 ]
                                                                                             },
@@ -4601,7 +4690,7 @@
                                                                                             "description",
                                                                                             "icon",
                                                                                             "is_exclusive",
-                                                                                            "price_range",
+                                                                                            "price_from",
                                                                                             "image_url"
                                                                                         ]
                                                                                     }
@@ -8575,7 +8664,7 @@
                         ]
                     },
                     "price_from": {
-                        "description": "The one figure a listing card leads with, plus the cadence it is\ncharged at. Emitted alongside `price_range`, not instead of it \u2014\nthe two answer different questions, and the range's ends are in\ndifferent units. See BuildsPackagePricing::packagePriceFrom().",
+                        "description": "The \"As low as $X\" figure a listing card leads with: the\ncheapest of the package's own one-time price and its\nmonthly-cadence plans. `plan_id` names which it came from, and\nnull means the package itself \u2014 a surface that both quotes this\nand adds to the cart must not add on a non-null id, because the\nvisitor has agreed to no plan. Emitted alongside `price_range`,\nnot instead of it \u2014 the two answer different questions, and the\nrange's ends are in different units. See\nBuildsCatalogPricing::catalogPriceFrom().",
                         "anyOf": [
                             {
                                 "type": "object",
@@ -9347,8 +9436,62 @@
                             "currency"
                         ]
                     },
+                    "price_from": {
+                        "description": "The \"As low as $X\" figure a card leads with \u2014 the same rule and\nthe same shared trait packages use, because one item must not\nquote two numbers on two screens. Emitted only when `plans` is\nloaded, and SILENTLY OMITTED otherwise: a card then falls back to\n`price.effective`, which is right today (no product has a monthly\nplan, so the own price always wins) and would quietly stop being\nright the day one does. Every route that serializes a product for\na card loads the relation; the tests assert the key is POPULATED\nrather than merely present, because that is the difference a\nmissing load actually makes.",
+                        "anyOf": [
+                            {
+                                "type": "object",
+                                "properties": {
+                                    "amount": {
+                                        "type": "number"
+                                    },
+                                    "suffix": {
+                                        "type": "string"
+                                    },
+                                    "plan_id": {
+                                        "type": "string"
+                                    },
+                                    "currency": {
+                                        "type": "string",
+                                        "const": "USD"
+                                    }
+                                },
+                                "required": [
+                                    "amount",
+                                    "suffix",
+                                    "plan_id",
+                                    "currency"
+                                ]
+                            },
+                            {
+                                "type": "object",
+                                "properties": {
+                                    "amount": {
+                                        "type": "null"
+                                    },
+                                    "suffix": {
+                                        "type": "null"
+                                    },
+                                    "plan_id": {
+                                        "type": "null"
+                                    },
+                                    "currency": {
+                                        "type": "string",
+                                        "const": "USD"
+                                    }
+                                },
+                                "required": [
+                                    "amount",
+                                    "suffix",
+                                    "plan_id",
+                                    "currency"
+                                ]
+                            }
+                        ]
+                    },
                     "plans": {
                         "type": "array",
+                        "description": "THE LISTING LOADS PLANS BUT MUST NOT SHIP THEM. The relation is\neager-loaded on every product route so `price_from` above can be\ncomputed, but a listing card needs the FIGURE, not the plan\nobjects \u2014 `ProductPlansTest::test_product_index_does_not_expose_plans`\nis the contract, and gating on `whenLoaded` alone would have\nsilently broken it the moment the load was added for the figure.\nRoute-gated, like `related` and `pairs_with` above.",
                         "items": {
                             "$ref": "#/components/schemas/PlanResource"
                         }

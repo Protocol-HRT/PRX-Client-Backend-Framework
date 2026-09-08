@@ -25,4 +25,10 @@ class LlmSettings extends Settings
     {
         return 'llm';
     }
+
+    /** @return array<int, string> */
+    public static function encrypted(): array
+    {
+        return ['claude_api_key', 'openai_api_key'];
+    }
 }

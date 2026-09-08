@@ -32,7 +32,7 @@ carts
 | `cart_id` | `bigint` | FK to `carts`. Cascade delete. |
 | `itemable_type` | `string` | Polymorphic type: `App\Models\Catalog\Product` or `App\Models\Catalog\Package`. |
 | `itemable_id` | `bigint` | Polymorphic ID. |
-| `plan_id` | `bigint` nullable | FK to `plans`. Required when itemable is a Package. Null for Products. |
+| `plan_id` | `bigint` nullable | FK to `plans`. **Optional for both** — null means the item itself was bought at its own price, with no plan and no rebill. |
 | `quantity` | `smallint` | 1–10 enforced by API validation. |
 | `unit_price_snapshot` | `decimal(10,2)` nullable | Price at add-to-cart time (sale_price ?? retail_price). Frozen — not updated when catalog prices change. |
 
@@ -179,12 +179,24 @@ Add an item to the cart. Increments quantity if the same item+plan combination a
 |---|---|---|
 | `type` | string | Required. `product` or `package`. |
 | `id` | integer | Required. The catalog model ID. |
-| `plan_id` | integer | Required when `type = package`. The plan to purchase. |
+| `plan_id` | integer | **Optional, for packages as well as products.** Omit it to buy the item once at its own price; give it to subscribe under that plan. The plan must belong to the item. |
 | `quantity` | integer | Optional. 1–10. Defaults to 1. |
 
 **Response `201`:** Full cart resource (same shape as `GET /api/v1/cart`).
 
-**Price resolution:** For packages with a plan, the plan's `sale_price ?? retail_price` is snapshotted. For products, the product's `sale_price ?? retail_price` is used.
+**Price resolution:** with a `plan_id`, the plan's `sale_price ?? retail_price` is snapshotted;
+without one, the item's own `sale_price ?? retail_price` is — the same rule for products and
+packages.
+
+**Omitting `plan_id` for a package is a first-class path, not an edge case.** A package is a set
+group of products bought once, and its plans are a separate recurring commitment over the same
+bundle — both are sellable. `plan_id` was `required_if:type,package` until `a464b0a`, which made
+a package purchasable only as a subscription; see `CartController::addItem`.
+
+**Do not derive a `plan_id` from a card's `price_from`.** That figure is the cheapest way in
+("as low as $X") and usually names a recurring plan the visitor has not agreed to; adding on it
+signs them up to a rebill, and adding without it charges more than the card quoted. Send a
+`plan_id` the visitor actually chose — from a plan picker or the item's detail page — or none.
 
 ---
 

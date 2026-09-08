@@ -46,6 +46,23 @@ class LeadData extends Data
         public ?string $postal_code = null,
         #[Max(2)]
         public string $country = 'US',
+
+        // Billing, only meaningful when it differs from shipping. Defaults to
+        // mirroring, which is both the common case and the behaviour before
+        // billing was collected at all.
+        public bool $billing_same_as_shipping = true,
+        #[Max(255)]
+        public ?string $billing_address_line1 = null,
+        #[Max(255)]
+        public ?string $billing_address_line2 = null,
+        #[Max(255)]
+        public ?string $billing_city = null,
+        #[Max(2)]
+        public ?string $billing_state = null,
+        #[Max(16)]
+        public ?string $billing_postal_code = null,
+        #[Max(2)]
+        public ?string $billing_country = null,
         public bool $sms_consent = false,
         public bool $email_consent = false,
         #[DataCollectionOf(CartItemData::class)]
@@ -57,6 +74,13 @@ class LeadData extends Data
         // answers to questions that were genuinely askable.
         public ?array $quiz_answers = null,
         public ?int $quiz_id = null,
+
+        // Referral attribution, carried from the storefront's first-party
+        // cookies. Deliberately untyped beyond "string" — the shape is enforced
+        // in ReferralLink::normalizeCode(), which drops anything unusable rather
+        // than failing the lead.
+        public ?string $referral_code = null,
+        public ?string $referral_visitor_id = null,
         #[WithCast(EnumCast::class)]
         public CheckoutPath $checkout_path = CheckoutPath::PrescribeRx,
         public ?string $utm_source = null,

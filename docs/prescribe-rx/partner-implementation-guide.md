@@ -11,7 +11,7 @@
 > - Patient email filter is `GET /patients?filter[email]=X` (fuzzy LIKE, not exact match).
 > - Scheduling IS implemented at `/scheduling/*` (8 routes), not `/telehealth/providers/availability`.
 > - `POST /patients/{id}/issue-token` is live — use this to mint per-patient tokens for `/me/patient/*`.
-> - Do NOT include bearer tokens in shared docs. The demo token in this guide's original version was revoked.
+> - Do NOT include bearer tokens in shared docs. A credential was previously committed here. Its revocation must be confirmed with the Prescribe-Rx admin; removing the example does not revoke it.
 
 **From:** prx-backend (white-label API + Filament admin)
 **To:** prescribe-rx (clinical platform)
@@ -42,8 +42,8 @@ All PRX calls originate **server-side from prx-backend** using the sales-org tok
 Patients never hold a PRX credential. prx-backend authenticates its own patients via
 its own Sanctum token system, then proxies scoped requests to PRX on their behalf.
 
-**Current sales-org token in use (sandbox):** `Demo Sales Org LLC`
-Token: `1215|wLZ5w4qkpiutJts8zoFg3GnioXAF0PTR3wy09M0e77942db1`
+**Sales-org token:** provision through the Prescribe-Rx admin; never include the value in documentation.
+Token: `<PRESCRIBE_RX_API_TOKEN>`
 
 ---
 

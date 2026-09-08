@@ -183,3 +183,12 @@ DTO validation throws `Illuminate\Validation\ValidationException` on bad input. 
 - Audit log on settings changes (depends on Audit module)
 - Per-page meta override UI (depends on CMS module)
 - Theme preview pane in `/admin/settings/theme` showing live color tokens applied to a sample card
+
+
+## LLM credential encryption (2026-09-06)
+
+`LlmSettings::encrypted()` declares `claude_api_key` and `openai_api_key`. Migration `2026_09_06_232645_encrypt_llm_api_keys` encrypts existing payloads together inside a transaction; null remains null. Future settings saves encrypt both fields. Ship the class and migration together during maintenance, after a restore-verified database snapshot, and clear the settings cache before reopening requests. Run only the intended migration path when deploying this fix to an existing instance. Gracefully restart Horizon to release any old settings instances.
+
+Rollback is paired too: run this migration's `down()` and restore the previous class while requests are stopped; rollback restores plaintext storage. Do not roll back the class alone or run `down()` while continuing to serve the encryption-aware class. Test coverage: `LlmSettingsEncryptionTest` (existing populated/empty/null payloads, rollback, future writes) and `ConfigCacheInvalidationTest`.
+
+Encryption does not revoke credentials exposed in existing backups. Rotate the Anthropic key at its issuer and save the replacement through the LLM settings page; never add it to documentation, shell arguments, or source control.

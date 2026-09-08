@@ -233,11 +233,17 @@ Route pattern: a catch-all route mapping URL path → page slug, plus `/` → sl
 | `GET /catalog/products` (+`/{slug}`) | Paginated; filters: `category`, `tag`, `search`, `price_min/max`, `featured`, `in_stock`, `per_page`. Prices as `{retail, sale, effective, suffix, currency}`. Stock: `is_in_stock` is the boolean to branch on; `inventory_status` is the raw enum case and `inventory_status_label` its display string — **render the label, never the bare value** — and both are null on the many products where an operator has not set one |
 | `GET /catalog/packages` (+`/{slug}`) | Packages with member products and `plans` (billing period, term, recurring flag, trial). Three separate price fields — see **Package pricing** below; do not derive one from another |
 | `GET /catalog/categories`, `/tags` | Taxonomy for navigation and filter facets |
-| `GET /blog/posts` (+`/{slug}`), `/blog/categories`, `/blog/tags` | `content` only on show route |
-| `GET /faq`, `/faq/categories` (+`/{slug}`) | Central FAQ dataset |
-| `GET /profiles` (+`/{slug}`) | People (doctors, executives, team) with typed roles |
-| `GET /health-goals` | The intake quiz's choices. Unpaginated; `all=1` includes goals withdrawn from the quiz, `tree=1` nests children. `prompt` is the visitor-facing wording and falls back to `name` — render it, not `name`. **The ingredient/product/compound mappings are deliberately absent**: recommendations are derived server-side |
-| `GET /kb/compounds` (+`/{slug}`) | Compound monographs. Paginated; filters: `search`, `peptides_only` (**defaults true**), `regulatory_status`, `sort`, `per_page` (1–100, default 24). The eight prose sections, `clinical_references` and `seo` are on the show route only — roughly 28,000 characters per compound. `provenance` ships on BOTH routes |
+| `GET /catalog/facets` | Filter-sidebar option lists and counts, plus **two** price blocks: `price` spans published PRODUCTS, `package_price` spans published PACKAGES by the same `price_from` figure their cards show. **A package listing must read `package_price`** — feeding it `price` labels a product range while the endpoint filters package figures. Every facet row now carries BOTH counts — `count` (published products, its
+original meaning) and `package_count` — because one endpoint serves two
+listings and a row with products behind it may have no packages at all. A row
+is kept when EITHER count is non-zero, so a package-only classification is no
+longer dropped. Each listing reads its own figure; reading the wrong one offers
+a filter that leads to an empty page.
+
+`goals` is a facet block, listed FIRST, and `goal={slug}` filters both listings.
+On packages it matches the EFFECTIVE goal set — a package's `healthGoals` is a
+badge override that is empty in the normal case, so the filter falls back to the
+goals of its published contents, exactly as the badges do
 
 **Package pricing — three fields, three questions, and they are not interchangeable.**
 
@@ -249,7 +255,7 @@ when a package has no plans at all.
 |---|---|---|
 | `price` | `{retail, sale, effective, suffix, currency}` | What one purchase of the package itself costs. `effective` is `sale ?? retail`, and is `null` — never `0.00` — when unpriced |
 | `price_range` | `{from, to, currency}` | The full span a visitor could pay, across plans **and** the package's own price |
-| `price_from` | `{amount, suffix, plan_id, currency}` | The single figure a card leads with, the cadence it is charged at, and the plan it came from |
+| `price_from` | `{amount, suffix, plan_id, currency}` | The cheapest way in ("as low as $X"), the unit it is charged in, and — when it came from a plan — which plan. **Products carry this too** |
 
 **`price_from` is NOT `price_range.from`, and a card must not use the range.** The range's two
 ends are routinely in different units: on a typical install the low end is a monthly rate and
@@ -258,29 +264,61 @@ and tells a visitor a stack might cost $1,259.96 a month. The range is still cor
 it measures — it is the honest answer to "what could I pay" — but only `price_from` is safe on
 its own.
 
-`price_from` is the cheapest **monthly-cadence** price among the package's plans and its own
-price, carrying that price's own suffix rather than a `/mo` the backend invented. A plan's
-cadence is structural (`billing_period`); a package's own price has no cadence column, so its
-free-text `price_suffix` is passed through as authored and may be absent. When no monthly price
-exists — a package sold only as a prepay term — it falls back to the cheapest price of any
-cadence, again with that price's suffix, so a card renders "From $899.00/6mo" rather than a
-false "/mo" or nothing at all. `amount` is `null` when nothing is priced.
+**`price_from` is the cheapest way in, and a card renders it as "as low as $X".** The pool is
+the item's own price together with its **monthly-cadence** plans; the lowest wins. An item is
+buyable at its own price (once) or, if it carries plans, at a plan's price (a recurring or
+prepaid commitment), and the card advertises the floor across both — so the number is one the
+visitor can actually reach, not a claim about what they will pay.
+
+**Only monthly-cadence plans join the pool, and that guard is what makes the figure showable
+alone.** A plan's cadence is structural (`billing_period`); raw amounts are not comparable
+across billing units. Term plans are typically 3/6/9/12-month **prepay totals**, so pooling them
+unfiltered lets a $537.30 quarterly total look cheaper than a monthly rate. The item's own price
+is always a candidate — it has no cadence column to filter on, and excluding it would hide the
+case a sale exists to create: a single purchase discounted below every plan.
+
+**The fallback:** an item sold only as a prepay term has no monthly price, and rendering nothing
+would hide something purchasable, so it takes the cheapest price of any cadence with that
+price's suffix — "as low as $899.00/6mo", which is true, rather than "/mo", which is not. It
+cannot fire for an item that has an own price. `amount` is `null` when nothing is priced
+anywhere.
+
+**Both products and packages carry `price_from`.** One rule for what a card quotes; having two
+was how the same item came to show different numbers on different screens.
 
 **Intro prices are excluded from `price_from` on purpose.** A plan's `intro_price` buys one
 billing cycle, so leading a card with it advertises a number the visitor stops paying. Render
 it on a detail page's plan picker, where the term is visible, not on a card.
 
-**`plan_id` names the plan the figure came from, and `null` is meaningful rather than missing.**
-Null means the package's OWN price won, so buying the package itself is exactly the quoted
-figure. This exists so a surface that both quotes the figure AND adds to the cart charges what
-it displayed: adding a package with no plan bills its own price, which on live data is $399
-against cards reading "From $279.99/mo". If you add to the cart from a card, send this
-`plan_id` (omit `plan_id` entirely when it is null). Do not reverse-engineer it by matching the
-rendered string against plan prices — this field is the answer the backend already computed.
+**DO NOT SILENTLY ADD THIS FIGURE TO THE CART.** It is a floor, and on a typical install it
+names a recurring **plan** — so adding on the visitor's behalf enrols them in a rebill they
+never chose, while adding the item alone charges more than the card just quoted. Neither is
+acceptable. Send the visitor to the detail page to choose a term, or give them a plan picker
+that opens on `plan_id`. A card may quote this figure freely; only the *purchase* needs a
+decision the visitor made.
 
-Products get no `price_range` and no `price_from`. A product's own `price` is the whole story
-on a card, and its term plans are 3/6/9/12-month prepay totals — a "from" built from those
-would reintroduce the mixed-unit problem these fields exist to avoid.
+**`plan_id` names where the figure came from**, and `null` means the item's own price — bought
+once, no plan, no rebill. It is not a formatting flag: "as low as" is true of a single price
+too. It is what a plan picker opens on, and what tells the cart whether a rebill is involved.
+Do not reverse-engineer it by matching the rendered string against plan prices — this field is
+the answer already computed.
+
+**The own price's suffix is free text and is passed through unvalidated.** An item's own price
+has no cadence column — nothing in the backend can tell `/mo` from `/ea` or know whether either
+is true — so `price_suffix` arrives exactly as an operator typed it and may be absent. A
+one-time price should normally carry **no** suffix, because it is not charged per period. Render
+it verbatim and do not supply a default: a card reading "$399.00/mo" for a purchase the cart
+books once is a content bug with a content fix, and a frontend fallback would hide it.
+
+Products get no `price_range` — that field is package-only — but they **do** carry `price_from`,
+computed by the same rule. It is emitted only when the product's `plans` relation is loaded, and
+omitted silently otherwise; a card that falls through to `price.effective` will then disagree
+with the product's own page. The monthly-cadence filter is what makes this safe for products in
+particular: their term plans are 3/6/9/12-month prepay totals, and pooling those by raw amount
+is exactly the mixed-unit problem these fields exist to avoid.
+
+**A product listing deliberately ships `price_from` but not `plans`.** The relation is loaded to
+compute the figure; the array itself is on the show route only.
 
 **Knowledge base, two things a frontend must get right:**
 
@@ -393,6 +431,25 @@ otherwise disagree about the same person.
 `excluded_count` count-not-list rule. Both are produced by one `ProtocolPresenter`, so a new
 field appears on both at once; do not write a consumer that handles one shape and not the other.
 
+**A PACKAGE HERE CARRIES ITS `plans`, AND THAT IS LOAD-BEARING, NOT INCIDENTAL.** The report is
+the end of a funnel, so the term a card's `price_from` names is chosen in place rather than by
+sending the visitor to the package's own page — which needs the terms to be in *this* payload,
+because a frontend must not fetch content from the browser. `ProtocolPresenter` eager-loads
+published plans in `position` order, the same constraint the catalogue listing uses so the two
+cannot compute a figure from different plan sets. Pinned by
+`LeadPlanEndpointTest::test_a_package_carries_the_plans_the_report_offers_a_term_from`, which
+asserts the array is POPULATED — `whenLoaded` omits the key entirely when the relation is
+missing, so a `has` assertion passes on the broken shape.
+
+**A PRODUCT HERE DOES NOT.** `ProductResource` route-gates `plans` to the product *show* route,
+because a listing must not ship every plan object. So a product on this payload carries
+`price_from` — including its `plan_id` — without the plans behind it. Nothing is broken by that
+today: no product's figure comes from a plan, so every product card is a one-tap add. **A
+consumer must therefore ask whether the plans are actually present rather than assume the kind
+implies them**, and fall back to linking out when they are not. Widening the gate to this route
+is a deliberate decision; `LeadPlanEndpointTest::test_a_product_carries_its_figure_but_not_its_plans_here`
+records the current contract and will fail first.
+
 `meta` carries four things beyond 5a's `filtered`:
 
 | key | meaning |
@@ -429,13 +486,33 @@ distinguishes them against an unfiltered baseline because the frontend cannot.
 **Zero matches is a designed outcome, not an error.** The eligibility gate means some visitors
 legitimately match nothing.
 
+### 5d. Quiz option prices — `price_from`, not a range
+
+An option whose `price_source` names part of the catalog carries
+`price_from: {amount, currency}` — the **cheapest way into that set**, computed live when the
+quiz is served and never authored. Render it as **"as low as $X"**, the same wording as a
+catalog card, and render **nothing** when it is null: an absent figure is meaningful, and "$0"
+reads as free.
+
+**It replaced a min/max range, and the reason generalises.** The two ends came from different
+billing units — on one install the "full stack" option served `{from: 725, to: 6050}`, where
+725 is an entry price and 6050 a six-month prepay TOTAL, so the card read "$725 – $6,050" and
+invited the visitor to read the upper number as a recurring cost. That is the same mixed-unit
+problem `price_range` carries on a package, and it is why a card may never show a range. The
+range also queried plans ALONE, so an item's own price — the way most of a catalog is actually
+bought — could not appear in the figure at all.
+
+An option points at a SET rather than an item, and "as low as" is still the honest reading of
+that: the cheapest way into any product, or any package, or any package of one tier. A range
+across a set would need both ends in the same unit to mean anything, and they are not.
+
 ## 6. Commerce flow
 
 The active checkout path comes from `GET /config` → `checkout.path` (`prx` | `local`). Branch the whole flow on it — never assume one.
 
 1. **Cart** — send `X-Cart-Token` (ULID) on every cart call; the backend mints one if absent (read it back from the response and persist client-side). `GET /cart`, `POST /cart/items` (`{type: product|package, id, plan_id?, quantity}`), `PATCH|DELETE /cart/items/{id}`.
 2. **Upsells** — `GET /cart/suggestions` returns admin-curated Pairs With / Related light cards for the current cart (empty when the admin disabled upsells — just hide the placement). `config.checkout.upsells` carries the knobs. Products can be added directly (buy-once); link packages through to their page for plan selection.
-3. **Lead** — `POST /leads` with customer identity + consents + UTM attribution; include `X-Cart-Token` to bind the cart. Returns a lead `uuid` **and `handoff_url`**.
+3. **Lead** — `POST /leads` with customer identity + consents + UTM attribution + referral (§9); include `X-Cart-Token` to bind the cart. Returns a lead `uuid` **and `handoff_url`**.
 4. **`prx` path (embed handoff — the default)** — after lead creation, redirect the browser to `lead.handoff_url`. That backend page hosts the provider embed with prefill + product selection already applied; clinical intake and payment happen there. Do **not** call `POST /checkout` on this path.
 5. **`local` path** — `GET /checkout/gateway-config` for the tokenization SDK, then `POST /checkout` with `cart_ulid`, `lead_uuid`, and the tokenized `payment_method`. Order status afterwards: `GET /orders/{uuid}`.
 
@@ -479,3 +556,119 @@ with a null heading. Render nothing when the record has no FAQs/reviews.
 They are absent from the CMS page picker (`contexts: ['catalog']`) because a
 page has no record for them to read — but that gates authoring only, so
 anything already stored keeps resolving.
+
+## Slug redirects — a renamed URL must not dead-end
+
+A slug is a public URL. Renaming one breaks every inbound link, bookmark, ad
+and indexed result pointing at the old name, and the frontend cannot rescue it
+alone: it keeps no registry of valid slugs, it asks this API and 404s when the
+answer is "no such record".
+
+`slug_histories` records the names a record used to answer to.
+
+### The endpoint
+
+```
+GET /api/v1/slug-redirect?type={type}&slug={slug}
+
+200  { "data": { "type": "product", "slug": "current-name" } }
+404  slug was never one of that record's names, or something live holds it
+422  unknown type
+```
+
+`type` is the same vocabulary link fields and menu items already use:
+`product`, `package`, `page`, `kb_compound`.
+
+**It answers with the entity and its current slug, never a URL.** The frontend
+owns URL structure; a path returned from here would be this package dictating
+routes to a frontend it has never seen. The caller maps `{type, slug}` through
+its own route table exactly as it already does for menu links.
+
+**Call it only after your own lookup has 404'd.** It is a miss handler, not
+part of a normal render, so it costs a round trip only on requests that were
+already going to fail.
+
+### Two properties worth relying on
+
+**A live slug always wins.** Each request checks live records first: if
+anything still answers to that slug, no redirect is offered. So a stale history
+row can never hijack a URL that legitimately exists, and a record that reclaims
+an abandoned name keeps it — the history row is deleted rather than left to
+compete.
+
+**Resolution is always one hop.** History rows point at the *record*, not at a
+successor slug, so renaming `a → b → c` leaves both `a` and `b` resolving
+directly to `c`. There is no chain to walk and no chain to rot.
+
+### What is not recorded
+
+Creating a record writes no history — there is no previous name. Saving without
+touching the slug writes nothing. Deleting a record, *including a soft delete*,
+drops its history: an unreachable record's old URLs should dead-end rather than
+redirect to a page that will itself 404.
+
+### Adding a type
+
+Add `HasSlugHistory` to the model and a line to `SlugRedirectController::TYPES`.
+Both halves are required — the trait without the map records history nobody can
+read, and the map without the trait resolves nothing.
+
+### Renames and caching are one problem, not two
+
+A consuming frontend caches renders per slug, so a rename must invalidate
+**both** names or the old URL keeps serving the record under its former title.
+`FrontendRevalidator::slugTags()` emits `{type}:{new}` and `{type}:{previous}`
+for exactly this reason. Getting this wrong is not merely stale: measured on a
+Next.js consumer, the old URL re-validated on every request, the API answered
+404 each time, and `notFound()` during regeneration never replaced the cached
+200 — the page served its old address indefinitely until the tag was purged.
+
+## 9. Referral attribution
+
+Two additions, both optional and both best-effort.
+
+### `POST /referrals/clicks` — record a referral arrival
+
+**Called from the frontend's SERVER (edge middleware), never from the browser.**
+This endpoint writes rows that commissions are argued from; a browser-side caller
+would be the beneficiary writing its own evidence. It is not in the storefront's
+`/api/backend` proxy allowlist and must not be added to it.
+
+```
+POST /api/v1/referrals/clicks          throttle:30,1, anonymous
+{ "code": "LT-4F2A", "visitor_id": "<uuid>",
+  "landing_url": "...", "referrer": "...", "utm_source": "...", ... }
+
+→ 200 { "data": { "recorded": true } }
+```
+
+- **Always 200**, including for a code matching nothing — the arrival is recorded
+  either way, with null source/link, so a partner's "you never credited my
+  mailshot" is answerable.
+- The response reports **only** `recorded` — deliberately not whether the code is
+  live, which would let an anonymous prober enumerate the affiliate roster.
+- Forward the visitor's address as `X-Forwarded-For` (**rightmost entry only** —
+  a visitor may prepend anything). It is trusted because `TRUSTED_PROXIES` names
+  the storefront host.
+- Idempotent per `(code, visitor_id)`, enforced by a unique index.
+- `visitor_id` must be a uuid the frontend minted and stores in a first-party
+  cookie. It identifies no person and joins to nothing.
+
+### `POST /leads` — two new optional fields
+
+| Field | Notes |
+|---|---|
+| `referral_code` | The code from the visitor's cookie. |
+| `referral_visitor_id` | The same uuid sent with the click, so the lead binds to the exact arrival. |
+
+**Both are validated leniently on purpose** (`string`, generous lengths). A
+referral must never fail lead capture: a malformed code is dropped by
+`ReferralLink::normalizeCode()` and the lead still saves. Send them and forget
+them — there is no error to handle.
+
+**The backend overwrites `utm_*`, `referrer` and `landing_url` from the click**
+when one is bound. Those fields read at submit time record where the visitor
+*was*, not where they *arrived*; the click holds the real landing. Keep sending
+them for unreferred traffic.
+
+Full module guide: `docs/referrals/dev.md`.

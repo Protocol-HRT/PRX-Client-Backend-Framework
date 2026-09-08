@@ -16,13 +16,25 @@ anyone holding the link can see that plan.
 **You do not choose what is recommended here.** The matches come from the ingredient and health
 goal mappings in the catalog. What you control on this page is what the visitor is *told*.
 
-**Both products and packages add straight to the cart from this page.** A package is added on
-the plan its card quotes — the "from" figure — so the price the visitor was shown is the price
-they are charged; if the package's own one-time price is the figure quoted, it is added with no
-plan and no recurring billing. They can still open the package's own page from the card if they
-want a different term. A storefront may deliberately do this differently elsewhere, sending a
-visitor to the package page to pick a plan first; the report is the end of the funnel, so it
-does not put another page in the way.
+**A product adds straight to the cart from this page; a package opens a small window to pick a
+term first.** The card quotes "as low as $X", and for a package that figure is often a monthly
+plan the visitor has not agreed to — adding it for them would start a recurring charge they did
+not choose, and adding the package without it would charge more than the card said. Neither is
+acceptable, so the visitor is shown the terms and picks one. A product has no term to pick, so
+it still adds in one tap and several can go in the bag without leaving the page.
+
+**The window opens on the term the card's price came from**, so the option already selected is
+the one the visitor was just quoted, and the button at the bottom names the price it will
+charge. If a package's cheapest way in is its own price rather than a plan, it opens on "buy
+once" instead. Either way nobody is signed up to a recurring charge without choosing it.
+
+**What the window shows is the package's plans**, exactly as they appear on the package's own
+page — the name, the badge, the saving and the price of each. Those come from
+**Catalog → Packages → (a package) → Plans**, and a plan you unpublish disappears from the
+window at once. **Unpublish every plan and there is nothing left to choose**, so the card goes
+back to sending the visitor to the package's own page — the same fallback as before. **A price suffix you type on a plan is shown verbatim**, so a three-month
+prepay total ending in "/mo" will read as a monthly charge here too — see the note on suffixes
+in the catalog guide.
 
 **How it looks follows your theme**, not this page — see **Settings → Theme** for colours,
 fonts and the colour palette. There are no per-section layout controls here, because the plan
